@@ -97,13 +97,22 @@ struct Printer
     {
     }
 
-    std::ostream &operator()(const StringSet &)
+    std::ostream &operator()(const StringSelection &s)
     {
+        os << "Selected " << s.index << std::endl;
+        for (const auto &name : s.set)
+        {
+            os << '\t' << name << std::endl;
+        }
         return os;
     }
 
-    std::ostream &operator()(const StringMap &)
+    std::ostream &operator()(const StringMap &map)
     {
+        for (const auto &[name, flag] : map)
+        {
+            os << name << ": " << flag << std::endl;
+        }
         return os;
     }
 
@@ -120,13 +129,30 @@ void MainFrame::OnTest(wxCommandEvent &)
     form["Flag"] = false;
     form["Number"] = 0;
     form["String"] = String("Hello", resource);
+
+    StringSelection selection;
+    constexpr std::array<std::string_view, 5> Classes = {"Mammal", "Bird", "Reptile", "Amphibian", "Fish"};
+    for (auto cls : Classes)
+    {
+        selection.set.emplace(cls);
+    }
+    form["Single Selection"] = std::move(selection);
+
+    constexpr std::array<std::string_view, 4> Actions = {"Climb", "Swim", "Fly", "Dig"};
+    StringMap map;
+    for (auto a : Actions)
+    {
+        map.emplace(a, rand() % 2 == 0);
+    }
+    form["Multiple Selections"] = std::move(map);
+
     switch (executeForm("Test Form", form, this))
     {
     case DialogResult::Ok: {
         std::ostringstream os;
         for (const auto &[name, data] : form)
         {
-            os << name << ": ";
+            os << name << " → ";
             std::visit(Printer(os), data);
             os << std::endl;
         }
@@ -150,6 +176,11 @@ class MyApp : public wxApp
 
     virtual bool OnInit() override
     {
+        if (!wxApp::OnInit())
+        {
+            return false;
+        }
+        srand(time(nullptr));
         MainFrame *frame = new MainFrame();
         frame->Show();
         return true;

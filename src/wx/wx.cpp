@@ -111,7 +111,7 @@ struct FormDialog : public wxDialog
     wxFlexGridSizer *grid;
 
     FormDialog(wxWindow *parent, wxWindowID id, const wxString &title, Form &form)
-        : wxDialog(parent, id, title), name(), id(wxID_HIGHEST + 1), grid(new wxFlexGridSizer(2, wxSize(2, 2)))
+        : wxDialog(parent, id, title), name(), id(wxID_HIGHEST + 1), grid(new wxFlexGridSizer(2, wxSize(8, 8)))
     {
         wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
 
@@ -120,18 +120,17 @@ struct FormDialog : public wxDialog
             name = n;
             std::visit(*this, data);
         }
-        sizer->Add(grid, 0, wxEXPAND, 10);
+        sizer->Add(grid, 9, wxALIGN_CENTER | wxALL, 10);
 
         wxBoxSizer *buttons = new wxBoxSizer(wxHORIZONTAL);
-        wxButton *cancelButton = new wxButton(this, wxID_CANCEL, wxT("Cancel"));
         wxButton *okButton = new wxButton(this, wxID_OK, wxT("Ok"));
         buttons->Add(okButton, 1);
+        wxButton *cancelButton = new wxButton(this, wxID_CANCEL, wxT("Cancel"));
         buttons->Add(cancelButton, 1, wxLEFT, 5);
 
-        sizer->AddSpacer(10);
-        sizer->Add(buttons, 0, wxALIGN_CENTER | wxTOP | wxBOTTOM, 10);
+        sizer->Add(buttons, 1, wxALIGN_CENTER | wxLEFT | wxRIGHT | wxBOTTOM, 10);
 
-        SetSizer(sizer);
+        SetSizerAndFit(sizer);
     }
     virtual ~FormDialog()
     {
@@ -140,9 +139,9 @@ struct FormDialog : public wxDialog
     void operator()(bool &b)
     {
         wxCheckBox *checkBox = new wxCheckBox(this, id, convert(name));
+        checkBox->SetValue(b);
         Bind(
             wxEVT_CHECKBOX, [&b](wxCommandEvent &e) { b = e.IsChecked(); }, id++);
-        checkBox->SetValue(b);
         grid->Add(checkBox);
     }
 
@@ -166,11 +165,39 @@ struct FormDialog : public wxDialog
         grid->Add(box, 1, wxEXPAND, 5);
     }
 
-    void operator()(StringSet &)
+    void operator()(StringSelection &selection)
     {
+        if (!selection.valid())
+        {
+            return;
+        }
+
+        wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
+        wxArrayString choices;
+        for (auto &name : selection.set)
+        {
+            choices.Add(convert(name));
+        }
+        wxComboBox *combo = new wxComboBox(box->GetStaticBox(), id, choices[selection.index], wxDefaultPosition,
+                                           wxDefaultSize, choices, wxCB_READONLY);
+        Bind(
+            wxEVT_COMBOBOX, [&selection](wxCommandEvent &e) { selection.index = e.GetSelection(); }, id++);
+        box->Add(combo);
+        grid->Add(box, 1, wxEXPAND, 5);
     }
-    void operator()(StringMap &)
+
+    void operator()(StringMap &map)
     {
+        wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
+        for (auto &pair : map)
+        {
+            wxCheckBox *checkBox = new wxCheckBox(box->GetStaticBox(), id, convert(pair.first));
+            checkBox->SetValue(pair.second);
+            Bind(
+                wxEVT_CHECKBOX, [&pair](wxCommandEvent &e) { pair.second = e.IsChecked(); }, id++);
+            box->Add(checkBox);
+        }
+        grid->Add(box, 1, wxEXPAND, 5);
     }
 
     void OnOk(wxCommandEvent &)

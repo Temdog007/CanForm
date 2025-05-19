@@ -85,12 +85,30 @@ struct FileDialog
 
 using String = std::pmr::string;
 using StringSet = std::pmr::set<String>;
+struct StringSelection
+{
+    StringSet set;
+    int index;
+
+    StringSelection() : set(), index(0)
+    {
+    }
+    StringSelection(const StringSelection &) = default;
+    StringSelection(StringSelection &&) noexcept = default;
+
+    StringSelection &operator=(const StringSelection &) = default;
+    StringSelection &operator=(StringSelection &&) noexcept = default;
+
+    constexpr bool valid() const noexcept
+    {
+        return 0 <= index && index < static_cast<int>(set.size());
+    }
+};
 using StringMap = std::pmr::map<String, bool>;
 
-using FormData = std::variant<bool, long, String, StringSet, StringMap>;
+using FormData = std::variant<bool, long, String, StringSelection, StringMap>;
 using Form = std::pmr::map<String, FormData>;
 
 extern DialogResult executeForm(std::string_view, Form &, void *parent = nullptr);
-extern DialogResult executeFormAsync(std::string_view, const std::shared_ptr<Form> &, void *parent = nullptr);
 
 } // namespace CanForm
