@@ -107,10 +107,11 @@ DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
 struct FormDialog : public wxDialog
 {
     std::string_view name;
-    wxGridSizer *grid;
+    int id;
+    wxFlexGridSizer *grid;
 
     FormDialog(wxWindow *parent, wxWindowID id, const wxString &title, Form &form)
-        : wxDialog(parent, id, title), name(), grid(new wxGridSizer(2, wxSize(2, 2)))
+        : wxDialog(parent, id, title), name(), id(wxID_HIGHEST + 1), grid(new wxFlexGridSizer(2, wxSize(2, 2)))
     {
         wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
 
@@ -119,7 +120,7 @@ struct FormDialog : public wxDialog
             name = n;
             std::visit(*this, data);
         }
-        sizer->Add(grid, 0, wxALL, 10);
+        sizer->Add(grid, 0, wxEXPAND, 10);
 
         wxBoxSizer *buttons = new wxBoxSizer(wxHORIZONTAL);
         wxButton *cancelButton = new wxButton(this, wxID_CANCEL, wxT("Cancel"));
@@ -127,6 +128,7 @@ struct FormDialog : public wxDialog
         buttons->Add(okButton, 1);
         buttons->Add(cancelButton, 1, wxLEFT, 5);
 
+        sizer->AddSpacer(10);
         sizer->Add(buttons, 0, wxALIGN_CENTER | wxTOP | wxBOTTOM, 10);
 
         SetSizer(sizer);
@@ -137,7 +139,9 @@ struct FormDialog : public wxDialog
 
     void operator()(bool &b)
     {
-        wxCheckBox *checkBox = new wxCheckBox(this, wxID_ANY, convert(name));
+        wxCheckBox *checkBox = new wxCheckBox(this, id, convert(name));
+        Bind(
+            wxEVT_CHECKBOX, [&b](wxCommandEvent &e) { b = e.IsChecked(); }, id++);
         checkBox->SetValue(b);
         grid->Add(checkBox);
     }
@@ -145,14 +149,23 @@ struct FormDialog : public wxDialog
     void operator()(long &l)
     {
         wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
-        wxSpinCtrl *ctrl = new wxSpinCtrl(box->GetStaticBox(), wxID_ANY, wxString::Format(wxT("%ld"), l));
+        wxSpinCtrl *ctrl = new wxSpinCtrl(box->GetStaticBox(), id, wxString::Format(wxT("%ld"), l));
+        Bind(
+            wxEVT_SPINCTRL, [&l](wxSpinEvent &e) { l = e.GetInt(); }, id++);
         box->Add(ctrl);
         grid->Add(box, 1, wxEXPAND, 5);
     }
 
-    void operator()(String &)
+    void operator()(String &string)
     {
+        wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
+        wxTextCtrl *ctrl = new wxTextCtrl(box->GetStaticBox(), id, convert(string));
+        Bind(
+            wxEVT_TEXT, [&string](wxCommandEvent &e) { string = e.GetString().ToStdString(); }, id++);
+        box->Add(ctrl);
+        grid->Add(box, 1, wxEXPAND, 5);
     }
+
     void operator()(StringSet &)
     {
     }

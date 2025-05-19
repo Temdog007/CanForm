@@ -1,5 +1,6 @@
 #include <canform.hpp>
 #include <filesystem>
+#include <sstream>
 #include <wx/wx.h>
 
 using namespace CanForm;
@@ -88,6 +89,30 @@ void MainFrame::OnExit(wxCommandEvent &)
     Close(true);
 }
 
+struct Printer
+{
+    std::ostream &os;
+
+    constexpr Printer(std::ostream &os) noexcept : os(os)
+    {
+    }
+
+    std::ostream &operator()(const StringSet &)
+    {
+        return os;
+    }
+
+    std::ostream &operator()(const StringMap &)
+    {
+        return os;
+    }
+
+    template <typename T> std::ostream &operator()(const T &t)
+    {
+        return os << t;
+    }
+};
+
 void MainFrame::OnTest(wxCommandEvent &)
 {
     std::pmr::memory_resource *resource = std::pmr::new_delete_resource();
@@ -95,7 +120,26 @@ void MainFrame::OnTest(wxCommandEvent &)
     form["Flag"] = false;
     form["Number"] = 0;
     form["String"] = String("Hello", resource);
-    executeForm("Test Form", form, this);
+    switch (executeForm("Test Form", form, this))
+    {
+    case DialogResult::Ok: {
+        std::ostringstream os;
+        for (const auto &[name, data] : form)
+        {
+            os << name << ": ";
+            std::visit(Printer(os), data);
+            os << std::endl;
+        }
+        showMessageBox(MessageBoxType::Information, "Ok", os.str(), this);
+    }
+    break;
+    case DialogResult::Cancel:
+        showMessageBox(MessageBoxType::Warning, "Cancel", "Form Canceled", this);
+        break;
+    default:
+        showMessageBox(MessageBoxType::Error, "Error", "Form Failed", this);
+        break;
+    }
 }
 
 class MyApp : public wxApp
