@@ -12,6 +12,8 @@ class MainFrame : public wxFrame, public FileDialog::Handler
     void OnSave(wxCommandEvent &);
     void OnExit(wxCommandEvent &);
 
+    void OnTest(wxCommandEvent &);
+
   public:
     MainFrame();
     virtual ~MainFrame()
@@ -37,6 +39,12 @@ MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, "CanForm wxWidgets Test")
     file->Append(wxID_EXIT);
 
     bar->Append(file, wxT("&File"));
+
+    wxMenu *test = new wxMenu();
+
+    test->Append(wxID_FILE2, wxT("Show Test Form"));
+
+    bar->Append(test, wxT("Test"));
 
     SetMenuBar(bar);
 }
@@ -80,6 +88,16 @@ void MainFrame::OnExit(wxCommandEvent &)
     Close(true);
 }
 
+void MainFrame::OnTest(wxCommandEvent &)
+{
+    std::pmr::memory_resource *resource = std::pmr::new_delete_resource();
+    Form form;
+    form["Flag"] = false;
+    form["Number"] = 0;
+    form["String"] = String("Hello", resource);
+    executeForm("Test Form", form, this);
+}
+
 class MyApp : public wxApp
 {
     virtual ~MyApp()
@@ -98,4 +116,4 @@ wxIMPLEMENT_APP(MyApp);
 
 wxBEGIN_EVENT_TABLE(MainFrame, wxFrame) EVT_MENU(wxID_OPEN, MainFrame::OnOpenFile)
     EVT_MENU(wxID_FILE, MainFrame::OnOpenDir) EVT_MENU(wxID_SAVE, MainFrame::OnSave)
-        EVT_MENU(wxID_EXIT, MainFrame::OnExit) wxEND_EVENT_TABLE()
+        EVT_MENU(wxID_EXIT, MainFrame::OnExit) EVT_MENU(wxID_FILE2, MainFrame::OnTest) wxEND_EVENT_TABLE()

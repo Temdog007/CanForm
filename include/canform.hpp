@@ -1,6 +1,8 @@
 #pragma once
 
 #include <map>
+#include <memory>
+#include <memory_resource>
 #include <set>
 #include <string>
 #include <string_view>
@@ -88,6 +90,7 @@ using StringMap = std::pmr::map<String, bool>;
 using FormData = std::variant<bool, long, String, StringSet, StringMap>;
 using Form = std::pmr::map<String, FormData>;
 
-extern void executeForm(Form &, void *parent = nullptr);
+extern DialogResult executeForm(std::string_view, Form &, void *parent = nullptr);
+extern DialogResult executeFormAsync(std::string_view, const std::shared_ptr<Form> &, void *parent = nullptr);
 
 } // namespace CanForm

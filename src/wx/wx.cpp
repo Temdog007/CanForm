@@ -1,5 +1,6 @@
 #include <canform.hpp>
 #include <wx/busyinfo.h>
+#include <wx/spinctrl.h>
 #include <wx/wx.h>
 
 namespace CanForm
@@ -102,5 +103,91 @@ DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
         return handle(dialog, handler);
     }
 }
+
+struct FormDialog : public wxDialog
+{
+    std::string_view name;
+    wxGridSizer *grid;
+
+    FormDialog(wxWindow *parent, wxWindowID id, const wxString &title, Form &form)
+        : wxDialog(parent, id, title), name(), grid(new wxGridSizer(2, wxSize(2, 2)))
+    {
+        wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
+
+        for (auto &[n, data] : form)
+        {
+            name = n;
+            std::visit(*this, data);
+        }
+        sizer->Add(grid, 0, wxALL, 10);
+
+        wxBoxSizer *buttons = new wxBoxSizer(wxHORIZONTAL);
+        wxButton *cancelButton = new wxButton(this, wxID_CANCEL, wxT("Cancel"));
+        wxButton *okButton = new wxButton(this, wxID_OK, wxT("Ok"));
+        buttons->Add(okButton, 1);
+        buttons->Add(cancelButton, 1, wxLEFT, 5);
+
+        sizer->Add(buttons, 0, wxALIGN_CENTER | wxTOP | wxBOTTOM, 10);
+
+        SetSizer(sizer);
+    }
+    virtual ~FormDialog()
+    {
+    }
+
+    void operator()(bool &b)
+    {
+        wxCheckBox *checkBox = new wxCheckBox(this, wxID_ANY, convert(name));
+        checkBox->SetValue(b);
+        grid->Add(checkBox);
+    }
+
+    void operator()(long &l)
+    {
+        wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
+        wxSpinCtrl *ctrl = new wxSpinCtrl(box->GetStaticBox(), wxID_ANY, wxString::Format(wxT("%ld"), l));
+        box->Add(ctrl);
+        grid->Add(box, 1, wxEXPAND, 5);
+    }
+
+    void operator()(String &)
+    {
+    }
+    void operator()(StringSet &)
+    {
+    }
+    void operator()(StringMap &)
+    {
+    }
+
+    void OnOk(wxCommandEvent &)
+    {
+        EndModal(wxID_OK);
+    }
+    void OnCancel(wxCommandEvent &)
+    {
+        EndModal(wxID_CANCEL);
+    }
+
+    DECLARE_EVENT_TABLE()
+};
+
+DialogResult executeForm(std::string_view title, Form &form, void *parent)
+{
+    FormDialog dialog((wxWindow *)parent, wxID_ANY, convert(title), form);
+    switch (dialog.ShowModal())
+    {
+    case wxID_OK:
+        return DialogResult::Ok;
+    case wxID_CANCEL:
+        return DialogResult::Cancel;
+    default:
+        break;
+    }
+    return DialogResult::Error;
+}
+
+wxBEGIN_EVENT_TABLE(FormDialog, wxDialog) EVT_MENU(wxID_OK, FormDialog::OnOk)
+    EVT_MENU(wxID_CANCEL, FormDialog::OnCancel) wxEND_EVENT_TABLE()
 
 } // namespace CanForm

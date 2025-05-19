@@ -10,6 +10,9 @@ project(VMM
 
 add_compile_options(-Wall -Wextra -Wpedantic)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(CANFORM_TYPE STATIC)
 if(CANFORM_BUILD_SHARED)
 	set(CANFORM_TYPE SHARED)
