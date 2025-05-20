@@ -123,4 +123,37 @@ struct AsyncForm
     static void show(const std::shared_ptr<AsyncForm> &, std::string_view, void *parent = nullptr);
 };
 
+template <typename F> struct AsyncFormLambda : public AsyncForm
+{
+    static_assert(std::is_invocable<F, DialogResult>::value || std::is_invocable<F, Form &, DialogResult>::value);
+    F func;
+
+    AsyncFormLambda(F &&f) noexcept : func(std::move(f))
+    {
+    }
+
+    virtual ~AsyncFormLambda()
+    {
+    }
+
+    virtual void onSubmit(DialogResult result) override
+    {
+        if constexpr (std::is_invocable<F, DialogResult>::value)
+        {
+            func(result);
+        }
+        else if constexpr (std::is_invocable<F, Form &, DialogResult>::value)
+        {
+            func(form, result);
+        }
+    }
+};
+
+template <typename F> void showAsyncForm(Form &&form, std::string_view title, F &&f, void *parent = nullptr)
+{
+    std::shared_ptr<AsyncForm> asyncForm = std::make_shared<AsyncFormLambda<F>>(std::move(f));
+    asyncForm->form = std::move(form);
+    AsyncForm::show(asyncForm, title, parent);
+}
+
 } // namespace CanForm

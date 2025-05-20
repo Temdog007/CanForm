@@ -179,20 +179,8 @@ void MainFrame::printForm(const Form &form, DialogResult result, wxWindow *paren
 
 void MainFrame::OnNonModalTest(wxCommandEvent &)
 {
-    struct Test : public AsyncForm
-    {
-        virtual ~Test()
-        {
-        }
-
-        virtual void onSubmit(DialogResult result) override
-        {
-            MainFrame::printForm(form, result);
-        }
-    };
-    std::shared_ptr<AsyncForm> asyncForm = std::make_shared<Test>();
-    asyncForm->form = makeForm();
-    AsyncForm::show(asyncForm, "Non Modal Form", this);
+    showAsyncForm(
+        makeForm(), "Non Modal Form", [](Form &form, DialogResult result) { printForm(form, result); }, this);
 }
 
 void MainFrame::OnModalTest(wxCommandEvent &)
