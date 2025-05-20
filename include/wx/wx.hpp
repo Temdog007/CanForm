@@ -83,6 +83,49 @@ template <typename T> class NumberControl : public wxPanel
         text->ChangeValue(string);
     }
 
+    void OnBackward(wxCommandEvent &)
+    {
+        --value;
+        updateText();
+    }
+    void OnForward(wxCommandEvent &)
+    {
+        ++value;
+        updateText();
+    }
+
+    void OnValueUpdated(wxCommandEvent &e)
+    {
+        if constexpr (std::is_floating_point<T>::value)
+        {
+            value = wxAtof(e.GetString());
+        }
+        else
+        {
+            const String string(e.GetString().ToStdString());
+            char *end;
+            if constexpr (std::is_signed_v<T>)
+            {
+                const int64_t u = std::strtoll(string.c_str(), &end, 10);
+                if (string.data() + string.size() != end)
+                {
+                    return;
+                }
+                value = std::clamp(static_cast<T>(u), std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
+            }
+            else
+            {
+                const uint64_t u = std::strtoull(string.c_str(), &end, 10);
+                if (string.data() + string.size() != end)
+                {
+                    return;
+                }
+                value = std::clamp(static_cast<T>(u), std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
+            }
+        }
+        updateText();
+    }
+
   public:
     NumberControl(wxWindow *parent, wxWindowID id, T &v) : wxPanel(parent), text(nullptr), value(v)
     {
@@ -104,6 +147,7 @@ template <typename T> class NumberControl : public wxPanel
             text =
                 new wxTextCtrl(this, id, wxT(""), wxDefaultPosition, wxDefaultSize, 0, wxIntegerValidator<T>(&value));
         }
+        Bind(wxEVT_TEXT, &NumberControl::OnValueUpdated, this, id);
         updateText();
 
         sizer->Add(left, 1, wxALIGN_LEFT | wxALIGN_CENTRE_VERTICAL);
@@ -114,17 +158,6 @@ template <typename T> class NumberControl : public wxPanel
     }
     virtual ~NumberControl()
     {
-    }
-
-    void OnBackward(wxCommandEvent &)
-    {
-        --value;
-        updateText();
-    }
-    void OnForward(wxCommandEvent &)
-    {
-        ++value;
-        updateText();
     }
 };
 
@@ -150,20 +183,7 @@ class FormDialog : public wxDialog
     template <typename T, std::enable_if_t<std::is_arithmetic<T>::value, bool> = true> void operator()(T &t)
     {
         wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
-        NumberControl<T> *ctrl = new NumberControl<T>(box->GetStaticBox(), id, t);
-        Bind(
-            wxEVT_TEXT_ENTER,
-            [&t](wxCommandEvent &e) {
-                if constexpr (std::is_floating_point<T>::value)
-                {
-                    t = wxAtof(e.GetString());
-                }
-                else
-                {
-                    t = wxAtol(e.GetString());
-                }
-            },
-            id++);
+        NumberControl<T> *ctrl = new NumberControl<T>(box->GetStaticBox(), id++, t);
         box->Add(ctrl, 1, wxEXPAND);
         grid->Add(box, 1, wxEXPAND, 5);
     }
