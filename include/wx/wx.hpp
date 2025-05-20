@@ -106,9 +106,9 @@ template <typename T> class NumberControl : public wxPanel
         }
         updateText();
 
-        sizer->Add(left, 1, wxALIGN_LEFT);
-        sizer->Add(text, 8, wxALIGN_CENTER);
-        sizer->Add(right, 1);
+        sizer->Add(left, 1, wxALIGN_LEFT | wxALIGN_CENTRE_VERTICAL);
+        sizer->Add(text, 8, wxALIGN_CENTRE_VERTICAL);
+        sizer->Add(right, 1, wxALIGN_CENTRE_VERTICAL);
 
         SetSizerAndFit(sizer);
     }

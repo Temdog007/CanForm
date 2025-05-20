@@ -240,33 +240,36 @@ void FormDialog::operator()(Number &n)
     std::visit(*this, n);
 }
 
-template <typename F> bool editStringInTextEditor(const wxString &string, wxWindow *parent, F &&func)
+template <typename F>
+bool editStringInTextEditor(const wxString &string, const wxString &ext, wxWindow *parent, F &&func)
 {
-    std::shared_ptr<TempFile> tempFile = std::make_shared<TempFile>(string);
+    std::shared_ptr<TempFile> tempFile = std::make_shared<TempFile>(ext);
     if (!tempFile->write(string))
     {
         return false;
     }
 
-    auto runner = shareRunAfter<Execution>([tempFile, func = std::move(func)]() {
-        wxString string;
-        if (tempFile->read(string))
-        {
-            func(std::move(string));
-        }
+    auto runner = shareRunAfter<Execution>([parent, tempFile, func = std::move(func)]() {
+        wxWindowPtr<wxMessageDialog> dialog(new wxMessageDialog(parent, wxT("Apply changes from file?"), wxT("Apply?"),
+                                                                wxYES_NO | wxICON_QUESTION | wxCENTRE));
+        dialog->ShowWindowModalThenDo([dialog, tempFile, func](int retcode) {
+            if (retcode != wxID_YES)
+            {
+                return;
+            }
+            wxString string;
+            if (tempFile->read(string))
+            {
+                func(std::move(string));
+            }
+        });
     });
 
     switch (runner->execute(tempFile->OpenCommand()))
     {
-    case -1: {
-        wxMessageDialog dialog(parent, wxT("Apply changes from file?"), wxT("Apply?"),
-                               wxYES_NO | wxICON_QUESTION | wxCENTRE);
-        if (dialog.ShowModal() == wxID_YES)
-        {
-            runner->run();
-        }
-    }
-    break;
+    case -1:
+        runner->run();
+        return true;
     case 0:
         showMessageBox(MessageBoxType::Error, "Process Error", "Failed to create process", parent);
         break;
@@ -297,7 +300,7 @@ void FormDialog::operator()(String &string)
                 {
                     return;
                 }
-                if (!editStringInTextEditor(ctrl->GetValue(), this,
+                if (!editStringInTextEditor(ctrl->GetValue(), dialog->GetValue(), this,
                                             [ctrl](const wxString &value) { ctrl->SetValue(value); }))
                 {
                     showMessageBox(MessageBoxType::Error, "Failed to open text editor", "Edit Failure", this);
@@ -417,6 +420,7 @@ void WaitDialog::OnTimer(wxTimerEvent &)
     if (runner == nullptr || runner->isReady())
     {
         EndModal(wxID_OK);
+        timer.Stop();
     }
 }
 
