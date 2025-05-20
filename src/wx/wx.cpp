@@ -1,16 +1,21 @@
-#include <canform.hpp>
-#include <wx/busyinfo.h>
-#include <wx/numformatter.h>
-#include <wx/spinctrl.h>
+#include <wx/sstream.h>
 #include <wx/valnum.h>
+#include <wx/window.h>
 #include <wx/windowptr.h>
-#include <wx/wx.h>
+#include <wx/wx.hpp>
+
+#include <fstream>
 
 namespace CanForm
 {
 wxString convert(std::string_view string)
 {
     return wxString::FromUTF8(string.data(), string.size());
+}
+
+std::string_view toView(const wxString &string) noexcept
+{
+    return std::string_view(string.c_str(), string.Len());
 }
 
 void showMessageBox(MessageBoxType type, std::string_view title, std::string_view message, void *parent)
@@ -32,17 +37,23 @@ void showMessageBox(MessageBoxType type, std::string_view title, std::string_vie
     dialog.ShowModal();
 }
 
-void waitUntilMessage(std::string_view title, std::string_view message, Done &checker, void *parent)
+Execution::Execution() : wxProcess(), ready(false)
 {
-    wxWindowDisabler disableAll;
-    wxBusyInfo wait(wxBusyInfoFlags().Parent((wxWindow *)parent).Title(convert(title)).Text(convert(message)));
-    for (size_t i = 0; !checker.isDone(); ++i)
-    {
-        if (i % 1000 == 0)
-        {
-            wxTheApp->Yield();
-        }
-    }
+}
+
+bool Execution::isReady()
+{
+    return ready;
+}
+
+void Execution::OnTerminate(int, int)
+{
+    ready = true;
+}
+
+long Execution::execute(const wxString &command)
+{
+    return wxExecute(command, wxEXEC_ASYNC, this);
 }
 
 template <typename Dialog> DialogResult handle(Dialog &dialog, FileDialog::Handler &handler)
@@ -107,204 +118,247 @@ DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
     }
 }
 
-template <typename T> struct NumberControl : public wxPanel
+wxString randomString(size_t n)
 {
-    static_assert(std::is_arithmetic<T>::value);
-
-    wxTextCtrl *text;
-    T &value;
-
-    NumberControl(wxWindow *parent, wxWindowID id, T &v) : wxPanel(parent), text(nullptr), value(v)
+    wxString s;
+    while (s.Len() < n)
     {
-        wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
-
-        wxButton *left = new wxButton(this, wxID_BACKWARD, wxT("←"));
-        Bind(wxEVT_BUTTON, &NumberControl::OnBackward, this, wxID_BACKWARD);
-
-        wxButton *right = new wxButton(this, wxID_FORWARD, wxT("→"));
-        Bind(wxEVT_BUTTON, &NumberControl::OnForward, this, wxID_FORWARD);
-
-        if constexpr (std::is_floating_point<T>::value)
+        char c;
+        do
         {
-            text = new wxTextCtrl(this, id, wxT(""), wxDefaultPosition, wxDefaultSize, 0,
-                                  wxFloatingPointValidator<T>(6, &value));
-        }
-        else
-        {
-            text =
-                new wxTextCtrl(this, id, wxT(""), wxDefaultPosition, wxDefaultSize, 0, wxIntegerValidator<T>(&value));
-        }
-        updateText();
-
-        sizer->Add(left, 1, wxALIGN_LEFT);
-        sizer->Add(text, 8, wxALIGN_CENTER);
-        sizer->Add(right, 1);
-
-        SetSizerAndFit(sizer);
+            c = rand() % 128;
+        } while (!wxIsalnum(c));
+        s.Append(c);
     }
-    virtual ~NumberControl()
+    return s;
+}
+
+TempFile::TempFile(const wxString &ext) : path(randomString(rand() % 5 + 3)), extension(ext)
+{
+}
+
+TempFile::~TempFile()
+{
+    std::error_code err;
+    std::filesystem::remove(getPath(), err);
+}
+
+wxString TempFile::getName() const
+{
+    return wxString::Format(wxT("%s.%s"), path, extension);
+}
+
+std::filesystem::path TempFile::getPath() const
+{
+    return std::filesystem::path(getName().ToStdString());
+}
+
+wxString TempFile::OpenCommand() const
+{
+    const char *openCommand =
+#if _WIN32
+        "open";
+#else
+        "xdg-open";
+#endif
+    return wxString::Format("%s \"%s\"", openCommand, getName());
+}
+
+bool TempFile::read(wxString &s) const
+{
+    String string(s.ToStdString());
+    if (read(string))
     {
+        s = convert(string);
+        return true;
+    }
+    return false;
+}
+
+bool TempFile::read(String &string) const
+{
+    std::ifstream file(getPath());
+    if (file.is_open())
+    {
+        string.assign(std::istreambuf_iterator<char>{file}, {});
+        return true;
+    }
+    return false;
+}
+
+bool TempFile::write(const wxString &s) const
+{
+    const String string(s.ToStdString());
+    return write(string);
+}
+
+bool TempFile::write(const String &string) const
+{
+    std::ofstream file(getPath());
+    if (file.is_open())
+    {
+        file << string;
+        return true;
+    }
+    return false;
+}
+
+FormDialog::FormDialog(wxWindow *parent, wxWindowID id, const wxString &title, Form &form)
+    : wxDialog(parent, id, title), name(), id(wxID_HIGHEST + 1), grid(new wxFlexGridSizer(2, wxSize(8, 8)))
+{
+    wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
+
+    for (auto &[n, data] : form)
+    {
+        name = n;
+        std::visit(*this, data);
+    }
+    sizer->Add(grid, 9, wxALIGN_CENTER | wxALL, 10);
+
+    wxBoxSizer *buttons = new wxBoxSizer(wxHORIZONTAL);
+    wxButton *okButton = new wxButton(this, wxID_OK, wxT("Ok"));
+    buttons->Add(okButton, 1);
+    wxButton *cancelButton = new wxButton(this, wxID_CANCEL, wxT("Cancel"));
+    buttons->Add(cancelButton, 1, wxLEFT, 5);
+
+    sizer->Add(buttons, 1, wxALIGN_CENTER | wxLEFT | wxRIGHT | wxBOTTOM, 10);
+
+    SetSizerAndFit(sizer);
+}
+
+void FormDialog::operator()(bool &b)
+{
+    wxCheckBox *checkBox = new wxCheckBox(this, id, convert(name));
+    checkBox->SetValue(b);
+    Bind(
+        wxEVT_CHECKBOX, [&b](wxCommandEvent &e) { b = e.IsChecked(); }, id++);
+    grid->Add(checkBox, 1, wxEXPAND | wxALIGN_CENTRE_VERTICAL, 5);
+}
+
+void FormDialog::operator()(Number &n)
+{
+    std::visit(*this, n);
+}
+
+template <typename F> bool editStringInTextEditor(const wxString &string, wxWindow *parent, F &&func)
+{
+    std::shared_ptr<TempFile> tempFile = std::make_shared<TempFile>(string);
+    if (!tempFile->write(string))
+    {
+        return false;
     }
 
-    void OnBackward(wxCommandEvent &)
-    {
-        --value;
-        updateText();
-    }
-    void OnForward(wxCommandEvent &)
-    {
-        ++value;
-        updateText();
-    }
-
-  private:
-    void updateText()
-    {
+    auto runner = shareRunAfter<Execution>([tempFile, func = std::move(func)]() {
         wxString string;
-        if constexpr (std::is_floating_point<T>::value)
+        if (tempFile->read(string))
         {
-            string = wxString::Format(wxT("%f"), value);
+            func(std::move(string));
         }
-        else if constexpr (std::is_signed_v<T>)
-        {
-            string =
-                wxNumberFormatter::ToString(static_cast<wxLongLong_t>(value), wxNumberFormatter::Style::Style_None);
-        }
-        else
-        {
-            string =
-                wxNumberFormatter::ToString(static_cast<wxULongLong_t>(value), wxNumberFormatter::Style::Style_None);
-        }
-        text->ChangeValue(string);
-    }
-};
+    });
 
-struct FormDialog : public wxDialog
+    switch (runner->execute(tempFile->OpenCommand()))
+    {
+    case -1: {
+        wxMessageDialog dialog(parent, wxT("Apply changes from file?"), wxT("Apply?"),
+                               wxYES_NO | wxICON_QUESTION | wxCENTRE);
+        if (dialog.ShowModal() == wxID_YES)
+        {
+            runner->run();
+        }
+    }
+    break;
+    case 0:
+        showMessageBox(MessageBoxType::Error, "Process Error", "Failed to create process", parent);
+        break;
+    default:
+        waitUntilMessage("Wait", "Waiting for text editor to close...", runner, parent);
+        return true;
+    }
+    return false;
+}
+
+void FormDialog::operator()(String &string)
 {
-    std::string_view name;
-    int id;
-    wxFlexGridSizer *grid;
+    wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
+    wxTextCtrl *ctrl = new wxTextCtrl(box->GetStaticBox(), id, convert(string), wxDefaultPosition, wxDefaultSize,
+                                      wxTE_MULTILINE | wxTE_BESTWRAP);
+    Bind(
+        wxEVT_TEXT, [&string](wxCommandEvent &e) { string = e.GetString().ToStdString(); }, id++);
 
-    FormDialog(wxWindow *parent, wxWindowID id, const wxString &title, Form &form)
-        : wxDialog(parent, id, title), name(), id(wxID_HIGHEST + 1), grid(new wxFlexGridSizer(2, wxSize(8, 8)))
-    {
-        wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
-
-        for (auto &[n, data] : form)
-        {
-            name = n;
-            std::visit(*this, data);
-        }
-        sizer->Add(grid, 9, wxALIGN_CENTER | wxALL, 10);
-
-        wxBoxSizer *buttons = new wxBoxSizer(wxHORIZONTAL);
-        wxButton *okButton = new wxButton(this, wxID_OK, wxT("Ok"));
-        buttons->Add(okButton, 1);
-        wxButton *cancelButton = new wxButton(this, wxID_CANCEL, wxT("Cancel"));
-        buttons->Add(cancelButton, 1, wxLEFT, 5);
-
-        sizer->Add(buttons, 1, wxALIGN_CENTER | wxLEFT | wxRIGHT | wxBOTTOM, 10);
-
-        SetSizerAndFit(sizer);
-    }
-    virtual ~FormDialog()
-    {
-    }
-
-    void operator()(bool &b)
-    {
-        wxCheckBox *checkBox = new wxCheckBox(this, id, convert(name));
-        checkBox->SetValue(b);
-        Bind(
-            wxEVT_CHECKBOX, [&b](wxCommandEvent &e) { b = e.IsChecked(); }, id++);
-        grid->Add(checkBox, 1, wxEXPAND, 5);
-    }
-
-    template <typename T, std::enable_if_t<std::is_arithmetic<T>::value, bool> = true> void operator()(T &t)
-    {
-        wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
-        NumberControl<T> *ctrl = new NumberControl<T>(box->GetStaticBox(), id, t);
-        Bind(
-            wxEVT_TEXT_ENTER,
-            [&t](wxCommandEvent &e) {
-                if constexpr (std::is_floating_point<T>::value)
+    wxButton *button = new wxButton(box->GetStaticBox(), id, wxT("..."));
+    Bind(
+        wxEVT_BUTTON,
+        [this, ctrl](wxCommandEvent &) {
+            wxWindowPtr<wxTextEntryDialog> dialog(
+                new wxTextEntryDialog(this, wxT("Enter file extension"), wxT("Opening Text Editor")));
+            dialog->SetValue("txt");
+            dialog->ShowWindowModalThenDo([this, dialog, ctrl](int retcode) {
+                if (retcode != wxID_OK)
                 {
-                    t = wxAtof(e.GetString());
+                    return;
                 }
-                else
+                if (!editStringInTextEditor(ctrl->GetValue(), this,
+                                            [ctrl](const wxString &value) { ctrl->SetValue(value); }))
                 {
-                    t = wxAtol(e.GetString());
+                    showMessageBox(MessageBoxType::Error, "Failed to open text editor", "Edit Failure", this);
                 }
-            },
-            id++);
-        box->Add(ctrl, 1, wxEXPAND);
-        grid->Add(box, 1, wxEXPAND, 5);
+            });
+        },
+        id++);
+
+    box->Add(ctrl, 9, wxEXPAND);
+    box->Add(button, 1, wxEXPAND);
+    grid->Add(box, 1, wxEXPAND | wxALIGN_CENTRE_VERTICAL, 5);
+}
+
+void FormDialog::operator()(StringSelection &selection)
+{
+    if (!selection.valid())
+    {
+        return;
     }
 
-    void operator()(Number &n)
+    wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
+    wxArrayString choices;
+    for (auto &name : selection.set)
     {
-        std::visit(*this, n);
+        choices.Add(convert(name));
     }
+    wxComboBox *combo = new wxComboBox(box->GetStaticBox(), id, choices[selection.index], wxDefaultPosition,
+                                       wxDefaultSize, choices, wxCB_READONLY);
+    Bind(
+        wxEVT_COMBOBOX, [&selection](wxCommandEvent &e) { selection.index = e.GetSelection(); }, id++);
+    box->Add(combo, 1, wxEXPAND);
+    grid->Add(box, 1, wxEXPAND | wxALIGN_CENTRE_VERTICAL, 5);
+}
 
-    void operator()(String &string)
+void FormDialog::operator()(StringMap &map)
+{
+    wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
+    wxFlexGridSizer *sizer = new wxFlexGridSizer(2, wxSize(8, 8));
+    for (auto &pair : map)
     {
-        wxStaticBoxSizer *box = new wxStaticBoxSizer(wxHORIZONTAL, this, convert(name));
-        wxTextCtrl *ctrl = new wxTextCtrl(box->GetStaticBox(), id, convert(string), wxDefaultPosition, wxDefaultSize,
-                                          wxTE_MULTILINE | wxTE_BESTWRAP);
+        wxCheckBox *checkBox = new wxCheckBox(box->GetStaticBox(), id, convert(pair.first));
+        checkBox->SetValue(pair.second);
         Bind(
-            wxEVT_TEXT, [&string](wxCommandEvent &e) { string = e.GetString().ToStdString(); }, id++);
-        box->Add(ctrl, 1, wxEXPAND);
-        grid->Add(box, 1, wxEXPAND, 5);
+            wxEVT_CHECKBOX, [&pair](wxCommandEvent &e) { pair.second = e.IsChecked(); }, id++);
+        sizer->Add(checkBox, 1, wxEXPAND);
     }
+    box->Add(sizer, 1, wxEXPAND);
+    grid->Add(box, 1, wxEXPAND | wxALIGN_CENTRE_VERTICAL, 5);
+}
 
-    void operator()(StringSelection &selection)
-    {
-        if (!selection.valid())
-        {
-            return;
-        }
+void FormDialog::OnOk(wxCommandEvent &)
+{
+    EndModal(wxID_OK);
+}
+void FormDialog::OnCancel(wxCommandEvent &)
+{
+    EndModal(wxID_CANCEL);
+}
 
-        wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
-        wxArrayString choices;
-        for (auto &name : selection.set)
-        {
-            choices.Add(convert(name));
-        }
-        wxComboBox *combo = new wxComboBox(box->GetStaticBox(), id, choices[selection.index], wxDefaultPosition,
-                                           wxDefaultSize, choices, wxCB_READONLY);
-        Bind(
-            wxEVT_COMBOBOX, [&selection](wxCommandEvent &e) { selection.index = e.GetSelection(); }, id++);
-        box->Add(combo, 1, wxEXPAND);
-        grid->Add(box, 1, wxEXPAND, 5);
-    }
-
-    void operator()(StringMap &map)
-    {
-        wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
-        wxFlexGridSizer *sizer = new wxFlexGridSizer(2, wxSize(8, 8));
-        for (auto &pair : map)
-        {
-            wxCheckBox *checkBox = new wxCheckBox(box->GetStaticBox(), id, convert(pair.first));
-            checkBox->SetValue(pair.second);
-            Bind(
-                wxEVT_CHECKBOX, [&pair](wxCommandEvent &e) { pair.second = e.IsChecked(); }, id++);
-            sizer->Add(checkBox, 1, wxEXPAND);
-        }
-        box->Add(sizer, 1, wxEXPAND);
-        grid->Add(box, 1, wxEXPAND, 5);
-    }
-
-    void OnOk(wxCommandEvent &)
-    {
-        EndModal(wxID_OK);
-    }
-    void OnCancel(wxCommandEvent &)
-    {
-        EndModal(wxID_CANCEL);
-    }
-
-    DECLARE_EVENT_TABLE()
-};
+wxBEGIN_EVENT_TABLE(FormDialog, wxDialog) EVT_MENU(wxID_OK, FormDialog::OnOk)
+    EVT_MENU(wxID_CANCEL, FormDialog::OnCancel) wxEND_EVENT_TABLE();
 
 DialogResult executeForm(std::string_view title, Form &form, void *parent)
 {
@@ -345,7 +399,33 @@ void AsyncForm::show(const std::shared_ptr<AsyncForm> &asyncForm, std::string_vi
     });
 }
 
-wxBEGIN_EVENT_TABLE(FormDialog, wxDialog) EVT_MENU(wxID_OK, FormDialog::OnOk)
-    EVT_MENU(wxID_CANCEL, FormDialog::OnCancel) wxEND_EVENT_TABLE()
+WaitDialog::WaitDialog(wxWindow *parent, const wxString &message, const wxString &title,
+                       const std::shared_ptr<RunAfter> &r)
+    : wxDialog(parent, wxID_ANY, title), timer(this), runner(r)
+{
+    wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
 
+    sizer->Add(new wxStaticText(this, wxID_ANY, message));
+
+    SetSizerAndFit(sizer);
+
+    timer.Start(50);
+}
+
+void WaitDialog::OnTimer(wxTimerEvent &)
+{
+    if (runner == nullptr || runner->isReady())
+    {
+        EndModal(wxID_OK);
+    }
+}
+
+void waitUntilMessage(std::string_view title, std::string_view message, const std::shared_ptr<RunAfter> &runner,
+                      void *parent)
+{
+    wxWindowPtr<WaitDialog> dialog(new WaitDialog((wxWindow *)parent, convert(message), convert(title), runner));
+    dialog->ShowWindowModalThenDo([dialog, runner](int) { runner->run(); });
+}
+
+wxBEGIN_EVENT_TABLE(WaitDialog, wxDialog) EVT_TIMER(wxID_ANY, WaitDialog::OnTimer) wxEND_EVENT_TABLE();
 } // namespace CanForm

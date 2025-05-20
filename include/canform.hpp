@@ -19,35 +19,52 @@ enum class MessageBoxType
 
 extern void showMessageBox(MessageBoxType, std::string_view title, std::string_view message, void *parent = nullptr);
 
-struct Done
+struct RunAfter
 {
-    virtual ~Done()
+    virtual ~RunAfter()
     {
     }
-    virtual bool isDone() = 0;
-};
-extern void waitUntilMessage(std::string_view title, std::string_view message, Done &, void *parent = nullptr);
-
-template <typename F, std::enable_if_t<std::is_invocable_r<bool, F>::value, bool> = true>
-static inline void waitUntilMessage(std::string_view title, std::string_view message, F func, void *parent = nullptr)
-{
-    struct Func
+    virtual bool isReady() = 0;
+    virtual void run()
     {
-        F &func;
-        Func(F &f) : func(f)
-        {
-        }
-        virtual ~Func()
-        {
-        }
-        bool isDone()
-        {
-            return func();
-        }
-    };
-    Func done(func);
-    waitUntilMessage(title, message, done, parent);
+    }
+};
+
+template <typename Base, typename F> class RunAfterLambda : public Base
+{
+  private:
+    static_assert(std::is_base_of<RunAfter, Base>::value);
+
+    F func;
+
+  public:
+    template <typename... Args>
+    RunAfterLambda(F &&f, Args &&...args) noexcept : Base(std::forward<Args>(args)...), func(std::move(f))
+    {
+    }
+    virtual ~RunAfterLambda()
+    {
+    }
+
+    virtual void run() override
+    {
+        func();
+    }
+};
+
+template <typename Base, typename F, typename... Args> RunAfterLambda<Base, F> makeRunAfter(F &&func, Args &&...args)
+{
+    return RunAfterLambda<Base, F>(std::move(func), std::forward<Args>(args)...);
 }
+
+template <typename Base, typename F, typename... Args>
+std::shared_ptr<RunAfterLambda<Base, F>> shareRunAfter(F &&func, Args &&...args)
+{
+    return std::make_shared<RunAfterLambda<Base, F>>(std::move(func), std::forward<Args>(args)...);
+}
+
+extern void waitUntilMessage(std::string_view title, std::string_view message, const std::shared_ptr<RunAfter> &,
+                             void *parent = nullptr);
 
 enum class DialogResult
 {
