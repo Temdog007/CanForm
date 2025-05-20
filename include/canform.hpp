@@ -111,4 +111,16 @@ using Form = std::pmr::map<String, FormData>;
 
 extern DialogResult executeForm(std::string_view, Form &, void *parent = nullptr);
 
+struct AsyncForm
+{
+    Form form;
+
+    virtual ~AsyncForm()
+    {
+    }
+
+    virtual void onSubmit(DialogResult) = 0;
+    static void show(const std::shared_ptr<AsyncForm> &, std::string_view, void *parent = nullptr);
+};
+
 } // namespace CanForm

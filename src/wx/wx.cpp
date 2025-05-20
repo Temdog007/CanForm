@@ -1,6 +1,7 @@
 #include <canform.hpp>
 #include <wx/busyinfo.h>
 #include <wx/spinctrl.h>
+#include <wx/windowptr.h>
 #include <wx/wx.h>
 
 namespace CanForm
@@ -225,6 +226,30 @@ DialogResult executeForm(std::string_view title, Form &form, void *parent)
         break;
     }
     return DialogResult::Error;
+}
+
+void AsyncForm::show(const std::shared_ptr<AsyncForm> &asyncForm, std::string_view title, void *parent)
+{
+    if (asyncForm == nullptr)
+    {
+        return;
+    }
+    wxWindowPtr<FormDialog> dialog(new FormDialog((wxWindow *)parent, wxID_ANY, convert(title), asyncForm->form));
+    dialog->ShowWindowModalThenDo([asyncForm, dialog](int retcode) {
+        DialogResult result = DialogResult::Error;
+        switch (retcode)
+        {
+        case wxID_OK:
+            result = DialogResult::Ok;
+            break;
+        case wxID_CANCEL:
+            result = DialogResult::Cancel;
+            break;
+        default:
+            break;
+        }
+        asyncForm->onSubmit(result);
+    });
 }
 
 wxBEGIN_EVENT_TABLE(FormDialog, wxDialog) EVT_MENU(wxID_OK, FormDialog::OnOk)

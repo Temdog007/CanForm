@@ -13,7 +13,11 @@ class MainFrame : public wxFrame, public FileDialog::Handler
     void OnSave(wxCommandEvent &);
     void OnExit(wxCommandEvent &);
 
-    void OnTest(wxCommandEvent &);
+    void OnModalTest(wxCommandEvent &);
+    void OnNonModalTest(wxCommandEvent &);
+
+    static Form makeForm();
+    static void printForm(const Form &, DialogResult, wxWindow *parent = nullptr);
 
   public:
     MainFrame();
@@ -43,7 +47,8 @@ MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, "CanForm wxWidgets Test")
 
     wxMenu *test = new wxMenu();
 
-    test->Append(wxID_FILE2, wxT("Show Test Form"));
+    test->Append(wxID_FILE2, wxT("Show Modal Form"));
+    test->Append(wxID_FILE3, wxT("Show Non-Modal Form"));
 
     bar->Append(test, wxT("Test"));
 
@@ -122,7 +127,7 @@ struct Printer
     }
 };
 
-void MainFrame::OnTest(wxCommandEvent &)
+Form MainFrame::makeForm()
 {
     std::pmr::memory_resource *resource = std::pmr::new_delete_resource();
     Form form;
@@ -145,8 +150,12 @@ void MainFrame::OnTest(wxCommandEvent &)
         map.emplace(a, rand() % 2 == 0);
     }
     form["Multiple Selections"] = std::move(map);
+    return form;
+}
 
-    switch (executeForm("Test Form", form, this))
+void MainFrame::printForm(const Form &form, DialogResult result, wxWindow *parent)
+{
+    switch (result)
     {
     case DialogResult::Ok: {
         std::ostringstream os;
@@ -156,16 +165,40 @@ void MainFrame::OnTest(wxCommandEvent &)
             std::visit(Printer(os), data);
             os << std::endl;
         }
-        showMessageBox(MessageBoxType::Information, "Ok", os.str(), this);
+        showMessageBox(MessageBoxType::Information, "Ok", os.str(), parent);
     }
     break;
     case DialogResult::Cancel:
-        showMessageBox(MessageBoxType::Warning, "Cancel", "Form Canceled", this);
+        showMessageBox(MessageBoxType::Warning, "Cancel", "Form Canceled", parent);
         break;
     default:
-        showMessageBox(MessageBoxType::Error, "Error", "Form Failed", this);
+        showMessageBox(MessageBoxType::Error, "Error", "Form Failed", parent);
         break;
     }
+}
+
+void MainFrame::OnNonModalTest(wxCommandEvent &)
+{
+    struct Test : public AsyncForm
+    {
+        virtual ~Test()
+        {
+        }
+
+        virtual void onSubmit(DialogResult result) override
+        {
+            MainFrame::printForm(form, result);
+        }
+    };
+    std::shared_ptr<AsyncForm> asyncForm = std::make_shared<Test>();
+    asyncForm->form = makeForm();
+    AsyncForm::show(asyncForm, "Non Modal Form", this);
+}
+
+void MainFrame::OnModalTest(wxCommandEvent &)
+{
+    Form form = makeForm();
+    printForm(form, executeForm("Modal Form", form, this), this);
 }
 
 class MyApp : public wxApp
@@ -191,4 +224,5 @@ wxIMPLEMENT_APP(MyApp);
 
 wxBEGIN_EVENT_TABLE(MainFrame, wxFrame) EVT_MENU(wxID_OPEN, MainFrame::OnOpenFile)
     EVT_MENU(wxID_FILE, MainFrame::OnOpenDir) EVT_MENU(wxID_SAVE, MainFrame::OnSave)
-        EVT_MENU(wxID_EXIT, MainFrame::OnExit) EVT_MENU(wxID_FILE2, MainFrame::OnTest) wxEND_EVENT_TABLE()
+        EVT_MENU(wxID_EXIT, MainFrame::OnExit) EVT_MENU(wxID_FILE2, MainFrame::OnModalTest)
+            EVT_MENU(wxID_FILE3, MainFrame::OnNonModalTest) wxEND_EVENT_TABLE()
