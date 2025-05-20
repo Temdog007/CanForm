@@ -1,7 +1,9 @@
+#include <wx/notebook.h>
 #include <wx/sstream.h>
 #include <wx/valnum.h>
 #include <wx/window.h>
 #include <wx/windowptr.h>
+
 #include <wx/wx.hpp>
 
 #include <fstream>
@@ -203,30 +205,18 @@ bool TempFile::write(const String &string) const
     return false;
 }
 
-FormDialog::FormDialog(wxWindow *parent, wxWindowID id, const wxString &title, Form &form)
-    : wxDialog(parent, id, title), name(), id(wxID_HIGHEST + 1), grid(new wxFlexGridSizer(2, wxSize(8, 8)))
+FormPanel::FormPanel(wxWindow *parent, Form &form)
+    : wxPanel(parent), name(), id(wxID_HIGHEST + 1), grid(new wxFlexGridSizer(2, wxSize(8, 8)))
 {
-    wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
-
-    for (auto &[n, data] : form)
+    for (auto &[n, data] : *form)
     {
         name = n;
-        std::visit(*this, data);
+        std::visit(*this, *data);
     }
-    sizer->Add(grid, 9, wxALIGN_CENTER | wxALL, 10);
-
-    wxBoxSizer *buttons = new wxBoxSizer(wxHORIZONTAL);
-    wxButton *okButton = new wxButton(this, wxID_OK, wxT("Ok"));
-    buttons->Add(okButton, 1);
-    wxButton *cancelButton = new wxButton(this, wxID_CANCEL, wxT("Cancel"));
-    buttons->Add(cancelButton, 1, wxLEFT, 5);
-
-    sizer->Add(buttons, 1, wxALIGN_CENTER | wxLEFT | wxRIGHT | wxBOTTOM, 10);
-
-    SetSizerAndFit(sizer);
+    SetSizerAndFit(grid);
 }
 
-void FormDialog::operator()(bool &b)
+void FormPanel::operator()(bool &b)
 {
     wxCheckBox *checkBox = new wxCheckBox(this, id, convert(name));
     checkBox->SetValue(b);
@@ -235,7 +225,7 @@ void FormDialog::operator()(bool &b)
     grid->Add(checkBox, 1, wxEXPAND | wxALIGN_CENTRE_VERTICAL, 5);
 }
 
-void FormDialog::operator()(Number &n)
+void FormPanel::operator()(Number &n)
 {
     std::visit(*this, n);
 }
@@ -280,7 +270,7 @@ bool editStringInTextEditor(const wxString &string, const wxString &ext, wxWindo
     return false;
 }
 
-void FormDialog::operator()(String &string)
+void FormPanel::operator()(String &string)
 {
     wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
     wxTextCtrl *ctrl = new wxTextCtrl(box->GetStaticBox(), id, convert(string), wxDefaultPosition, wxDefaultSize,
@@ -314,7 +304,7 @@ void FormDialog::operator()(String &string)
     grid->Add(box, 1, wxEXPAND | wxALIGN_CENTRE_VERTICAL, 5);
 }
 
-void FormDialog::operator()(StringSelection &selection)
+void FormPanel::operator()(StringSelection &selection)
 {
     if (!selection.valid())
     {
@@ -335,7 +325,7 @@ void FormDialog::operator()(StringSelection &selection)
     grid->Add(box, 1, wxEXPAND | wxALIGN_CENTRE_VERTICAL, 5);
 }
 
-void FormDialog::operator()(StringMap &map)
+void FormPanel::operator()(StringMap &map)
 {
     wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
     wxFlexGridSizer *sizer = new wxFlexGridSizer(2, wxSize(8, 8));
@@ -351,21 +341,54 @@ void FormDialog::operator()(StringMap &map)
     grid->Add(box, 1, wxEXPAND | wxALIGN_CENTRE_VERTICAL, 5);
 }
 
-void FormDialog::OnOk(wxCommandEvent &)
+void FormPanel::operator()(MultiForm &multi)
 {
-    EndModal(wxID_OK);
-}
-void FormDialog::OnCancel(wxCommandEvent &)
-{
-    EndModal(wxID_CANCEL);
+    wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
+    wxNotebook *book = new wxNotebook(box->GetStaticBox(), id);
+    Bind(
+        wxEVT_NOTEBOOK_PAGE_CHANGED,
+        [book, &multi](wxBookCtrlEvent &e) {
+            int i = e.GetSelection();
+            for (auto &[tabName, formData] : multi.tabs)
+            {
+                if (i == 0)
+                {
+                    multi.selected = tabName;
+                    break;
+                }
+                --i;
+            }
+        },
+        id++);
+    for (auto &[tabName, formData] : multi.tabs)
+    {
+        FormPanel *panel = new FormPanel(book, formData);
+        book->AddPage(panel, convert(tabName), tabName == multi.selected);
+    }
+    box->Add(book, 1, wxEXPAND);
+    grid->Add(box, 1, wxEXPAND | wxALIGN_CENTRE_VERTICAL, 5);
 }
 
-wxBEGIN_EVENT_TABLE(FormDialog, wxDialog) EVT_MENU(wxID_OK, FormDialog::OnOk)
-    EVT_MENU(wxID_CANCEL, FormDialog::OnCancel) wxEND_EVENT_TABLE();
+FormDialog::FormDialog(wxWindow *parent, const wxString &title, Form &form) : wxDialog(parent, wxID_ANY, title)
+{
+    wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
+
+    sizer->Add(new FormPanel(this, form), 9, wxALIGN_CENTER | wxALL, 10);
+
+    wxBoxSizer *buttons = new wxBoxSizer(wxHORIZONTAL);
+    wxButton *okButton = new wxButton(this, wxID_OK, wxT("Ok"));
+    buttons->Add(okButton, 1);
+    wxButton *cancelButton = new wxButton(this, wxID_CANCEL, wxT("Cancel"));
+    buttons->Add(cancelButton, 1, wxLEFT, 5);
+
+    sizer->Add(buttons, 1, wxALIGN_CENTER | wxLEFT | wxRIGHT | wxBOTTOM, 10);
+
+    SetSizerAndFit(sizer);
+}
 
 DialogResult executeForm(std::string_view title, Form &form, void *parent)
 {
-    FormDialog dialog((wxWindow *)parent, wxID_ANY, convert(title), form);
+    FormDialog dialog((wxWindow *)parent, convert(title), form);
     switch (dialog.ShowModal())
     {
     case wxID_OK:
@@ -384,7 +407,7 @@ void AsyncForm::show(const std::shared_ptr<AsyncForm> &asyncForm, std::string_vi
     {
         return;
     }
-    wxWindowPtr<FormDialog> dialog(new FormDialog((wxWindow *)parent, wxID_ANY, convert(title), asyncForm->form));
+    wxWindowPtr<FormDialog> dialog(new FormDialog((wxWindow *)parent, convert(title), asyncForm->form));
     dialog->ShowWindowModalThenDo([asyncForm, dialog](int retcode) {
         DialogResult result = DialogResult::Error;
         switch (retcode)

@@ -161,20 +161,17 @@ template <typename T> class NumberControl : public wxPanel
     }
 };
 
-class FormDialog : public wxDialog
+class FormPanel : public wxPanel
 {
   private:
     std::string_view name;
     int id;
     wxFlexGridSizer *grid;
 
-    void OnOk(wxCommandEvent &);
-    void OnCancel(wxCommandEvent &);
-
   public:
-    FormDialog(wxWindow *parent, wxWindowID id, const wxString &title, Form &form);
+    FormPanel(wxWindow *parent, Form &form);
 
-    virtual ~FormDialog()
+    virtual ~FormPanel()
     {
     }
 
@@ -196,7 +193,21 @@ class FormDialog : public wxDialog
 
     void operator()(StringMap &map);
 
-    DECLARE_EVENT_TABLE()
+    void operator()(MultiForm &);
+};
+
+class FormDialog : public wxDialog
+{
+  private:
+    void OnOk(wxCommandEvent &);
+    void OnCancel(wxCommandEvent &);
+
+  public:
+    FormDialog(wxWindow *, const wxString &, Form &);
+
+    virtual ~FormDialog()
+    {
+    }
 };
 
 class WaitDialog : public wxDialog

@@ -104,10 +104,16 @@ struct Printer
 
     std::ostream &operator()(const StringSelection &s)
     {
-        os << "Selected " << s.index << std::endl;
+        int i = 0;
         for (const auto &name : s.set)
         {
-            os << '\t' << name << std::endl;
+            os << '\t' << name;
+            if (i == s.index)
+            {
+                os << "✔";
+            }
+            os << std::endl;
+            ++i;
         }
         return os;
     }
@@ -126,6 +132,33 @@ struct Printer
         return std::visit(*this, n);
     }
 
+    std::ostream &operator()(const MultiForm &multi)
+    {
+        os << "Selected " << multi.selected << std::endl;
+        auto iter = multi.tabs.find(multi.selected);
+        if (iter != multi.tabs.end())
+        {
+            const auto &form = iter->second;
+            for (const auto &[name, formData] : *form)
+            {
+                os << "Entry: " << name << " → ";
+                std::visit(*this, *formData);
+                os << std::endl;
+            }
+        }
+        return os;
+    }
+
+    std::ostream &operator()(int8_t t)
+    {
+        return operator()(static_cast<ssize_t>(t));
+    }
+
+    std::ostream &operator()(uint8_t t)
+    {
+        return operator()(static_cast<size_t>(t));
+    }
+
     template <typename T> std::ostream &operator()(const T &t)
     {
         return os << t;
@@ -137,17 +170,13 @@ Form MainFrame::makeForm()
     std::pmr::memory_resource *resource = std::pmr::new_delete_resource();
     Form form;
     form["Flag"] = false;
-    form["Integer"] = 0;
+    form["Signed Integer"] = 0;
+    form["Unsigned Integer"] = 0u;
     form["Float"] = 0.f;
     form["String"] = String("Hello", resource);
 
-    StringSelection selection;
     constexpr std::array<std::string_view, 5> Classes = {"Mammal", "Bird", "Reptile", "Amphibian", "Fish"};
-    for (auto cls : Classes)
-    {
-        selection.set.emplace(cls);
-    }
-    form["Single Selection"] = std::move(selection);
+    form["Single Selection"] = StringSelection(Classes);
 
     constexpr std::array<std::string_view, 4> Actions = {"Climb", "Swim", "Fly", "Dig"};
     StringMap map;
@@ -156,6 +185,14 @@ Form MainFrame::makeForm()
         map.emplace(a, rand() % 2 == 0);
     }
     form["Multiple Selections"] = std::move(map);
+
+    MultiForm multi;
+    multi.tabs["Extra1"] =
+        Form::create("Age", static_cast<uint8_t>(42), "Favorite Color", StringSelection({"Red", "Green", "Blue"}));
+    multi.tabs["Extra2"] = Form::create("Active", true, "Weight", 0.0, "Sports",
+                                        createStringMap("Basketball", "Football", "Golf", "Polo"));
+    multi.selected = "Extra1";
+    form["Extra"] = std::move(multi);
     return form;
 }
 
@@ -165,10 +202,10 @@ void MainFrame::printForm(const Form &form, DialogResult result, wxWindow *paren
     {
     case DialogResult::Ok: {
         std::ostringstream os;
-        for (const auto &[name, data] : form)
+        for (const auto &[name, data] : *form)
         {
             os << name << " → ";
-            std::visit(Printer(os), data);
+            std::visit(Printer(os), *data);
             os << std::endl;
         }
         showMessageBox(MessageBoxType::Information, "Ok", os.str(), parent);
