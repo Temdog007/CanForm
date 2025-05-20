@@ -1,6 +1,8 @@
 #include <canform.hpp>
 #include <wx/busyinfo.h>
+#include <wx/numformatter.h>
 #include <wx/spinctrl.h>
+#include <wx/valnum.h>
 #include <wx/windowptr.h>
 #include <wx/wx.h>
 
@@ -105,6 +107,78 @@ DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
     }
 }
 
+template <typename T> struct NumberControl : public wxPanel
+{
+    static_assert(std::is_arithmetic<T>::value);
+
+    wxTextCtrl *text;
+    T &value;
+
+    NumberControl(wxWindow *parent, wxWindowID id, T &v) : wxPanel(parent), text(nullptr), value(v)
+    {
+        wxBoxSizer *sizer = new wxBoxSizer(wxHORIZONTAL);
+
+        wxButton *left = new wxButton(this, wxID_BACKWARD, wxT("←"));
+        Bind(wxEVT_BUTTON, &NumberControl::OnBackward, this, wxID_BACKWARD);
+
+        wxButton *right = new wxButton(this, wxID_FORWARD, wxT("→"));
+        Bind(wxEVT_BUTTON, &NumberControl::OnForward, this, wxID_FORWARD);
+
+        if constexpr (std::is_floating_point<T>::value)
+        {
+            text = new wxTextCtrl(this, id, wxT(""), wxDefaultPosition, wxDefaultSize, 0,
+                                  wxFloatingPointValidator<T>(6, &value));
+        }
+        else
+        {
+            text =
+                new wxTextCtrl(this, id, wxT(""), wxDefaultPosition, wxDefaultSize, 0, wxIntegerValidator<T>(&value));
+        }
+        updateText();
+
+        sizer->Add(left, 1, wxALIGN_LEFT);
+        sizer->Add(text, 8, wxALIGN_CENTER);
+        sizer->Add(right, 1);
+
+        SetSizerAndFit(sizer);
+    }
+    virtual ~NumberControl()
+    {
+    }
+
+    void OnBackward(wxCommandEvent &)
+    {
+        --value;
+        updateText();
+    }
+    void OnForward(wxCommandEvent &)
+    {
+        ++value;
+        updateText();
+    }
+
+  private:
+    void updateText()
+    {
+        wxString string;
+        if constexpr (std::is_floating_point<T>::value)
+        {
+            string = wxString::Format(wxT("%f"), value);
+        }
+        else if constexpr (std::is_signed_v<T>)
+        {
+            string =
+                wxNumberFormatter::ToString(static_cast<wxLongLong_t>(value), wxNumberFormatter::Style::Style_None);
+        }
+        else
+        {
+            string =
+                wxNumberFormatter::ToString(static_cast<wxULongLong_t>(value), wxNumberFormatter::Style::Style_None);
+        }
+        text->ChangeValue(string);
+    }
+};
+
 struct FormDialog : public wxDialog
 {
     std::string_view name;
@@ -143,23 +217,40 @@ struct FormDialog : public wxDialog
         checkBox->SetValue(b);
         Bind(
             wxEVT_CHECKBOX, [&b](wxCommandEvent &e) { b = e.IsChecked(); }, id++);
-        grid->Add(checkBox);
+        grid->Add(checkBox, 1, wxEXPAND, 5);
     }
 
-    void operator()(long &l)
+    template <typename T, std::enable_if_t<std::is_arithmetic<T>::value, bool> = true> void operator()(T &t)
     {
         wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
-        wxSpinCtrl *ctrl = new wxSpinCtrl(box->GetStaticBox(), id, wxString::Format(wxT("%ld"), l));
+        NumberControl<T> *ctrl = new NumberControl<T>(box->GetStaticBox(), id, t);
         Bind(
-            wxEVT_SPINCTRL, [&l](wxSpinEvent &e) { l = e.GetInt(); }, id++);
+            wxEVT_TEXT_ENTER,
+            [&t](wxCommandEvent &e) {
+                if constexpr (std::is_floating_point<T>::value)
+                {
+                    t = wxAtof(e.GetString());
+                }
+                else
+                {
+                    t = wxAtol(e.GetString());
+                }
+            },
+            id++);
         box->Add(ctrl);
         grid->Add(box, 1, wxEXPAND, 5);
     }
 
+    void operator()(Number &n)
+    {
+        std::visit(*this, n);
+    }
+
     void operator()(String &string)
     {
-        wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
-        wxTextCtrl *ctrl = new wxTextCtrl(box->GetStaticBox(), id, convert(string));
+        wxStaticBoxSizer *box = new wxStaticBoxSizer(wxHORIZONTAL, this, convert(name));
+        wxTextCtrl *ctrl = new wxTextCtrl(box->GetStaticBox(), id, convert(string), wxDefaultPosition, wxDefaultSize,
+                                          wxTE_MULTILINE | wxTE_BESTWRAP);
         Bind(
             wxEVT_TEXT, [&string](wxCommandEvent &e) { string = e.GetString().ToStdString(); }, id++);
         box->Add(ctrl);

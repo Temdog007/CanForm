@@ -83,6 +83,8 @@ struct FileDialog
     DialogResult show(Handler &, void *parent = nullptr) const;
 };
 
+using Number = std::variant<int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t, float, double>;
+
 using String = std::pmr::string;
 using StringSet = std::pmr::set<String>;
 struct StringSelection
@@ -106,7 +108,7 @@ struct StringSelection
 };
 using StringMap = std::pmr::map<String, bool>;
 
-using FormData = std::variant<bool, long, String, StringSelection, StringMap>;
+using FormData = std::variant<bool, Number, String, StringSelection, StringMap>;
 using Form = std::pmr::map<String, FormData>;
 
 extern DialogResult executeForm(std::string_view, Form &, void *parent = nullptr);

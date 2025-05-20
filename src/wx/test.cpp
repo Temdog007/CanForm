@@ -121,6 +121,11 @@ struct Printer
         return os;
     }
 
+    std::ostream &operator()(const Number &n)
+    {
+        return std::visit(*this, n);
+    }
+
     template <typename T> std::ostream &operator()(const T &t)
     {
         return os << t;
@@ -132,7 +137,8 @@ Form MainFrame::makeForm()
     std::pmr::memory_resource *resource = std::pmr::new_delete_resource();
     Form form;
     form["Flag"] = false;
-    form["Number"] = 0;
+    form["Integer"] = 0;
+    form["Float"] = 0.f;
     form["String"] = String("Hello", resource);
 
     StringSelection selection;
