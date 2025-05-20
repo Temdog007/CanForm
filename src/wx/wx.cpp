@@ -237,7 +237,7 @@ struct FormDialog : public wxDialog
                 }
             },
             id++);
-        box->Add(ctrl);
+        box->Add(ctrl, 1, wxEXPAND);
         grid->Add(box, 1, wxEXPAND, 5);
     }
 
@@ -253,7 +253,7 @@ struct FormDialog : public wxDialog
                                           wxTE_MULTILINE | wxTE_BESTWRAP);
         Bind(
             wxEVT_TEXT, [&string](wxCommandEvent &e) { string = e.GetString().ToStdString(); }, id++);
-        box->Add(ctrl);
+        box->Add(ctrl, 1, wxEXPAND);
         grid->Add(box, 1, wxEXPAND, 5);
     }
 
@@ -274,21 +274,23 @@ struct FormDialog : public wxDialog
                                            wxDefaultSize, choices, wxCB_READONLY);
         Bind(
             wxEVT_COMBOBOX, [&selection](wxCommandEvent &e) { selection.index = e.GetSelection(); }, id++);
-        box->Add(combo);
+        box->Add(combo, 1, wxEXPAND);
         grid->Add(box, 1, wxEXPAND, 5);
     }
 
     void operator()(StringMap &map)
     {
         wxStaticBoxSizer *box = new wxStaticBoxSizer(wxVERTICAL, this, convert(name));
+        wxFlexGridSizer *sizer = new wxFlexGridSizer(2, wxSize(8, 8));
         for (auto &pair : map)
         {
             wxCheckBox *checkBox = new wxCheckBox(box->GetStaticBox(), id, convert(pair.first));
             checkBox->SetValue(pair.second);
             Bind(
                 wxEVT_CHECKBOX, [&pair](wxCommandEvent &e) { pair.second = e.IsChecked(); }, id++);
-            box->Add(checkBox);
+            sizer->Add(checkBox, 1, wxEXPAND);
         }
+        box->Add(sizer, 1, wxEXPAND);
         grid->Add(box, 1, wxEXPAND, 5);
     }
 
