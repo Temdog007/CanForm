@@ -250,7 +250,7 @@ class NotebookPage : public wxPanel
     std::pair<wxNotebook *, size_t> getBook() const;
 
     RenderAtoms atoms;
-    Rectangle viewRect;
+    CanFormRectangle viewRect;
     wxPoint lastMouse;
 
     struct CaptureState

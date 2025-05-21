@@ -27,10 +27,11 @@ class MainFrame : public wxFrame, public FileDialog::Handler, public RenderAtoms
     MainFrame();
     virtual ~MainFrame()
     {
+        gNotebook = nullptr;
     }
 
     virtual bool handle(std::string_view) override;
-    virtual void use(RenderAtoms &, Rectangle &) override;
+    virtual void use(RenderAtoms &, CanFormRectangle &) override;
 
     DECLARE_EVENT_TABLE()
 };
@@ -276,7 +277,7 @@ struct RandomRender
         style.fill = rand() % 2 == 0;
     }
 
-    void operator()(Rectangle &r)
+    void operator()(CanFormRectangle &r)
     {
         randomPosition(r.x, r.y);
         r.w = rand() % 50 + 10;
@@ -324,7 +325,7 @@ struct RandomRender
         }
         break;
         default: {
-            auto &r = atom.renderType.emplace<Rectangle>();
+            auto &r = atom.renderType.emplace<CanFormRectangle>();
             operator()(r);
         }
         break;
@@ -333,7 +334,7 @@ struct RandomRender
     }
 };
 
-void MainFrame::use(RenderAtoms &atoms, Rectangle &viewRect)
+void MainFrame::use(RenderAtoms &atoms, CanFormRectangle &viewRect)
 {
     atoms.clear();
 
@@ -345,7 +346,7 @@ void MainFrame::use(RenderAtoms &atoms, Rectangle &viewRect)
 
     {
         RenderAtom atom;
-        atom.renderType.emplace<Rectangle>(viewRect);
+        atom.renderType.emplace<CanFormRectangle>(viewRect);
         atoms.emplace_back(std::move(atom));
     }
 

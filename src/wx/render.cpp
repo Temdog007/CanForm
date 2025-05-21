@@ -64,7 +64,7 @@ struct Drawer
     {
     }
 
-    void operator()(const Rectangle &r)
+    void operator()(const CanFormRectangle &r)
     {
         gc.DrawRectangle(r.x, r.y, r.w, r.h);
     }
@@ -122,6 +122,10 @@ void NotebookPage::OnPaint(wxPaintEvent &)
 
 bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, bool createIfNeeded)
 {
+    if (gNotebook == nullptr)
+    {
+        return false;
+    }
     const wxString target = convert(canvas);
     const size_t count = gNotebook->GetPageCount();
 
@@ -196,8 +200,11 @@ void NotebookPage::moveToWindow()
     if (book == nullptr)
     {
         wxTopLevelWindow *parent = static_cast<wxTopLevelWindow *>(GetParent());
-        Reparent(gNotebook);
-        gNotebook->AddPage(this, parent->GetTitle(), true);
+        if (gNotebook != nullptr)
+        {
+            Reparent(gNotebook);
+            gNotebook->AddPage(this, parent->GetTitle(), true);
+        }
         parent->Close(true);
     }
     else
