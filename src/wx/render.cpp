@@ -1,10 +1,11 @@
 #include <wx/colour.h>
 #include <wx/dcbuffer.h>
+#include <wx/graphics.h>
 #include <wx/wx.hpp>
 
 namespace CanForm
 {
-NotebookPage::NotebookPage(wxWindow *parent) : wxPanel(parent), atoms(), matrix()
+NotebookPage::NotebookPage(wxWindow *parent) : wxPanel(parent), atoms(), matrix(), lastMouse()
 {
     SetBackgroundStyle(wxBG_STYLE_PAINT);
 }
@@ -71,6 +72,7 @@ void NotebookPage::OnPaint(wxPaintEvent &)
     wxGraphicsContext *gc = dc.GetGraphicsContext();
     if (gc)
     {
+        gc->SetTransform(gc->CreateMatrix(matrix));
         Drawer drawer(*gc);
         for (const auto &atom : atoms)
         {
@@ -110,5 +112,35 @@ bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, bool create
     return false;
 }
 
-wxBEGIN_EVENT_TABLE(NotebookPage, wxWindow) EVT_PAINT(NotebookPage::OnPaint) wxEND_EVENT_TABLE();
+void NotebookPage::OnMouse(wxMouseEvent &e)
+{
+    const wxPoint point = wxGetMousePosition();
+    const wxPoint screen = GetScreenPosition();
+    const wxPoint current = point - screen;
+    if (e.IsButton() && e.Button(wxMOUSE_BTN_MIDDLE) && e.ButtonDown(wxMOUSE_BTN_MIDDLE))
+    {
+        if (HasCapture())
+        {
+            ReleaseMouse();
+        }
+        else
+        {
+            CaptureMouse();
+        }
+    }
+    else if (HasCapture())
+    {
+        const wxPoint delta = current - lastMouse;
+        matrix.Translate(delta.x, delta.y);
+        Refresh();
+    }
+    else if (e.Leaving() && HasCapture())
+    {
+        ReleaseMouse();
+    }
+    lastMouse = current;
+}
+
+wxBEGIN_EVENT_TABLE(NotebookPage, wxWindow) EVT_PAINT(NotebookPage::OnPaint) EVT_MOUSE_EVENTS(NotebookPage::OnMouse)
+    wxEND_EVENT_TABLE();
 } // namespace CanForm

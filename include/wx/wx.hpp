@@ -5,7 +5,7 @@
 #include <filesystem>
 #include <string_view>
 
-#include <wx/graphics.h>
+#include <wx/affinematrix2d.h>
 #include <wx/notebook.h>
 #include <wx/numformatter.h>
 #include <wx/process.h>
@@ -238,9 +238,11 @@ class NotebookPage : public wxPanel
 {
   private:
     void OnPaint(wxPaintEvent &);
+    void OnMouse(wxMouseEvent &);
 
     RenderAtoms atoms;
-    wxGraphicsMatrix matrix;
+    wxAffineMatrix2D matrix;
+    wxPoint lastMouse;
 
     friend bool CanForm::getCanvasAtoms(std::string_view, RenderAtomsUser &, bool);
 
