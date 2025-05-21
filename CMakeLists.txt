@@ -29,7 +29,8 @@ else()
 	endif()
 
 	add_library(canform ${CANFORM_TYPE}
-		src/wx/wx.cpp)
+		src/wx/wx.cpp
+		src/wx/render.cpp)
 
 	target_include_directories(canform PRIVATE include)
 

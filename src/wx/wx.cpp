@@ -1,6 +1,4 @@
-#include <wx/notebook.h>
 #include <wx/sstream.h>
-#include <wx/valnum.h>
 #include <wx/window.h>
 #include <wx/windowptr.h>
 
@@ -135,7 +133,12 @@ wxString randomString(size_t n)
     return s;
 }
 
-TempFile::TempFile(const wxString &ext) : path(randomString(rand() % 5 + 3)), extension(ext)
+wxString randomString(size_t min, size_t max)
+{
+    return randomString((rand() % (max - min)) + min);
+}
+
+TempFile::TempFile(const wxString &ext) : path(randomString(3, 8)), extension(ext)
 {
 }
 

@@ -1,11 +1,13 @@
 #include <canform.hpp>
 #include <filesystem>
 #include <sstream>
-#include <wx/wx.h>
+#include <wx/wx.hpp>
 
 using namespace CanForm;
 
-class MainFrame : public wxFrame, public FileDialog::Handler
+wxNotebook *CanForm::gNotebook = nullptr;
+
+class MainFrame : public wxFrame, public FileDialog::Handler, public RenderAtomsUser
 {
   private:
     void OnOpenFile(wxCommandEvent &);
@@ -15,6 +17,7 @@ class MainFrame : public wxFrame, public FileDialog::Handler
 
     void OnModalTest(wxCommandEvent &);
     void OnNonModalTest(wxCommandEvent &);
+    void OnAddCanvas(wxCommandEvent &);
 
     static Form makeForm();
     static void printForm(const Form &, DialogResult, wxWindow *parent = nullptr);
@@ -26,6 +29,7 @@ class MainFrame : public wxFrame, public FileDialog::Handler
     }
 
     virtual bool handle(std::string_view) override;
+    virtual void use(RenderAtoms &) override;
 
     DECLARE_EVENT_TABLE()
 };
@@ -49,10 +53,18 @@ MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, "CanForm wxWidgets Test")
 
     test->Append(wxID_FILE2, wxT("Show Modal Form"));
     test->Append(wxID_FILE3, wxT("Show Non-Modal Form"));
+    test->Append(wxID_FILE4, wxT("Add Canvas"));
 
     bar->Append(test, wxT("Test"));
 
     SetMenuBar(bar);
+
+    gNotebook = new wxNotebook(this, wxID_OK);
+
+    wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
+    sizer->Add(gNotebook, 1, wxEXPAND, 10);
+
+    SetSizerAndFit(sizer);
 }
 
 bool MainFrame::handle(std::string_view file)
@@ -232,6 +244,17 @@ void MainFrame::OnModalTest(wxCommandEvent &)
     printForm(form, executeForm("Modal Form", form, this), this);
 }
 
+void MainFrame::OnAddCanvas(wxCommandEvent &)
+{
+    const wxString string = randomString(5, 10);
+    getCanvasAtoms(toView(string), *this, true);
+}
+
+void MainFrame::use(RenderAtoms &atoms)
+{
+    atoms.clear();
+}
+
 class MyApp : public wxApp
 {
     virtual ~MyApp()
@@ -256,4 +279,5 @@ wxIMPLEMENT_APP(MyApp);
 wxBEGIN_EVENT_TABLE(MainFrame, wxFrame) EVT_MENU(wxID_OPEN, MainFrame::OnOpenFile)
     EVT_MENU(wxID_FILE, MainFrame::OnOpenDir) EVT_MENU(wxID_SAVE, MainFrame::OnSave)
         EVT_MENU(wxID_EXIT, MainFrame::OnExit) EVT_MENU(wxID_FILE2, MainFrame::OnModalTest)
-            EVT_MENU(wxID_FILE3, MainFrame::OnNonModalTest) wxEND_EVENT_TABLE()
+            EVT_MENU(wxID_FILE3, MainFrame::OnNonModalTest) EVT_MENU(wxID_FILE4, MainFrame::OnAddCanvas)
+                wxEND_EVENT_TABLE();

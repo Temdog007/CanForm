@@ -111,22 +111,12 @@ struct RenderStyle
     TIE(RenderStyle)
 };
 
-enum class MouseState
-{
-    Free,
-    Hovered,
-    Clicked,
-    Held,
-    Released
-};
-
 struct RenderAtom
 {
     RenderType renderType;
     RenderStyle style;
-    MouseState mouseState;
 
-    RenderAtom() noexcept : renderType(), style(), mouseState(MouseState::Free)
+    RenderAtom() noexcept : renderType(), style()
     {
     }
     RenderAtom(const RenderAtom &) noexcept = default;
@@ -137,20 +127,30 @@ struct RenderAtom
 
     constexpr auto makeTie() const noexcept
     {
-        return std::tie(renderType, style, mouseState);
+        return std::tie(renderType, style);
     }
 
     TIE(RenderAtom)
 };
 
-struct RenderContext
-{
-    std::pmr::vector<RenderAtom> atoms;
-    std::array<double, 3> position;
-    std::array<double, 3> scale;
-    double rotation;
+using RenderAtoms = std::pmr::vector<RenderAtom>;
 
-    void render(std::string_view);
+struct RenderAtomsUser
+{
+    virtual ~RenderAtomsUser()
+    {
+    }
+
+    virtual void use(RenderAtoms &) = 0;
+};
+
+extern bool getCanvasAtoms(std::string_view, RenderAtomsUser &, bool createdIfNeeded = false);
+
+struct CanvasInfo
+{
+    double positionX, positionY;
+    double scaleX, scaleY;
+    double rotation;
 };
 
 } // namespace CanForm

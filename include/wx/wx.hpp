@@ -5,14 +5,19 @@
 #include <filesystem>
 #include <string_view>
 
+#include <wx/graphics.h>
+#include <wx/notebook.h>
 #include <wx/numformatter.h>
 #include <wx/process.h>
+#include <wx/valnum.h>
 #include <wx/wx.h>
 
 namespace CanForm
 {
 extern wxString convert(std::string_view);
 extern std::string_view toView(const wxString &) noexcept;
+extern wxString randomString(size_t min, size_t max);
+extern wxString randomString(size_t n);
 
 class TempFile
 {
@@ -221,6 +226,27 @@ class WaitDialog : public wxDialog
   public:
     WaitDialog(wxWindow *, const wxString &message, const wxString &title, const std::shared_ptr<RunAfter> &);
     virtual ~WaitDialog()
+    {
+    }
+
+    DECLARE_EVENT_TABLE()
+};
+
+extern wxNotebook *gNotebook;
+
+class NotebookPage : public wxPanel
+{
+  private:
+    void OnPaint(wxPaintEvent &);
+
+    RenderAtoms atoms;
+    wxGraphicsMatrix matrix;
+
+    friend bool CanForm::getCanvasAtoms(std::string_view, RenderAtomsUser &, bool);
+
+  public:
+    NotebookPage(wxWindow *);
+    virtual ~NotebookPage()
     {
     }
 
