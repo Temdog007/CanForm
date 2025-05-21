@@ -160,7 +160,7 @@ void NotebookPage::reset()
     Refresh();
 }
 
-void NotebookPage::close()
+std::pair<wxNotebook *, size_t> NotebookPage::getBook() const
 {
     wxNotebook *book = dynamic_cast<wxNotebook *>(GetParent());
     if (book)
@@ -170,10 +170,42 @@ void NotebookPage::close()
         {
             if (book->GetPage(i) == this)
             {
-                book->DeletePage(i);
-                break;
+                return std::make_pair(book, i);
             }
         }
+    }
+    return std::make_pair(nullptr, std::numeric_limits<size_t>::max());
+}
+
+void NotebookPage::close()
+{
+    auto [book, page] = getBook();
+    if (book == nullptr)
+    {
+        Close(true);
+    }
+    else
+    {
+        book->DeletePage(page);
+    }
+}
+
+void NotebookPage::moveToWindow()
+{
+    auto [book, page] = getBook();
+    if (book == nullptr)
+    {
+        wxTopLevelWindow *parent = static_cast<wxTopLevelWindow *>(GetParent());
+        Reparent(gNotebook);
+        gNotebook->AddPage(this, parent->GetTitle(), true);
+        parent->Close(true);
+    }
+    else
+    {
+        wxFrame *frame = new wxFrame(nullptr, wxID_ANY, book->GetPageText(page));
+        book->RemovePage(page);
+        Reparent(frame);
+        frame->Show();
     }
 }
 
@@ -186,6 +218,9 @@ void NotebookPage::OnMenu(wxCommandEvent &e)
         break;
     case wxID_CLOSE:
         close();
+        break;
+    case wxID_NEW:
+        moveToWindow();
         break;
     default:
         break;
@@ -214,6 +249,16 @@ void NotebookPage::OnMouse(wxMouseEvent &e)
         {
             wxMenu menu;
             menu.Append(wxID_REVERT, "Reset View");
+            menu.AppendSeparator();
+            auto [book, _] = getBook();
+            if (book == nullptr)
+            {
+                menu.Append(wxID_NEW, "Pop In");
+            }
+            else
+            {
+                menu.Append(wxID_NEW, "Pop Out");
+            }
             menu.AppendSeparator();
             menu.Append(wxID_CLOSE);
             menu.Connect(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(NotebookPage::OnMenu), nullptr, this);

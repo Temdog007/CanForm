@@ -245,6 +245,9 @@ class NotebookPage : public wxPanel
 
     void close();
     void reset();
+    void moveToWindow();
+
+    std::pair<wxNotebook *, size_t> getBook() const;
 
     RenderAtoms atoms;
     Rectangle viewRect;
