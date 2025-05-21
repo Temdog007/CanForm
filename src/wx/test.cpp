@@ -81,7 +81,8 @@ void MainFrame::OnOpenFile(wxCommandEvent &)
 {
     FileDialog dialog;
     dialog.message = "Select directory(s)";
-    dialog.startDirectory = std::filesystem::current_path().c_str();
+    auto s = std::filesystem::current_path().string();
+    dialog.startDirectory = s;
     dialog.multiple = true;
     dialog.show(*this, this);
 }
@@ -90,7 +91,8 @@ void MainFrame::OnOpenDir(wxCommandEvent &)
 {
     FileDialog dialog;
     dialog.message = "Select file(s)";
-    dialog.startDirectory = std::filesystem::current_path().c_str();
+    auto s = std::filesystem::current_path().string();
+    dialog.startDirectory = s;
     dialog.multiple = true;
     dialog.directories = true;
     dialog.show(*this, this);
@@ -100,7 +102,8 @@ void MainFrame::OnSave(wxCommandEvent &)
 {
     FileDialog dialog;
     dialog.message = "Select file(s)";
-    dialog.startDirectory = std::filesystem::current_path().c_str();
+    auto s = std::filesystem::current_path().string();
+    dialog.startDirectory = s;
     dialog.saving = true;
     dialog.show(*this, this);
 }
