@@ -6,9 +6,10 @@
 namespace CanForm
 {
 NotebookPage::NotebookPage(wxWindow *parent)
-    : wxPanel(parent), atoms(), matrix(), lastMouse(), captureState(std::nullopt)
+    : wxPanel(parent), atoms(), viewRect(), lastMouse(), captureState(std::nullopt)
 {
     SetBackgroundStyle(wxBG_STYLE_PAINT);
+    SetDoubleBuffered(true);
 }
 
 NotebookPage::CaptureState::CaptureState(wxWindow &w) : window(w)
@@ -26,6 +27,12 @@ NotebookPage::CaptureState::~CaptureState()
     }
 }
 
+void NotebookPage::OnCaptureLost(wxMouseCaptureLostEvent &)
+{
+    captureState.reset();
+    SetCursor(wxNullCursor);
+}
+
 wxColour getColor(Color c) noexcept
 {
     return wxColour(c.red, c.green, c.blue, c.alpha);
@@ -35,15 +42,15 @@ void setColor(wxGraphicsContext &gc, const RenderStyle &style)
 {
     if (style.fill)
     {
-        wxPen *pen = wxThePenList->FindOrCreatePen(getColor(style.color));
-        gc.SetPen(*pen);
-        gc.SetBrush(*wxTRANSPARENT_BRUSH);
-    }
-    else
-    {
         wxBrush *brush = wxTheBrushList->FindOrCreateBrush(getColor(style.color));
         gc.SetBrush(*brush);
         gc.SetPen(*wxTRANSPARENT_PEN);
+    }
+    else
+    {
+        wxPen *pen = wxThePenList->FindOrCreatePen(getColor(style.color));
+        gc.SetPen(*pen);
+        gc.SetBrush(*wxTRANSPARENT_BRUSH);
     }
 }
 
@@ -91,7 +98,19 @@ void NotebookPage::OnPaint(wxPaintEvent &)
     wxGraphicsContext *gc = dc.GetGraphicsContext();
     if (gc)
     {
-        gc->SetTransform(gc->CreateMatrix(matrix));
+        const wxSize size = GetSize();
+
+        wxGraphicsMatrix matrix = gc->CreateMatrix();
+        const auto [cx, cy] = viewRect.center();
+
+        matrix.Translate(size.GetWidth() * 0.5, size.GetHeight() * 0.5);
+        matrix.Scale(viewRect.w / size.GetWidth(), viewRect.h / size.GetHeight());
+        matrix.Translate(size.GetWidth() * -0.5, size.GetHeight() * -0.5);
+
+        matrix.Translate(cx - size.GetWidth() * 0.5, cy - size.GetHeight() * 0.5);
+
+        gc->SetTransform(matrix);
+
         Drawer drawer(*gc, GetFont());
         for (const auto &atom : atoms)
         {
@@ -113,7 +132,7 @@ bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, bool create
             NotebookPage *page = dynamic_cast<NotebookPage *>(gNotebook->GetPage(i));
             if (page != nullptr)
             {
-                users.use(page->atoms);
+                users.use(page->atoms, page->viewRect);
                 return true;
             }
         }
@@ -124,11 +143,53 @@ bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, bool create
         NotebookPage *page = new NotebookPage(gNotebook);
         if (gNotebook->AddPage(page, target, true))
         {
-            users.use(page->atoms);
+            users.use(page->atoms, page->viewRect);
             return true;
         }
     }
     return false;
+}
+
+void NotebookPage::reset()
+{
+    viewRect.x = 0;
+    viewRect.y = 0;
+    const wxSize size = GetSize();
+    viewRect.w = size.GetWidth();
+    viewRect.h = size.GetHeight();
+    Refresh();
+}
+
+void NotebookPage::close()
+{
+    wxNotebook *book = dynamic_cast<wxNotebook *>(GetParent());
+    if (book)
+    {
+        const size_t n = book->GetPageCount();
+        for (size_t i = 0; i < n; ++i)
+        {
+            if (book->GetPage(i) == this)
+            {
+                book->DeletePage(i);
+                break;
+            }
+        }
+    }
+}
+
+void NotebookPage::OnMenu(wxCommandEvent &e)
+{
+    switch (e.GetId())
+    {
+    case wxID_REVERT:
+        reset();
+        break;
+    case wxID_CLOSE:
+        close();
+        break;
+    default:
+        break;
+    }
 }
 
 void NotebookPage::OnMouse(wxMouseEvent &e)
@@ -151,14 +212,19 @@ void NotebookPage::OnMouse(wxMouseEvent &e)
         }
         else if (e.Button(wxMOUSE_BTN_RIGHT) && e.ButtonDown(wxMOUSE_BTN_RIGHT))
         {
-            matrix = wxAffineMatrix2D();
-            Refresh();
+            wxMenu menu;
+            menu.Append(wxID_REVERT, "Reset View");
+            menu.AppendSeparator();
+            menu.Append(wxID_CLOSE);
+            menu.Connect(wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(NotebookPage::OnMenu), nullptr, this);
+            PopupMenu(&menu);
         }
     }
     else if (HasCapture())
     {
         const wxPoint delta = current - lastMouse;
-        matrix.Translate(delta.x, delta.y);
+        viewRect.x += delta.x;
+        viewRect.y += delta.y;
         Refresh();
     }
     else if (e.Leaving() && HasCapture())
@@ -168,18 +234,14 @@ void NotebookPage::OnMouse(wxMouseEvent &e)
     int wheel = e.GetWheelRotation();
     if (wheel != 0)
     {
-        double scale = wheel > 0 ? 1.1 : 0.9;
-        double x = current.x;
-        double y = current.y;
-        matrix.TransformPoint(&x, &y);
-        matrix.Translate(x, y);
-        matrix.Scale(scale, scale);
-        matrix.Translate(-x, -y);
+        viewRect.expand(viewRect.w * wheel * 0.0001, viewRect.h * wheel * 0.0001);
+        viewRect.w = std::clamp(viewRect.w, 1.0, 10000.0);
+        viewRect.h = std::clamp(viewRect.h, 1.0, 10000.0);
         Refresh();
     }
     lastMouse = current;
 }
 
 wxBEGIN_EVENT_TABLE(NotebookPage, wxWindow) EVT_PAINT(NotebookPage::OnPaint) EVT_MOUSE_EVENTS(NotebookPage::OnMouse)
-    wxEND_EVENT_TABLE();
+    EVT_MOUSE_CAPTURE_LOST(NotebookPage::OnCaptureLost) wxEND_EVENT_TABLE();
 } // namespace CanForm

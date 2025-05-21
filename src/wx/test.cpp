@@ -30,7 +30,7 @@ class MainFrame : public wxFrame, public FileDialog::Handler, public RenderAtoms
     }
 
     virtual bool handle(std::string_view) override;
-    virtual void use(RenderAtoms &) override;
+    virtual void use(RenderAtoms &, Rectangle &) override;
 
     DECLARE_EVENT_TABLE()
 };
@@ -66,6 +66,8 @@ MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, "CanForm wxWidgets Test")
     sizer->Add(gNotebook, 1, wxEXPAND, 10);
 
     SetSizerAndFit(sizer);
+
+    SetDoubleBuffered(true);
 }
 
 bool MainFrame::handle(std::string_view file)
@@ -259,6 +261,12 @@ struct RandomRender
     {
     }
 
+    void randomPosition(double &x, double &y)
+    {
+        x = rand() % size.GetWidth();
+        y = rand() % size.GetHeight();
+    }
+
     void operator()(RenderStyle &style)
     {
         style.color.red = rand() % 256;
@@ -270,16 +278,14 @@ struct RandomRender
 
     void operator()(Rectangle &r)
     {
-        r.x = rand() % size.GetWidth();
-        r.y = rand() % size.GetHeight();
+        randomPosition(r.x, r.y);
         r.w = rand() % 50 + 10;
         r.h = rand() % 50 + 10;
     }
 
     void operator()(Ellipse &r)
     {
-        r.x = rand() % size.GetWidth();
-        r.y = rand() % size.GetHeight();
+        randomPosition(r.x, r.y);
         r.w = rand() % 50 + 10;
         r.h = rand() % 50 + 10;
     }
@@ -292,8 +298,7 @@ struct RandomRender
 
     void operator()(Text &t)
     {
-        t.x = rand() % size.GetWidth();
-        t.y = rand() % size.GetHeight();
+        randomPosition(t.x, t.y);
         t.string = randomString(5, 10).ToStdString();
     }
 
@@ -328,9 +333,21 @@ struct RandomRender
     }
 };
 
-void MainFrame::use(RenderAtoms &atoms)
+void MainFrame::use(RenderAtoms &atoms, Rectangle &viewRect)
 {
     atoms.clear();
+
+    viewRect.x = 0;
+    viewRect.y = 0;
+    const auto size = GetSize();
+    viewRect.w = size.GetWidth();
+    viewRect.h = size.GetHeight();
+
+    {
+        RenderAtom atom;
+        atom.renderType.emplace<Rectangle>(viewRect);
+        atoms.emplace_back(std::move(atom));
+    }
 
     const size_t n = rand() % 50 + 50;
     RandomRender random(GetSize());
@@ -338,6 +355,8 @@ void MainFrame::use(RenderAtoms &atoms)
     {
         atoms.emplace_back(random());
     }
+
+    Refresh();
 }
 
 class MyApp : public wxApp

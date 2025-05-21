@@ -240,9 +240,14 @@ class NotebookPage : public wxPanel
   private:
     void OnPaint(wxPaintEvent &);
     void OnMouse(wxMouseEvent &);
+    void OnMenu(wxCommandEvent &);
+    void OnCaptureLost(wxMouseCaptureLostEvent &);
+
+    void close();
+    void reset();
 
     RenderAtoms atoms;
-    wxAffineMatrix2D matrix;
+    Rectangle viewRect;
     wxPoint lastMouse;
 
     struct CaptureState

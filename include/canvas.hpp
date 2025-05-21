@@ -17,6 +17,25 @@ struct Rectangle
     constexpr Rectangle &operator=(const Rectangle &) noexcept = default;
     constexpr Rectangle &operator=(Rectangle &&) noexcept = default;
 
+    constexpr Rectangle &expand(double dx, double dy) noexcept
+    {
+        x -= dx;
+        y -= dy;
+        w += dx * 2.0;
+        h += dy * 2.0;
+        return *this;
+    }
+
+    constexpr std::pair<double, double> center() const noexcept
+    {
+        return std::make_pair(x + w * 0.5, y + h * 0.5);
+    }
+
+    constexpr Rectangle &expand(double d) noexcept
+    {
+        return expand(d, d);
+    }
+
     constexpr auto makeTie() const noexcept
     {
         return std::tie(x, y, w, h);
@@ -163,16 +182,9 @@ struct RenderAtomsUser
     {
     }
 
-    virtual void use(RenderAtoms &) = 0;
+    virtual void use(RenderAtoms &, Rectangle &) = 0;
 };
 
 extern bool getCanvasAtoms(std::string_view, RenderAtomsUser &, bool createdIfNeeded = false);
-
-struct CanvasInfo
-{
-    double positionX, positionY;
-    double scaleX, scaleY;
-    double rotation;
-};
 
 } // namespace CanForm
