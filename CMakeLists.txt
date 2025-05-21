@@ -24,9 +24,7 @@ endif()
 if(EMSCRIPTEN)
 else()
 	find_package(wxWidgets REQUIRED COMPONENTS core base)
-	if(wxWidgets_USE_FILE) # not defined in CONFIG mode
-	    include(${wxWidgets_USE_FILE})
-	endif()
+	include(${wxWidgets_USE_FILE})
 
 	add_library(canform ${CANFORM_TYPE}
 		src/wx/wx.cpp
@@ -36,9 +34,11 @@ else()
 
 	target_link_libraries(canform PRIVATE ${wxWidgets_LIBRARIES})
 
-	add_executable(canform_wx src/wx/test.cpp)
+	if(CANFORM_BUILD_TEST)
+		add_executable(canform_wx src/wx/test.cpp)
 
-	target_include_directories(canform_wx PRIVATE include)
+		target_include_directories(canform_wx PRIVATE include)
 
-	target_link_libraries(canform_wx PRIVATE ${wxWidgets_LIBRARIES} canform)
+		target_link_libraries(canform_wx PRIVATE ${wxWidgets_LIBRARIES} canform)
+	endif()
 endif()
