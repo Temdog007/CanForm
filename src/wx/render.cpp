@@ -34,9 +34,10 @@ void setColor(wxGraphicsContext &gc, const RenderStyle &style)
 struct Drawer
 {
     wxGraphicsContext &gc;
-    bool fill;
+    wxFont font;
+    const RenderStyle *style;
 
-    constexpr Drawer(wxGraphicsContext &gc) noexcept : gc(gc), fill(false)
+    Drawer(wxGraphicsContext &g, wxFont &&f) noexcept : gc(g), font(std::move(f)), style(nullptr)
     {
     }
 
@@ -55,12 +56,14 @@ struct Drawer
     }
     void operator()(const Text &t)
     {
+        gc.SetFont(font, getColor(style->color));
         gc.DrawText(convert(t.string), t.x, t.y);
     }
 
     void operator()(const RenderAtom &atom)
     {
         setColor(gc, atom.style);
+        style = &atom.style;
         std::visit(*this, atom.renderType);
     }
 };
@@ -73,7 +76,7 @@ void NotebookPage::OnPaint(wxPaintEvent &)
     if (gc)
     {
         gc->SetTransform(gc->CreateMatrix(matrix));
-        Drawer drawer(*gc);
+        Drawer drawer(*gc, GetFont());
         for (const auto &atom : atoms)
         {
             drawer(atom);
