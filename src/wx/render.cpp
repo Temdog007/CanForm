@@ -219,7 +219,7 @@ void NotebookPage::OnMenu(wxCommandEvent &e)
     case wxID_CLOSE:
         close();
         break;
-    case wxID_NEW:
+    case wxID_RESTORE_FRAME:
         moveToWindow();
         break;
     default:
@@ -253,11 +253,11 @@ void NotebookPage::OnMouse(wxMouseEvent &e)
             auto [book, _] = getBook();
             if (book == nullptr)
             {
-                menu.Append(wxID_NEW, "Pop In");
+                menu.Append(wxID_RESTORE_FRAME, "Pop In");
             }
             else
             {
-                menu.Append(wxID_NEW, "Pop Out");
+                menu.Append(wxID_RESTORE_FRAME, "Pop Out");
             }
             menu.AppendSeparator();
             menu.Append(wxID_CLOSE);
