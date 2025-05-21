@@ -1,6 +1,7 @@
 #include <canform.hpp>
 #include <filesystem>
 #include <sstream>
+#include <wx/dc.h>
 #include <wx/wx.hpp>
 
 using namespace CanForm;
@@ -250,9 +251,93 @@ void MainFrame::OnAddCanvas(wxCommandEvent &)
     getCanvasAtoms(toView(string), *this, true);
 }
 
+struct RandomRender
+{
+    wxSize size;
+
+    RandomRender(const wxSize &s) noexcept : size(s)
+    {
+    }
+
+    void operator()(RenderStyle &style)
+    {
+        style.color.red = rand() % 256;
+        style.color.green = rand() % 256;
+        style.color.blue = rand() % 256;
+        style.color.alpha = 255u;
+        style.fill = rand() % 2 == 0;
+    }
+
+    void operator()(Rectangle &r)
+    {
+        r.x = rand() % size.GetWidth();
+        r.y = rand() % size.GetHeight();
+        r.w = rand() % 50 + 10;
+        r.h = rand() % 50 + 10;
+    }
+
+    void operator()(Ellipse &r)
+    {
+        r.x = rand() % size.GetWidth();
+        r.y = rand() % size.GetHeight();
+        r.w = rand() % 50 + 10;
+        r.h = rand() % 50 + 10;
+    }
+
+    void operator()(RoundedRectangle &r)
+    {
+        operator()(r.rectangle);
+        r.radius = std::min(r.rectangle.w, r.rectangle.h) * ((double)rand() / RAND_MAX) * 0.4 + 0.1;
+    }
+
+    void operator()(Text &t)
+    {
+        t.x = rand() % size.GetWidth();
+        t.y = rand() % size.GetHeight();
+        t.string = randomString(5, 10).ToStdString();
+    }
+
+    RenderAtom operator()()
+    {
+        RenderAtom atom;
+        operator()(atom.style);
+        switch (rand() % 4)
+        {
+        case 0: {
+            auto &e = atom.renderType.emplace<Ellipse>();
+            operator()(e);
+        }
+        break;
+        case 1: {
+            auto &r = atom.renderType.emplace<RoundedRectangle>();
+            operator()(r);
+        }
+        break;
+        case 3: {
+            auto &t = atom.renderType.emplace<Text>();
+            operator()(t);
+        }
+        break;
+        default: {
+            auto &r = atom.renderType.emplace<Rectangle>();
+            operator()(r);
+        }
+        break;
+        }
+        return atom;
+    }
+};
+
 void MainFrame::use(RenderAtoms &atoms)
 {
     atoms.clear();
+
+    const size_t n = rand() % 50 + 50;
+    RandomRender random(GetSize());
+    for (size_t i = 0; i < n; ++i)
+    {
+        atoms.emplace_back(random());
+    }
 }
 
 class MyApp : public wxApp

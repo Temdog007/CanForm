@@ -67,7 +67,29 @@ struct Ellipse
     TIE(Ellipse)
 };
 
-using RenderType = std::variant<Rectangle, RoundedRectangle, Ellipse, String>;
+struct Text
+{
+    String string;
+    double x, y;
+
+    Text() : string(), x(0), y(0)
+    {
+    }
+    Text(const Text &) = default;
+    Text(Text &&) noexcept = default;
+
+    Text &operator=(const Text &) = default;
+    Text &operator=(Text &&) = default;
+
+    constexpr auto makeTie() const noexcept
+    {
+        return std::tie(string, x, y);
+    }
+
+    TIE(Text)
+};
+
+using RenderType = std::variant<Rectangle, RoundedRectangle, Ellipse, Text>;
 
 struct Color
 {

@@ -20,13 +20,49 @@ void setColor(wxGraphicsContext &gc, const RenderStyle &style)
     {
         wxPen *pen = wxThePenList->FindOrCreatePen(getColor(style.color));
         gc.SetPen(*pen);
+        gc.SetBrush(*wxTRANSPARENT_BRUSH);
     }
     else
     {
         wxBrush *brush = wxTheBrushList->FindOrCreateBrush(getColor(style.color));
         gc.SetBrush(*brush);
+        gc.SetPen(*wxTRANSPARENT_PEN);
     }
 }
+
+struct Drawer
+{
+    wxGraphicsContext &gc;
+    bool fill;
+
+    constexpr Drawer(wxGraphicsContext &gc) noexcept : gc(gc), fill(false)
+    {
+    }
+
+    void operator()(const Rectangle &r)
+    {
+        gc.DrawRectangle(r.x, r.y, r.w, r.h);
+    }
+    void operator()(const RoundedRectangle &rr)
+    {
+        auto &r = rr.rectangle;
+        gc.DrawRoundedRectangle(r.x, r.y, r.w, r.h, rr.radius);
+    }
+    void operator()(const Ellipse &r)
+    {
+        gc.DrawEllipse(r.x, r.y, r.w, r.h);
+    }
+    void operator()(const Text &t)
+    {
+        gc.DrawText(convert(t.string), t.x, t.y);
+    }
+
+    void operator()(const RenderAtom &atom)
+    {
+        setColor(gc, atom.style);
+        std::visit(*this, atom.renderType);
+    }
+};
 
 void NotebookPage::OnPaint(wxPaintEvent &)
 {
@@ -35,9 +71,10 @@ void NotebookPage::OnPaint(wxPaintEvent &)
     wxGraphicsContext *gc = dc.GetGraphicsContext();
     if (gc)
     {
+        Drawer drawer(*gc);
         for (const auto &atom : atoms)
         {
-            setColor(*gc, atom.style);
+            drawer(atom);
         }
         gc->Flush();
     }
