@@ -3,6 +3,7 @@
 #include <canform.hpp>
 
 #include <filesystem>
+#include <optional>
 #include <string_view>
 
 #include <wx/affinematrix2d.h>
@@ -243,6 +244,14 @@ class NotebookPage : public wxPanel
     RenderAtoms atoms;
     wxAffineMatrix2D matrix;
     wxPoint lastMouse;
+
+    struct CaptureState
+    {
+        wxWindow &window;
+        CaptureState(wxWindow &);
+        ~CaptureState();
+    };
+    std::optional<CaptureState> captureState;
 
     friend bool CanForm::getCanvasAtoms(std::string_view, RenderAtomsUser &, bool);
 

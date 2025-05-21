@@ -5,9 +5,25 @@
 
 namespace CanForm
 {
-NotebookPage::NotebookPage(wxWindow *parent) : wxPanel(parent), atoms(), matrix(), lastMouse()
+NotebookPage::NotebookPage(wxWindow *parent)
+    : wxPanel(parent), atoms(), matrix(), lastMouse(), captureState(std::nullopt)
 {
     SetBackgroundStyle(wxBG_STYLE_PAINT);
+}
+
+NotebookPage::CaptureState::CaptureState(wxWindow &w) : window(w)
+{
+    window.CaptureMouse();
+    window.SetCursor(*wxCROSS_CURSOR);
+}
+
+NotebookPage::CaptureState::~CaptureState()
+{
+    if (window.HasCapture())
+    {
+        window.ReleaseMouse();
+        window.SetCursor(wxNullCursor);
+    }
 }
 
 wxColour getColor(Color c) noexcept
@@ -120,15 +136,23 @@ void NotebookPage::OnMouse(wxMouseEvent &e)
     const wxPoint point = wxGetMousePosition();
     const wxPoint screen = GetScreenPosition();
     const wxPoint current = point - screen;
-    if (e.IsButton() && e.Button(wxMOUSE_BTN_MIDDLE) && e.ButtonDown(wxMOUSE_BTN_MIDDLE))
+    if (e.IsButton())
     {
-        if (HasCapture())
+        if (e.Button(wxMOUSE_BTN_MIDDLE) && e.ButtonDown(wxMOUSE_BTN_MIDDLE))
         {
-            ReleaseMouse();
+            if (HasCapture())
+            {
+                captureState.reset();
+            }
+            else
+            {
+                captureState.emplace(*this);
+            }
         }
-        else
+        else if (e.Button(wxMOUSE_BTN_RIGHT) && e.ButtonDown(wxMOUSE_BTN_RIGHT))
         {
-            CaptureMouse();
+            matrix = wxAffineMatrix2D();
+            Refresh();
         }
     }
     else if (HasCapture())
@@ -139,7 +163,19 @@ void NotebookPage::OnMouse(wxMouseEvent &e)
     }
     else if (e.Leaving() && HasCapture())
     {
-        ReleaseMouse();
+        captureState.reset();
+    }
+    int wheel = e.GetWheelRotation();
+    if (wheel != 0)
+    {
+        double scale = wheel > 0 ? 1.1 : 0.9;
+        double x = current.x;
+        double y = current.y;
+        matrix.TransformPoint(&x, &y);
+        matrix.Translate(x, y);
+        matrix.Scale(scale, scale);
+        matrix.Translate(-x, -y);
+        Refresh();
     }
     lastMouse = current;
 }
