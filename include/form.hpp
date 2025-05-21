@@ -328,3 +328,4 @@ template <typename F> void showAsyncForm(Form &&form, std::string_view title, F 
 
 // Avoid Windows collision with its Rectangle
 using CanFormRectangle = CanForm::Rectangle;
+using CanFormEllipse = CanForm::Ellipse;

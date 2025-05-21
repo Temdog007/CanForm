@@ -287,7 +287,7 @@ struct RandomRender
         r.h = rand() % 50 + 10;
     }
 
-    void operator()(Ellipse &r)
+    void operator()(CanFormEllipse &r)
     {
         randomPosition(r.x, r.y);
         r.w = rand() % 50 + 10;
@@ -313,7 +313,7 @@ struct RandomRender
         switch (rand() % 4)
         {
         case 0: {
-            auto &e = atom.renderType.emplace<Ellipse>();
+            auto &e = atom.renderType.emplace<CanFormEllipse>();
             operator()(e);
         }
         break;
