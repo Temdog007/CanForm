@@ -110,6 +110,11 @@ struct Text
 
 using RenderType = std::variant<Rectangle, RoundedRectangle, Ellipse, Text>;
 
+extern std::pair<double, double> getPosition(const RenderType &) noexcept;
+extern void setPosition(RenderType &, double x, double y) noexcept;
+extern Rectangle getRectangle(const RenderType &) noexcept;
+extern Rectangle getTextBounds(std::string_view) noexcept;
+
 struct Color
 {
     uint8_t red, green, blue, alpha;
@@ -188,3 +193,7 @@ struct RenderAtomsUser
 extern bool getCanvasAtoms(std::string_view, RenderAtomsUser &, bool createdIfNeeded = false);
 
 } // namespace CanForm
+
+// Avoid Windows collision with its Rectangle
+using CanFormRectangle = CanForm::Rectangle;
+using CanFormEllipse = CanForm::Ellipse;

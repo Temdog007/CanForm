@@ -25,10 +25,7 @@ class MainFrame : public wxFrame, public FileDialog::Handler, public RenderAtoms
 
   public:
     MainFrame();
-    virtual ~MainFrame()
-    {
-        gNotebook = nullptr;
-    }
+    virtual ~MainFrame();
 
     virtual bool handle(std::string_view) override;
     virtual void use(RenderAtoms &, CanFormRectangle &) override;
@@ -69,6 +66,11 @@ MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, "CanForm wxWidgets Test")
     SetSizerAndFit(sizer);
 
     SetDoubleBuffered(true);
+}
+
+MainFrame::~MainFrame()
+{
+    gNotebook = nullptr;
 }
 
 bool MainFrame::handle(std::string_view file)

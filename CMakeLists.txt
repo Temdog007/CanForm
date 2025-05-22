@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16.0 FATAL_ERROR)
 
 option(CANFORM_BUILD_SHARED "Build shared library" ${BUILD_SHARED_LIBS})
 option(CANFORM_BUILD_TEST "Build test" ON)
+option(CANFORM_BUILD_WX "Build wxWidgets version" ON)
 
 project(VMM
 	VERSION 1.0.1
@@ -21,24 +22,31 @@ else()
 	message(STATUS "Building static library for CanForm")
 endif()
 
+add_library(canform ${CANFORM_TYPE}
+	src/canvas.cpp)
+
+target_include_directories(canform PRIVATE include)
+
 if(EMSCRIPTEN)
 else()
-	find_package(wxWidgets REQUIRED COMPONENTS core base)
-	include(${wxWidgets_USE_FILE})
+	if(CANFORM_BUILD_WX)
+		find_package(wxWidgets REQUIRED COMPONENTS core base)
+		include(${wxWidgets_USE_FILE})
 
-	add_library(canform ${CANFORM_TYPE}
-		src/wx/wx.cpp
-		src/wx/render.cpp)
-
-	target_include_directories(canform PRIVATE include)
-
-	target_link_libraries(canform PRIVATE ${wxWidgets_LIBRARIES})
-
-	if(CANFORM_BUILD_TEST)
-		add_executable(canform_wx src/wx/test.cpp)
+		add_library(canform_wx ${CANFORM_TYPE}
+			src/wx/wx.cpp
+			src/wx/render.cpp)
 
 		target_include_directories(canform_wx PRIVATE include)
 
-		target_link_libraries(canform_wx PRIVATE ${wxWidgets_LIBRARIES} canform)
+		target_link_libraries(canform_wx PRIVATE ${wxWidgets_LIBRARIES})
+
+		if(CANFORM_BUILD_TEST)
+			add_executable(canform_wx_test src/tests/wx/test.cpp)
+
+			target_include_directories(canform_wx_test PRIVATE include)
+
+			target_link_libraries(canform_wx_test PRIVATE ${wxWidgets_LIBRARIES} canform canform_wx)
+		endif()
 	endif()
 endif()

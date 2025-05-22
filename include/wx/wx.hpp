@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <optional>
 #include <string_view>
+#include <unordered_set>
 
 #include <wx/affinematrix2d.h>
 #include <wx/notebook.h>
@@ -249,6 +250,8 @@ class NotebookPage : public wxPanel
 
     std::pair<wxNotebook *, size_t> getBook() const;
 
+    static std::pmr::unordered_set<NotebookPage *> pages;
+
     RenderAtoms atoms;
     CanFormRectangle viewRect;
     wxPoint lastMouse;
@@ -263,10 +266,37 @@ class NotebookPage : public wxPanel
 
     friend bool CanForm::getCanvasAtoms(std::string_view, RenderAtomsUser &, bool);
 
-  public:
     NotebookPage(wxWindow *);
-    virtual ~NotebookPage()
+
+  public:
+    virtual ~NotebookPage();
+
+    static NotebookPage *create(wxWindow *);
+
+    RenderAtoms &getAtoms() noexcept
     {
+        return atoms;
+    }
+    const RenderAtoms &getAtoms() const noexcept
+    {
+        return atoms;
+    }
+
+    constexpr CanFormRectangle getViewRect() const noexcept
+    {
+        return viewRect;
+    }
+    CanFormRectangle &getViewRect() noexcept
+    {
+        return viewRect;
+    }
+
+    template <typename F> static void forEachPage(F func)
+    {
+        for (auto page : pages)
+        {
+            func(*page);
+        }
     }
 
     DECLARE_EVENT_TABLE()

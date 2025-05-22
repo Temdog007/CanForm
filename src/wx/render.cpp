@@ -5,11 +5,25 @@
 
 namespace CanForm
 {
+std::pmr::unordered_set<NotebookPage *> NotebookPage::pages;
+
 NotebookPage::NotebookPage(wxWindow *parent)
     : wxPanel(parent), atoms(), viewRect(), lastMouse(), captureState(std::nullopt)
 {
     SetBackgroundStyle(wxBG_STYLE_PAINT);
     SetDoubleBuffered(true);
+}
+
+NotebookPage::~NotebookPage()
+{
+    pages.erase(this);
+}
+
+NotebookPage *NotebookPage::create(wxWindow *parent)
+{
+    NotebookPage *page = new NotebookPage(parent);
+    pages.insert(page);
+    return page;
 }
 
 NotebookPage::CaptureState::CaptureState(wxWindow &w) : window(w)
@@ -144,7 +158,7 @@ bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, bool create
 
     if (createIfNeeded)
     {
-        NotebookPage *page = new NotebookPage(gNotebook);
+        NotebookPage *page = NotebookPage::create(gNotebook);
         if (gNotebook->AddPage(page, target, true))
         {
             users.use(page->atoms, page->viewRect);
