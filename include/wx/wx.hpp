@@ -234,8 +234,6 @@ class WaitDialog : public wxDialog
     DECLARE_EVENT_TABLE()
 };
 
-extern wxNotebook *gNotebook;
-
 class NotebookPage : public wxPanel
 {
   private:
@@ -264,7 +262,7 @@ class NotebookPage : public wxPanel
     };
     std::optional<CaptureState> captureState;
 
-    friend bool CanForm::getCanvasAtoms(std::string_view, RenderAtomsUser &, bool);
+    friend bool CanForm::getCanvasAtoms(std::string_view, RenderAtomsUser &, void *);
 
     NotebookPage(wxWindow *);
 

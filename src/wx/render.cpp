@@ -134,38 +134,57 @@ void NotebookPage::OnPaint(wxPaintEvent &)
     }
 }
 
-bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, bool createIfNeeded)
+bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, void *ptr)
 {
-    if (gNotebook == nullptr)
-    {
-        return false;
-    }
-    const wxString target = convert(canvas);
-    const size_t count = gNotebook->GetPageCount();
+    wxWindow *parent = (wxWindow *)ptr;
 
-    for (size_t i = 0; i < count; ++i)
-    {
-        if (target == gNotebook->GetPageText(i))
+    bool found = false;
+    const wxString target = convert(canvas);
+    NotebookPage::forEachPage([&](NotebookPage &page) {
+        wxWindow *parent = page.GetParent();
+        if (auto book = dynamic_cast<wxNotebook *>(parent))
         {
-            NotebookPage *page = dynamic_cast<NotebookPage *>(gNotebook->GetPage(i));
-            if (page != nullptr)
+            const size_t count = book->GetPageCount();
+            for (size_t i = 0; i < count; ++i)
             {
-                users.use(page->atoms, page->viewRect);
-                return true;
+                if (target == book->GetPageText(i))
+                {
+                    users.use(page.atoms, page.viewRect);
+                    found = true;
+                    return;
+                }
             }
         }
-    }
-
-    if (createIfNeeded)
+        if (auto window = dynamic_cast<wxTopLevelWindow *>(parent))
+        {
+            if (window->GetTitle() == target)
+            {
+                users.use(page.atoms, page.viewRect);
+                found = true;
+                return;
+            }
+        }
+    });
+    if (found)
     {
-        NotebookPage *page = NotebookPage::create(gNotebook);
-        if (gNotebook->AddPage(page, target, true))
+        return true;
+    }
+    if (auto book = dynamic_cast<wxNotebook *>(parent))
+    {
+        NotebookPage *page = NotebookPage::create(book);
+        if (book->AddPage(page, target, true))
         {
             users.use(page->atoms, page->viewRect);
             return true;
         }
     }
-    return false;
+
+    wxFrame *frame = new wxFrame(nullptr, wxID_ANY, target);
+    NotebookPage *page = NotebookPage::create(frame);
+    users.use(page->atoms, page->viewRect);
+    frame->Show();
+
+    return true;
 }
 
 void NotebookPage::reset()
@@ -214,10 +233,15 @@ void NotebookPage::moveToWindow()
     if (book == nullptr)
     {
         wxTopLevelWindow *parent = static_cast<wxTopLevelWindow *>(GetParent());
-        if (gNotebook != nullptr)
+        wxWindow *window = wxTheApp->GetTopWindow();
+        for (auto child : window->GetChildren())
         {
-            Reparent(gNotebook);
-            gNotebook->AddPage(this, parent->GetTitle(), true);
+            if (auto book = dynamic_cast<wxNotebook *>(child))
+            {
+                Reparent(book);
+                book->AddPage(this, parent->GetTitle(), true);
+                break;
+            }
         }
         parent->Close(true);
     }

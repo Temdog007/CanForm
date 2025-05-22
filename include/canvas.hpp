@@ -190,7 +190,7 @@ struct RenderAtomsUser
     virtual void use(RenderAtoms &, Rectangle &) = 0;
 };
 
-extern bool getCanvasAtoms(std::string_view, RenderAtomsUser &, bool createdIfNeeded = false);
+extern bool getCanvasAtoms(std::string_view, RenderAtomsUser &, void *parent = nullptr);
 
 } // namespace CanForm
 

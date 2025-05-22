@@ -6,8 +6,6 @@
 
 using namespace CanForm;
 
-wxNotebook *CanForm::gNotebook = nullptr;
-
 class MainFrame : public wxFrame, public FileDialog::Handler, public RenderAtomsUser
 {
   private:
@@ -19,6 +17,8 @@ class MainFrame : public wxFrame, public FileDialog::Handler, public RenderAtoms
     void OnModalTest(wxCommandEvent &);
     void OnNonModalTest(wxCommandEvent &);
     void OnAddCanvas(wxCommandEvent &);
+
+    wxNotebook *book;
 
     static Form makeForm();
     static void printForm(const Form &, DialogResult, wxWindow *parent = nullptr);
@@ -33,7 +33,7 @@ class MainFrame : public wxFrame, public FileDialog::Handler, public RenderAtoms
     DECLARE_EVENT_TABLE()
 };
 
-MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, "CanForm wxWidgets Test")
+MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, "CanForm wxWidgets Test"), book(new wxNotebook(this, wxID_ANY))
 {
     wxMenuBar *bar = new wxMenuBar();
 
@@ -58,10 +58,8 @@ MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, "CanForm wxWidgets Test")
 
     SetMenuBar(bar);
 
-    gNotebook = new wxNotebook(this, wxID_OK);
-
     wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
-    sizer->Add(gNotebook, 1, wxEXPAND, 10);
+    sizer->Add(book, 1, wxEXPAND, 10);
 
     SetSizerAndFit(sizer);
 
@@ -70,7 +68,6 @@ MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, "CanForm wxWidgets Test")
 
 MainFrame::~MainFrame()
 {
-    gNotebook = nullptr;
 }
 
 bool MainFrame::handle(std::string_view file)
@@ -256,7 +253,7 @@ void MainFrame::OnModalTest(wxCommandEvent &)
 void MainFrame::OnAddCanvas(wxCommandEvent &)
 {
     const wxString string = randomString(5, 10);
-    getCanvasAtoms(toView(string), *this, true);
+    getCanvasAtoms(toView(string), *this, book);
 }
 
 struct RandomRender
