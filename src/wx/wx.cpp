@@ -37,6 +37,39 @@ void showMessageBox(MessageBoxType type, std::string_view title, std::string_vie
     dialog.ShowModal();
 }
 
+void MenuList::show(std::string_view title, void *parent)
+{
+    wxWindow *window = (wxWindow *)parent;
+    wxDialog dialog(window, wxID_ANY, convert(title));
+    wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
+    wxNotebook *book = new wxNotebook(&dialog, wxID_ANY);
+    sizer->Add(book);
+    for (auto &menu : menus)
+    {
+        wxPanel *panel = new wxPanel(book);
+        wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
+        int i = 0;
+        for (auto &item : menu.items)
+        {
+            wxButton *button = new wxButton(panel, i, convert(item->label));
+            panel->Bind(
+                wxEVT_BUTTON,
+                [&dialog, &item](wxCommandEvent &) {
+                    if (item->onClick())
+                    {
+                        dialog.EndModal(wxID_OK);
+                    }
+                },
+                i++);
+            sizer->Add(button, 1, wxEXPAND);
+        }
+        panel->SetSizerAndFit(sizer);
+        book->AddPage(panel, convert(menu.title));
+    }
+    dialog.SetSizerAndFit(sizer);
+    dialog.ShowModal();
+}
+
 Execution::Execution() : wxProcess(), ready(false)
 {
 }

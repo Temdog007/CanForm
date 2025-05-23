@@ -9,14 +9,7 @@ using namespace CanForm;
 class MainFrame : public wxFrame, public FileDialog::Handler, public RenderAtomsUser
 {
   private:
-    void OnOpenFile(wxCommandEvent &);
-    void OnOpenDir(wxCommandEvent &);
-    void OnSave(wxCommandEvent &);
-    void OnExit(wxCommandEvent &);
-
-    void OnModalTest(wxCommandEvent &);
-    void OnNonModalTest(wxCommandEvent &);
-    void OnAddCanvas(wxCommandEvent &);
+    void OnTool(wxCommandEvent &);
 
     wxNotebook *book;
 
@@ -35,28 +28,13 @@ class MainFrame : public wxFrame, public FileDialog::Handler, public RenderAtoms
 
 MainFrame::MainFrame() : wxFrame(nullptr, wxID_ANY, "CanForm wxWidgets Test"), book(new wxNotebook(this, wxID_ANY))
 {
-    wxMenuBar *bar = new wxMenuBar();
-
-    wxMenu *file = new wxMenu();
-
-    file->Append(wxID_OPEN);
-    file->Append(wxID_FILE, wxT("Open Directory"));
-    file->AppendSeparator();
-    file->Append(wxID_SAVE);
-    file->AppendSeparator();
-    file->Append(wxID_EXIT);
-
-    bar->Append(file, wxT("&File"));
-
-    wxMenu *test = new wxMenu();
-
-    test->Append(wxID_FILE2, wxT("Show Modal Form"));
-    test->Append(wxID_FILE3, wxT("Show Non-Modal Form"));
-    test->Append(wxID_FILE4, wxT("Add Canvas"));
-
-    bar->Append(test, wxT("Test"));
-
-    SetMenuBar(bar);
+    wxToolBar *bar = CreateToolBar();
+    auto bundle = wxBitmapBundle::FromSVG("<svg version='1.1' xmlns='http://www.w3.org/2000/svg'>"
+                                          "<rect width='100%' height='100% fill='red' />"
+                                          "</svg>",
+                                          wxDefaultSize);
+    bar->AddTool(wxID_ANY, wxT("Menu"), bundle, wxT("Show Menu"));
+    bar->Realize();
 
     wxBoxSizer *sizer = new wxBoxSizer(wxVERTICAL);
     sizer->Add(book, 1, wxEXPAND, 10);
@@ -76,40 +54,66 @@ bool MainFrame::handle(std::string_view file)
     return true;
 }
 
-void MainFrame::OnOpenFile(wxCommandEvent &)
+void MainFrame::OnTool(wxCommandEvent &)
 {
-    FileDialog dialog;
-    dialog.message = "Select directory(s)";
-    auto s = std::filesystem::current_path().string();
-    dialog.startDirectory = s;
-    dialog.multiple = true;
-    dialog.show(*this, this);
-}
+    MenuList menuList;
+    {
+        auto &menu = menuList.menus.emplace_back();
+        menu.title = "File";
+        menu.add("Open File", [this]() {
+            FileDialog dialog;
+            dialog.message = "Select directory(s)";
+            auto s = std::filesystem::current_path().string();
+            dialog.startDirectory = s;
+            dialog.multiple = true;
+            dialog.show(*this, this);
+            return true;
+        });
+        menu.add("Open Directory", [this]() {
+            FileDialog dialog;
+            dialog.message = "Select file(s)";
+            auto s = std::filesystem::current_path().string();
+            dialog.startDirectory = s;
+            dialog.multiple = true;
+            dialog.directories = true;
+            dialog.show(*this, this);
+            return true;
+        });
+        menu.add("Save File", [this]() {
+            FileDialog dialog;
+            dialog.message = "Select file(s)";
+            auto s = std::filesystem::current_path().string();
+            dialog.startDirectory = s;
+            dialog.saving = true;
+            dialog.show(*this, this);
+            return true;
+        });
+        menu.add("Exit", [this]() {
+            Close(true);
+            return true;
+        });
+    }
+    {
+        auto &menu = menuList.menus.emplace_back();
+        menu.title = "Tests";
+        menu.add("Modal Form", [this]() {
+            Form form = makeForm();
+            printForm(form, executeForm("Modal Form", form, this), this);
+            return false;
+        });
+        menu.add("Non Modal Form", [this]() {
+            showAsyncForm(
+                makeForm(), "Non Modal Form", [](Form &form, DialogResult result) { printForm(form, result); }, this);
+            return false;
+        });
+        menu.add("Add Canvas", [this]() {
+            const wxString string = randomString(5, 10);
+            getCanvasAtoms(toView(string), *this, book);
+            return true;
+        });
+    }
 
-void MainFrame::OnOpenDir(wxCommandEvent &)
-{
-    FileDialog dialog;
-    dialog.message = "Select file(s)";
-    auto s = std::filesystem::current_path().string();
-    dialog.startDirectory = s;
-    dialog.multiple = true;
-    dialog.directories = true;
-    dialog.show(*this, this);
-}
-
-void MainFrame::OnSave(wxCommandEvent &)
-{
-    FileDialog dialog;
-    dialog.message = "Select file(s)";
-    auto s = std::filesystem::current_path().string();
-    dialog.startDirectory = s;
-    dialog.saving = true;
-    dialog.show(*this, this);
-}
-
-void MainFrame::OnExit(wxCommandEvent &)
-{
-    Close(true);
+    menuList.show("Main Menu", this);
 }
 
 struct Printer
@@ -236,24 +240,6 @@ void MainFrame::printForm(const Form &form, DialogResult result, wxWindow *paren
         showMessageBox(MessageBoxType::Error, "Error", "Form Failed", parent);
         break;
     }
-}
-
-void MainFrame::OnNonModalTest(wxCommandEvent &)
-{
-    showAsyncForm(
-        makeForm(), "Non Modal Form", [](Form &form, DialogResult result) { printForm(form, result); }, this);
-}
-
-void MainFrame::OnModalTest(wxCommandEvent &)
-{
-    Form form = makeForm();
-    printForm(form, executeForm("Modal Form", form, this), this);
-}
-
-void MainFrame::OnAddCanvas(wxCommandEvent &)
-{
-    const wxString string = randomString(5, 10);
-    getCanvasAtoms(toView(string), *this, book);
 }
 
 struct RandomRender
@@ -383,8 +369,4 @@ class MyApp : public wxApp
 
 wxIMPLEMENT_APP(MyApp);
 
-wxBEGIN_EVENT_TABLE(MainFrame, wxFrame) EVT_MENU(wxID_OPEN, MainFrame::OnOpenFile)
-    EVT_MENU(wxID_FILE, MainFrame::OnOpenDir) EVT_MENU(wxID_SAVE, MainFrame::OnSave)
-        EVT_MENU(wxID_EXIT, MainFrame::OnExit) EVT_MENU(wxID_FILE2, MainFrame::OnModalTest)
-            EVT_MENU(wxID_FILE3, MainFrame::OnNonModalTest) EVT_MENU(wxID_FILE4, MainFrame::OnAddCanvas)
-                wxEND_EVENT_TABLE();
+wxBEGIN_EVENT_TABLE(MainFrame, wxFrame) EVT_TOOL(wxID_ANY, MainFrame::OnTool) wxEND_EVENT_TABLE();
