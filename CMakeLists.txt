@@ -43,7 +43,9 @@ else()
 		target_link_libraries(canform_wx PRIVATE ${wxWidgets_LIBRARIES})
 
 		if(CANFORM_BUILD_TEST)
-			add_executable(canform_wx_test src/tests/wx/test.cpp)
+			add_executable(canform_wx_test
+				src/tests/wx/test.cpp
+				src/tests/test.cpp)
 
 			target_include_directories(canform_wx_test PRIVATE
 				include)
@@ -69,7 +71,9 @@ else()
 		target_link_libraries(canform_gtkmm PRIVATE ${GTKMM_LIBRARIES})
 
 		if(CANFORM_BUILD_TEST)
-			add_executable(canform_gtkmm_test src/tests/gtkmm/test.cpp)
+			add_executable(canform_gtkmm_test
+				src/tests/gtkmm/test.cpp
+				src/tests/test.cpp)
 
 			target_include_directories(canform_gtkmm_test PRIVATE
 				include

@@ -18,6 +18,26 @@ std::string_view toView(const wxString &string) noexcept
     return std::string_view(string.c_str(), string.Len());
 }
 
+wxString randomString(size_t n)
+{
+    wxString s;
+    while (s.Len() < n)
+    {
+        char c;
+        do
+        {
+            c = rand() % 128;
+        } while (!wxIsalnum(c));
+        s.Append(c);
+    }
+    return s;
+}
+
+wxString randomString(size_t min, size_t max)
+{
+    return randomString((rand() % (max - min)) + min);
+}
+
 void showMessageBox(MessageBoxType type, std::string_view title, std::string_view message, void *parent)
 {
     long style = wxOK | wxCENTRE;
@@ -149,26 +169,6 @@ DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
                             convert(filters), flags);
         return handle(dialog, handler);
     }
-}
-
-wxString randomString(size_t n)
-{
-    wxString s;
-    while (s.Len() < n)
-    {
-        char c;
-        do
-        {
-            c = rand() % 128;
-        } while (!wxIsalnum(c));
-        s.Append(c);
-    }
-    return s;
-}
-
-wxString randomString(size_t min, size_t max)
-{
-    return randomString((rand() % (max - min)) + min);
 }
 
 TempFile::TempFile(const wxString &ext) : path(randomString(3, 8)), extension(ext)
