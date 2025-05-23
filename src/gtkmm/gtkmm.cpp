@@ -119,7 +119,7 @@ class FormVisitor
   private:
     std::string_view name;
 
-    Gtk::Widget *makeFrame()
+    Gtk::Frame *makeFrame()
     {
         return Gtk::manage(new Gtk::Frame(convert(name)));
     }
@@ -148,19 +148,35 @@ class FormVisitor
     {
         return makeFrame();
     }
-    Gtk::Widget *operator()(MultiForm &)
+    Gtk::Widget *operator()(MultiForm &multi)
     {
-        return makeFrame();
+        auto frame = makeFrame();
+        Gtk::Notebook *notebook = Gtk::manage(new Gtk::Notebook());
+        notebook->signal_switch_page().connect([notebook, &multi](Gtk::Widget *widget, guint) {
+            multi.selected = convert(notebook->get_tab_label_text(*widget));
+        });
+        frame->add(*notebook);
+        for (auto &[n, form] : multi.tabs)
+        {
+            notebook->append_page(*operator()(form), convert(n));
+        }
+        return frame;
     }
     Gtk::Widget *operator()(Form &form)
     {
-        Gtk::Grid *grid = Gtk::manage(new Gtk::Grid());
+        const int rows = std::max(static_cast<size_t>(1), form.datas.size() / 2);
+        Gtk::Table *table = Gtk::manage(new Gtk::Table(rows, 2));
+
+        size_t index = 0;
         for (auto &[n, data] : form.datas)
         {
+            const int row = index / 2;
+            const int column = index % 2;
             name = n;
-            grid->add(*std::visit(*this, *data));
+            table->attach(*std::visit(*this, *data), column, column + 1, row, row + 1);
+            ++index;
         }
-        return grid;
+        return table;
     }
 };
 

@@ -108,7 +108,8 @@ void MainWindow::OnTool()
         });
         menu.add("Non Modal Form", [this]() {
             showAsyncForm(
-                makeForm(), "Non Modal Form", [](Form &form, DialogResult result) { printForm(form, result); }, this);
+                makeForm(), "Non Modal Form",
+                [this](Form &form, DialogResult result) { printForm(form, result, this); }, this);
             return false;
         });
         menu.add("Add Canvas", [this]() {
