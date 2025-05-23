@@ -432,4 +432,6 @@ template <typename F> void showAsyncForm(Form &&form, std::string_view title, F 
     AsyncForm::show(asyncForm, title, parent);
 }
 
+extern String randomString(size_t min, size_t max);
+extern String randomString(size_t n);
 } // namespace CanForm

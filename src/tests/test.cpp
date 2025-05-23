@@ -4,6 +4,7 @@
 
 namespace CanForm
 {
+
 Form makeForm()
 {
     std::pmr::memory_resource *resource = std::pmr::new_delete_resource();
@@ -130,4 +131,74 @@ void printForm(const Form &form, DialogResult result, void *parent)
     }
 }
 
+void RandomRender::randomPosition(double &x, double &y)
+{
+    x = ((double)rand() / RAND_MAX) * size.first;
+    y = ((double)rand() / RAND_MAX) * size.second;
+}
+
+void RandomRender::operator()(RenderStyle &style)
+{
+    style.color.red = rand() % 256;
+    style.color.green = rand() % 256;
+    style.color.blue = rand() % 256;
+    style.color.alpha = 255u;
+    style.fill = rand() % 2 == 0;
+}
+
+void RandomRender::operator()(CanFormRectangle &r)
+{
+    randomPosition(r.x, r.y);
+    r.w = rand() % 50 + 10;
+    r.h = rand() % 50 + 10;
+}
+
+void RandomRender::operator()(CanFormEllipse &r)
+{
+    randomPosition(r.x, r.y);
+    r.w = rand() % 50 + 10;
+    r.h = rand() % 50 + 10;
+}
+
+void RandomRender::operator()(RoundedRectangle &r)
+{
+    operator()(r.rectangle);
+    r.radius = std::min(r.rectangle.w, r.rectangle.h) * ((double)rand() / RAND_MAX) * 0.4 + 0.1;
+}
+
+void RandomRender::operator()(Text &t)
+{
+    randomPosition(t.x, t.y);
+    t.string = randomString(5, 10);
+}
+
+RenderAtom RandomRender::operator()()
+{
+    RenderAtom atom;
+    operator()(atom.style);
+    switch (rand() % 4)
+    {
+    case 0: {
+        auto &e = atom.renderType.emplace<CanFormEllipse>();
+        operator()(e);
+    }
+    break;
+    case 1: {
+        auto &r = atom.renderType.emplace<RoundedRectangle>();
+        operator()(r);
+    }
+    break;
+    case 3: {
+        auto &t = atom.renderType.emplace<Text>();
+        operator()(t);
+    }
+    break;
+    default: {
+        auto &r = atom.renderType.emplace<CanFormRectangle>();
+        operator()(r);
+    }
+    break;
+    }
+    return atom;
+}
 } // namespace CanForm

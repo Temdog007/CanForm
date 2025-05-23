@@ -13,7 +13,7 @@ class MainWindow : public Window, public FileDialog::Handler, public RenderAtoms
     void OnTool();
 
     VBox vBox;
-    HButtonBox buttonBox;
+    Notebook notebook;
     Toolbar toolbar;
     ToolButton item;
 
@@ -24,7 +24,7 @@ class MainWindow : public Window, public FileDialog::Handler, public RenderAtoms
     }
 
     virtual bool handle(std::string_view) override;
-    virtual void use(RenderAtoms &, CanFormRectangle &) override;
+    virtual void use(void *, RenderAtoms &, CanFormRectangle &) override;
 };
 
 int main(int argc, char **argv)
@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     return 0;
 }
 
-MainWindow::MainWindow() : item("☰") // U+2630
+MainWindow::MainWindow() : vBox(), notebook(), toolbar(), item("☰") // U+2630
 {
     set_title("CanForm GTKMM Test");
     set_default_size(800, 600);
@@ -44,12 +44,11 @@ MainWindow::MainWindow() : item("☰") // U+2630
     add(vBox);
 
     vBox.pack_start(toolbar, PACK_SHRINK);
-    buttonBox.set_border_width(5);
-    buttonBox.set_layout(Gtk::BUTTONBOX_END);
-    vBox.pack_end(buttonBox);
 
     toolbar.append(item);
     item.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::OnTool));
+
+    vBox.pack_start(notebook, PACK_EXPAND_WIDGET);
 
     show_all_children();
 }
@@ -114,8 +113,7 @@ void MainWindow::OnTool()
             return false;
         });
         menu.add("Add Canvas", [this]() {
-            // const Glib::ustring string = randomString(5, 10);
-            // getCanvasAtoms(convert(string), *this, nullptr);
+            getCanvasAtoms(randomString(5, 10), *this, &notebook);
             return true;
         });
     }
@@ -123,6 +121,30 @@ void MainWindow::OnTool()
     menuList.show("Main Menu", this);
 }
 
-void MainWindow::use(RenderAtoms &, CanFormRectangle &)
+void MainWindow::use(void *ptr, RenderAtoms &atoms, CanFormRectangle &viewRect)
 {
+    NotebookPage *page = (NotebookPage *)ptr;
+    atoms.clear();
+
+    viewRect.x = 0;
+    viewRect.y = 0;
+
+    Gtk::Allocation allocation = page->get_allocation();
+    viewRect.w = allocation.get_width();
+    viewRect.h = allocation.get_height();
+
+    {
+        RenderAtom atom;
+        atom.renderType.emplace<CanFormRectangle>(viewRect);
+        atoms.emplace_back(std::move(atom));
+    }
+
+    const size_t n = rand() % 50 + 50;
+    RandomRender random(viewRect.w, viewRect.h);
+    for (size_t i = 0; i < n; ++i)
+    {
+        atoms.emplace_back(random());
+    }
+
+    queue_draw();
 }

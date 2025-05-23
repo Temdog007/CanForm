@@ -24,26 +24,6 @@ std::string_view convert(const Glib::ustring &s)
     return std::string_view(s.data(), s.size());
 }
 
-Glib::ustring randomString(size_t n)
-{
-    Glib::ustring s;
-    while (s.size() < n)
-    {
-        char c;
-        do
-        {
-            c = rand() % 128;
-        } while (!std::isalnum(c));
-        s.push_back(c);
-    }
-    return s;
-}
-
-Glib::ustring randomString(size_t min, size_t max)
-{
-    return randomString((rand() % (max - min)) + min);
-}
-
 constexpr Gtk::MessageType getType(MessageBoxType type) noexcept
 {
     switch (type)
@@ -496,8 +476,10 @@ bool FormVisitor::editTextWithEditor(Glib::RefPtr<Gtk::EntryBuffer> buffer, Gtk:
     }
 }
 
-TempFile::TempFile(const Glib::ustring &ext) : path(randomString(3, 8)), extension(ext)
+TempFile::TempFile(const Glib::ustring &ext) : path(), extension(ext)
 {
+    auto random = randomString(3, 8);
+    path.assign(random.c_str(), random.size());
 }
 
 TempFile::~TempFile()

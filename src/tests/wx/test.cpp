@@ -19,7 +19,7 @@ class MainFrame : public wxFrame, public FileDialog::Handler, public RenderAtoms
     virtual ~MainFrame();
 
     virtual bool handle(std::string_view) override;
-    virtual void use(RenderAtoms &, CanFormRectangle &) override;
+    virtual void use(void *, RenderAtoms &, CanFormRectangle &) override;
 
     DECLARE_EVENT_TABLE()
 };
@@ -105,8 +105,7 @@ void MainFrame::OnTool(wxCommandEvent &)
             return false;
         });
         menu.add("Add Canvas", [this]() {
-            const wxString string = randomString(5, 10);
-            getCanvasAtoms(toView(string), *this, book);
+            getCanvasAtoms(randomString(5, 10), *this, book);
             return true;
         });
     }
@@ -114,93 +113,15 @@ void MainFrame::OnTool(wxCommandEvent &)
     menuList.show("Main Menu", this);
 }
 
-struct RandomRender
+void MainFrame::use(void *ptr, RenderAtoms &atoms, CanFormRectangle &viewRect)
 {
-    wxSize size;
+    NotebookPage *page = (NotebookPage *)ptr;
 
-    RandomRender(const wxSize &s) noexcept : size(s)
-    {
-    }
-
-    void randomPosition(double &x, double &y)
-    {
-        x = rand() % size.GetWidth();
-        y = rand() % size.GetHeight();
-    }
-
-    void operator()(RenderStyle &style)
-    {
-        style.color.red = rand() % 256;
-        style.color.green = rand() % 256;
-        style.color.blue = rand() % 256;
-        style.color.alpha = 255u;
-        style.fill = rand() % 2 == 0;
-    }
-
-    void operator()(CanFormRectangle &r)
-    {
-        randomPosition(r.x, r.y);
-        r.w = rand() % 50 + 10;
-        r.h = rand() % 50 + 10;
-    }
-
-    void operator()(CanFormEllipse &r)
-    {
-        randomPosition(r.x, r.y);
-        r.w = rand() % 50 + 10;
-        r.h = rand() % 50 + 10;
-    }
-
-    void operator()(RoundedRectangle &r)
-    {
-        operator()(r.rectangle);
-        r.radius = std::min(r.rectangle.w, r.rectangle.h) * ((double)rand() / RAND_MAX) * 0.4 + 0.1;
-    }
-
-    void operator()(Text &t)
-    {
-        randomPosition(t.x, t.y);
-        t.string = randomString(5, 10).ToStdString();
-    }
-
-    RenderAtom operator()()
-    {
-        RenderAtom atom;
-        operator()(atom.style);
-        switch (rand() % 4)
-        {
-        case 0: {
-            auto &e = atom.renderType.emplace<CanFormEllipse>();
-            operator()(e);
-        }
-        break;
-        case 1: {
-            auto &r = atom.renderType.emplace<RoundedRectangle>();
-            operator()(r);
-        }
-        break;
-        case 3: {
-            auto &t = atom.renderType.emplace<Text>();
-            operator()(t);
-        }
-        break;
-        default: {
-            auto &r = atom.renderType.emplace<CanFormRectangle>();
-            operator()(r);
-        }
-        break;
-        }
-        return atom;
-    }
-};
-
-void MainFrame::use(RenderAtoms &atoms, CanFormRectangle &viewRect)
-{
     atoms.clear();
 
     viewRect.x = 0;
     viewRect.y = 0;
-    const auto size = GetSize();
+    const auto size = page->GetSize();
     viewRect.w = size.GetWidth();
     viewRect.h = size.GetHeight();
 
@@ -211,7 +132,7 @@ void MainFrame::use(RenderAtoms &atoms, CanFormRectangle &viewRect)
     }
 
     const size_t n = rand() % 50 + 50;
-    RandomRender random(GetSize());
+    RandomRender random(viewRect.w, viewRect.h);
     for (size_t i = 0; i < n; ++i)
     {
         atoms.emplace_back(random());

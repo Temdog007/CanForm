@@ -134,10 +134,16 @@ void NotebookPage::OnPaint(wxPaintEvent &)
     }
 }
 
+Rectangle getTextBounds(std::string_view s) noexcept
+{
+    wxGraphicsContext *context = wxGraphicsContext::Create();
+    Rectangle r;
+    context->GetTextExtent(convert(s), &r.w, &r.h, nullptr, nullptr);
+    return r;
+}
+
 bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, void *ptr)
 {
-    wxWindow *parent = (wxWindow *)ptr;
-
     bool found = false;
     const wxString target = convert(canvas);
     NotebookPage::forEachPage([&](NotebookPage &page) {
@@ -149,7 +155,7 @@ bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, void *ptr)
             {
                 if (target == book->GetPageText(i))
                 {
-                    users.use(page.atoms, page.viewRect);
+                    users.use(&page, page.atoms, page.viewRect);
                     found = true;
                     return;
                 }
@@ -159,7 +165,7 @@ bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, void *ptr)
         {
             if (window->GetTitle() == target)
             {
-                users.use(page.atoms, page.viewRect);
+                users.use(&page, page.atoms, page.viewRect);
                 found = true;
                 return;
             }
@@ -169,19 +175,20 @@ bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, void *ptr)
     {
         return true;
     }
+    wxWindow *parent = (wxWindow *)ptr;
     if (auto book = dynamic_cast<wxNotebook *>(parent))
     {
         NotebookPage *page = NotebookPage::create(book);
         if (book->AddPage(page, target, true))
         {
-            users.use(page->atoms, page->viewRect);
+            users.use(page, page->atoms, page->viewRect);
             return true;
         }
     }
 
     wxFrame *frame = new wxFrame(nullptr, wxID_ANY, target);
     NotebookPage *page = NotebookPage::create(frame);
-    users.use(page->atoms, page->viewRect);
+    users.use(page, page->atoms, page->viewRect);
     frame->Show();
 
     return true;

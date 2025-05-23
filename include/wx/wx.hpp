@@ -18,8 +18,6 @@ namespace CanForm
 {
 extern wxString convert(std::string_view);
 extern std::string_view toView(const wxString &) noexcept;
-extern wxString randomString(size_t min, size_t max);
-extern wxString randomString(size_t n);
 
 class TempFile
 {

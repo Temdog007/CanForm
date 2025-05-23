@@ -1,15 +1,16 @@
 #pragma once
 
 #include <canform.hpp>
+#include <filesystem>
 #include <glibmm/ustring.h>
+#include <gtkmm/drawingarea.h>
+#include <unordered_set>
 
 namespace CanForm
 {
 extern Glib::ustring convert(const std::string &s);
 extern Glib::ustring convert(std::string_view);
 extern std::string_view convert(const Glib::ustring &);
-extern Glib::ustring randomString(size_t min, size_t max);
-extern Glib::ustring randomString(size_t n);
 
 class TempFile
 {
@@ -31,5 +32,50 @@ class TempFile
     bool write(const Glib::ustring &) const;
 
     bool spawnEditor() const;
+};
+
+class NotebookPage : public Gtk::DrawingArea
+{
+  private:
+    RenderAtoms atoms;
+    CanFormRectangle viewRect;
+    // wxPoint lastMouse;
+
+    static std::pmr::unordered_set<NotebookPage *> pages;
+
+    friend bool CanForm::getCanvasAtoms(std::string_view, RenderAtomsUser &, void *);
+
+    NotebookPage();
+
+  public:
+    virtual ~NotebookPage();
+
+    static NotebookPage *create();
+
+    RenderAtoms &getAtoms() noexcept
+    {
+        return atoms;
+    }
+    const RenderAtoms &getAtoms() const noexcept
+    {
+        return atoms;
+    }
+
+    constexpr CanFormRectangle getViewRect() const noexcept
+    {
+        return viewRect;
+    }
+    CanFormRectangle &getViewRect() noexcept
+    {
+        return viewRect;
+    }
+
+    template <typename F> static void forEachPage(F func)
+    {
+        for (auto page : pages)
+        {
+            func(*page);
+        }
+    }
 };
 } // namespace CanForm
