@@ -153,9 +153,33 @@ class FormVisitor
         frame->add(*box);
         return frame;
     }
-    Gtk::Widget *operator()(Number &)
+    template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true> Gtk::Widget *operator()(T &value)
     {
-        return makeFrame();
+        auto frame = makeFrame();
+        Gtk::SpinButton *button = Gtk::manage(new Gtk::SpinButton());
+        button->set_value(value);
+
+        if constexpr (std::is_integral_v<T>)
+        {
+            button->set_range(std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
+        }
+        else
+        {
+            button->set_range(std::numeric_limits<T>::max() * -1.0, std::numeric_limits<T>::max());
+            button->set_digits(6);
+        }
+
+        button->set_increments(1, 10);
+
+        button->signal_value_changed().connect([button, &value]() { value = static_cast<T>(button->get_value()); });
+
+        frame->add(*button);
+        return frame;
+    }
+
+    Gtk::Widget *operator()(Number &n)
+    {
+        return std::visit(*this, n);
     }
     Gtk::Widget *operator()(StringSelection &)
     {
@@ -169,14 +193,27 @@ class FormVisitor
     {
         auto frame = makeFrame();
         Gtk::Notebook *notebook = Gtk::manage(new Gtk::Notebook());
-        notebook->signal_switch_page().connect([notebook, &multi](Gtk::Widget *widget, guint) {
-            multi.selected = convert(notebook->get_tab_label_text(*widget));
-        });
+        notebook->set_scrollable(true);
         frame->add(*notebook);
+        size_t selected = 0;
+        size_t current = 0;
         for (auto &[n, form] : multi.tabs)
         {
             notebook->append_page(*operator()(form), convert(n));
+            if (multi.selected == n)
+            {
+                selected = current;
+            }
+            ++current;
         }
+        notebook->show_all_children();
+        notebook->set_current_page(selected);
+        notebook->signal_switch_page().connect([notebook, &multi](Gtk::Widget *widget, guint) {
+            if (notebook->is_visible())
+            {
+                multi.selected = convert(notebook->get_tab_label_text(*widget));
+            }
+        });
         return frame;
     }
     Gtk::Widget *operator()(Form &form)
@@ -266,7 +303,7 @@ void AsyncForm::show(const std::shared_ptr<AsyncForm> &asyncForm, std::string_vi
             result = DialogResult::Ok;
             break;
         case Gtk::RESPONSE_CANCEL:
-            result = DialogResult::Error;
+            result = DialogResult::Cancel;
             break;
         default:
             break;
