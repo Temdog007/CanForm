@@ -39,7 +39,8 @@ int main(int argc, char **argv)
 MainWindow::MainWindow() : item("☰") // U+2630
 {
     set_title("CanForm GTKMM Test");
-    set_size_request(800, 600);
+    set_default_size(800, 600);
+    maximize();
     add(vBox);
 
     vBox.pack_start(toolbar, PACK_SHRINK);
