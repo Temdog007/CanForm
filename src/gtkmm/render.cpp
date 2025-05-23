@@ -5,12 +5,16 @@ namespace CanForm
 {
 std::pmr::unordered_set<NotebookPage *> NotebookPage::pages;
 
-NotebookPage::NotebookPage() : Gtk::DrawingArea(), atoms(), viewRect(), clearColor()
+NotebookPage::NotebookPage() : Gtk::DrawingArea(), atoms(), viewRect(), lastMouse(0, 0), clearColor(), moving(false)
 {
     clearColor.red = 0.5;
     clearColor.green = 0.5;
     clearColor.blue = 0.5;
     clearColor.alpha = 1.0;
+    add_events(Gdk::POINTER_MOTION_MASK);
+    add_events(Gdk::BUTTON_PRESS_MASK);
+    add_events(Gdk::SMOOTH_SCROLL_MASK);
+    add_events(Gdk::LEAVE_NOTIFY_MASK);
 }
 
 NotebookPage::~NotebookPage()
@@ -175,6 +179,60 @@ bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, void *ptr)
     }
 
     return false;
+}
+
+bool NotebookPage::on_button_press_event(GdkEventButton *event)
+{
+    if (event->type == GDK_BUTTON_PRESS)
+    {
+        switch (event->button)
+        {
+        case 2:
+            moving = !moving;
+            break;
+        case 3: {
+            Gtk::Allocation allocation = get_allocation();
+            viewRect.x = 0;
+            viewRect.y = 0;
+            viewRect.w = allocation.get_width();
+            viewRect.h = allocation.get_height();
+            queue_draw();
+        }
+        break;
+        default:
+            break;
+        }
+    }
+    return true;
+}
+
+bool NotebookPage::on_motion_notify_event(GdkEventMotion *motion)
+{
+    if (moving)
+    {
+        viewRect.x += motion->x - lastMouse.first;
+        viewRect.y += motion->y - lastMouse.second;
+        queue_draw();
+    }
+    lastMouse.first = motion->x;
+    lastMouse.second = motion->y;
+    return true;
+}
+
+bool NotebookPage::on_scroll_event(GdkEventScroll *scroll)
+{
+    viewRect.expand(viewRect.w * scroll->delta_y * -0.01, viewRect.h * scroll->delta_y * -0.01);
+    viewRect.w = std::clamp(viewRect.w, 10.0, 10000.0);
+    viewRect.h = std::clamp(viewRect.h, 10.0, 10000.0);
+    queue_draw();
+
+    return true;
+}
+
+bool NotebookPage::on_leave_notify_event(GdkEventCrossing *)
+{
+    moving = false;
+    return true;
 }
 
 } // namespace CanForm

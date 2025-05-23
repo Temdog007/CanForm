@@ -39,13 +39,13 @@ class NotebookPage : public Gtk::DrawingArea
   private:
     RenderAtoms atoms;
     CanFormRectangle viewRect;
+    std::pair<gdouble, gdouble> lastMouse;
 
   public:
     Color clearColor;
+    bool moving;
 
   private:
-    // wxPoint lastMouse;
-
     static std::pmr::unordered_set<NotebookPage *> pages;
 
     friend bool CanForm::getCanvasAtoms(std::string_view, RenderAtomsUser &, void *);
@@ -53,6 +53,10 @@ class NotebookPage : public Gtk::DrawingArea
     NotebookPage();
 
     virtual bool on_draw(const Cairo::RefPtr<Cairo::Context> &) override;
+    virtual bool on_button_press_event(GdkEventButton *) override;
+    virtual bool on_motion_notify_event(GdkEventMotion *) override;
+    virtual bool on_scroll_event(GdkEventScroll *) override;
+    virtual bool on_leave_notify_event(GdkEventCrossing *) override;
 
   public:
     virtual ~NotebookPage();

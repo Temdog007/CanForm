@@ -122,9 +122,8 @@ void MainWindow::OnTool()
     menuList.show("Main Menu", this);
 }
 
-void MainWindow::use(void *ptr, RenderAtoms &atoms, CanFormRectangle &viewRect)
+void MainWindow::use(void *, RenderAtoms &atoms, CanFormRectangle &viewRect)
 {
-    NotebookPage *page = (NotebookPage *)ptr;
     atoms.clear();
 
     viewRect.x = 0;
@@ -140,7 +139,7 @@ void MainWindow::use(void *ptr, RenderAtoms &atoms, CanFormRectangle &viewRect)
         atoms.emplace_back(std::move(atom));
     }
 
-    const size_t n = rand() % 50 + 50;
+    const size_t n = rand() % 100 + 100;
     RandomRender random(viewRect.w, viewRect.h);
     for (size_t i = 0; i < n; ++i)
     {
