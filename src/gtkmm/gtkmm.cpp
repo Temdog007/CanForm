@@ -128,6 +128,7 @@ class FormVisitor
     Gtk::Widget *operator()(bool &b)
     {
         Gtk::CheckButton *button = Gtk::manage(new Gtk::CheckButton(convert(name)));
+        button->set_active(b);
         button->signal_clicked().connect([&b, button]() { b = button->get_active(); });
         return button;
     }
@@ -201,9 +202,19 @@ class FormVisitor
         return frame;
     }
 
-    Gtk::Widget *operator()(StringMap &)
+    Gtk::Widget *operator()(StringMap &map)
     {
-        return makeFrame();
+        auto frame = makeFrame();
+        Gtk::VBox *box = Gtk::manage(new Gtk::VBox());
+        for (auto &pair : map)
+        {
+            Gtk::CheckButton *button = Gtk::manage(new Gtk::CheckButton(convert(pair.first)));
+            button->set_active(pair.second);
+            button->signal_clicked().connect([&pair, button]() { pair.second = button->get_active(); });
+            box->add(*button);
+        }
+        frame->add(*box);
+        return frame;
     }
 
     Gtk::Widget *operator()(MultiForm &multi)
