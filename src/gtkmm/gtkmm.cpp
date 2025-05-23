@@ -119,7 +119,7 @@ class FormVisitor
   private:
     std::string_view name;
 
-    Gtk::Frame *makeFrame()
+    Gtk::Frame *makeFrame() const
     {
         return Gtk::manage(new Gtk::Frame(convert(name)));
     }
@@ -132,9 +132,26 @@ class FormVisitor
         return button;
     }
 
-    Gtk::Widget *operator()(String &)
+    Gtk::Widget *operator()(String &s)
     {
-        return makeFrame();
+        auto frame = makeFrame();
+        Gtk::VBox *box = Gtk::manage(new Gtk::VBox());
+
+        Gtk::Entry *entry = Gtk::manage(new Gtk::Entry());
+        auto buffer = entry->get_buffer();
+        const auto updateText = [&s, buffer]() { s = convert(buffer->get_text()); };
+
+        buffer->set_text(convert(s));
+        buffer->signal_inserted_text().connect([updateText](guint, const char *, guint) { updateText(); });
+        buffer->signal_deleted_text().connect([updateText](guint, guint) { updateText(); });
+
+        box->pack_start(*entry, Gtk::PACK_EXPAND_PADDING, 10);
+
+        Gtk::Button *button = Gtk::manage(new Gtk::Button("..."));
+        box->pack_start(*button, Gtk::PACK_EXPAND_WIDGET);
+
+        frame->add(*box);
+        return frame;
     }
     Gtk::Widget *operator()(Number &)
     {
@@ -168,12 +185,13 @@ class FormVisitor
         Gtk::Table *table = Gtk::manage(new Gtk::Table(rows, 2));
 
         size_t index = 0;
+        const Gtk::AttachOptions options = Gtk::FILL | Gtk::EXPAND;
         for (auto &[n, data] : form.datas)
         {
             const int row = index / 2;
             const int column = index % 2;
             name = n;
-            table->attach(*std::visit(*this, *data), column, column + 1, row, row + 1);
+            table->attach(*std::visit(*this, *data), column, column + 1, row, row + 1, options, options, 10, 10);
             ++index;
         }
         return table;
