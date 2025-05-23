@@ -5,8 +5,12 @@ namespace CanForm
 {
 std::pmr::unordered_set<NotebookPage *> NotebookPage::pages;
 
-NotebookPage::NotebookPage() : Gtk::DrawingArea(), atoms(), viewRect()
+NotebookPage::NotebookPage() : Gtk::DrawingArea(), atoms(), viewRect(), clearColor()
 {
+    clearColor.red = 0.5;
+    clearColor.green = 0.5;
+    clearColor.blue = 0.5;
+    clearColor.alpha = 1.0;
 }
 
 NotebookPage::~NotebookPage()
@@ -21,9 +25,85 @@ NotebookPage *NotebookPage::create()
     return page;
 }
 
+constexpr double degrees = M_PI / 180.0;
+
+struct Drawer
+{
+    const Cairo::RefPtr<Cairo::Context> &ctx;
+
+    constexpr Drawer(const Cairo::RefPtr<Cairo::Context> &c) noexcept : ctx(c)
+    {
+    }
+
+    void operator()(const CanFormRectangle &r)
+    {
+        ctx->rectangle(r.x, r.y, r.w, r.h);
+    }
+    void operator()(const RoundedRectangle &rr)
+    {
+        ctx->begin_new_sub_path();
+        const CanFormRectangle &r = rr.rectangle;
+        ctx->arc(r.x + r.w - rr.radius, r.y + rr.radius, rr.radius, -90 * degrees, 0 * degrees);
+        ctx->arc(r.x + r.w - rr.radius, r.y + r.h - rr.radius, rr.radius, 0 * degrees, 90 * degrees);
+        ctx->arc(r.x + rr.radius, r.y + r.h - rr.radius, rr.radius, 90 * degrees, 180 * degrees);
+        ctx->arc(r.x + rr.radius, r.y + rr.radius, rr.radius, 180 * degrees, 270 * degrees);
+        ctx->close_path();
+    }
+    void operator()(const Ellipse &r)
+    {
+        ctx->translate(r.x, r.y);
+        ctx->scale(r.w, r.h);
+        ctx->translate(-r.x, -r.y);
+        ctx->begin_new_path();
+        ctx->arc(r.x, r.y, std::max(r.w, r.h) * 0.5, 0, 2 * M_PI);
+    }
+    void operator()(const Text &t)
+    {
+        ctx->move_to(t.x, t.y);
+        ctx->show_text(std::string(t.string));
+    }
+    void operator()(const RenderAtom &atom)
+    {
+        const RenderStyle &style = atom.style;
+        ctx->save();
+        ctx->set_source_rgba(style.color.red, style.color.green, style.color.blue, style.color.alpha);
+        std::visit(*this, atom.renderType);
+        if (style.fill)
+        {
+            ctx->fill();
+        }
+        else
+        {
+            ctx->stroke();
+        }
+        ctx->restore();
+    }
+};
+
+static Cairo::RefPtr<Cairo::Context> cairoContext;
+bool NotebookPage::on_draw(const Cairo::RefPtr<Cairo::Context> &ctx)
+{
+    cairoContext = ctx;
+    ctx->set_source_rgba(clearColor.red, clearColor.green, clearColor.blue, clearColor.alpha);
+    ctx->paint();
+    Drawer drawer(ctx);
+    for (const auto &atom : atoms)
+    {
+        drawer(atom);
+    }
+    return true;
+}
+
 Rectangle getTextBounds(std::string_view s) noexcept
 {
     Rectangle r;
+    if (cairoContext)
+    {
+        Cairo::TextExtents extents;
+        cairoContext->get_text_extents(std::string(s), extents);
+        r.w = extents.width;
+        r.h = extents.height;
+    }
     return r;
 }
 

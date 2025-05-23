@@ -39,6 +39,11 @@ class NotebookPage : public Gtk::DrawingArea
   private:
     RenderAtoms atoms;
     CanFormRectangle viewRect;
+
+  public:
+    Color clearColor;
+
+  private:
     // wxPoint lastMouse;
 
     static std::pmr::unordered_set<NotebookPage *> pages;
@@ -46,6 +51,8 @@ class NotebookPage : public Gtk::DrawingArea
     friend bool CanForm::getCanvasAtoms(std::string_view, RenderAtomsUser &, void *);
 
     NotebookPage();
+
+    virtual bool on_draw(const Cairo::RefPtr<Cairo::Context> &) override;
 
   public:
     virtual ~NotebookPage();

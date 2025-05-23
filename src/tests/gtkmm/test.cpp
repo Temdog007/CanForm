@@ -29,6 +29,7 @@ class MainWindow : public Window, public FileDialog::Handler, public RenderAtoms
 
 int main(int argc, char **argv)
 {
+    srand(time(nullptr));
     Main kit(argc, argv);
 
     MainWindow mainWindow;

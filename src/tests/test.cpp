@@ -139,10 +139,20 @@ void RandomRender::randomPosition(double &x, double &y)
 
 void RandomRender::operator()(RenderStyle &style)
 {
-    style.color.red = rand() % 256;
-    style.color.green = rand() % 256;
-    style.color.blue = rand() % 256;
-    style.color.alpha = 255u;
+    if constexpr (Color::UseFloat)
+    {
+        style.color.red = ((double)rand() / RAND_MAX);
+        style.color.green = ((double)rand() / RAND_MAX);
+        style.color.blue = ((double)rand() / RAND_MAX);
+        style.color.alpha = 1.0;
+    }
+    else
+    {
+        style.color.red = rand() % 256;
+        style.color.green = rand() % 256;
+        style.color.blue = rand() % 256;
+        style.color.alpha = 255u;
+    }
     style.fill = rand() % 2 == 0;
 }
 
