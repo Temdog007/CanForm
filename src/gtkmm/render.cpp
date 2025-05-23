@@ -35,11 +35,12 @@ struct Drawer
     {
     }
 
-    void operator()(const CanFormRectangle &r)
+    bool operator()(const CanFormRectangle &r)
     {
         ctx->rectangle(r.x, r.y, r.w, r.h);
+        return true;
     }
-    void operator()(const RoundedRectangle &rr)
+    bool operator()(const RoundedRectangle &rr)
     {
         ctx->begin_new_sub_path();
         const CanFormRectangle &r = rr.rectangle;
@@ -48,33 +49,39 @@ struct Drawer
         ctx->arc(r.x + rr.radius, r.y + r.h - rr.radius, rr.radius, 90 * degrees, 180 * degrees);
         ctx->arc(r.x + rr.radius, r.y + rr.radius, rr.radius, 180 * degrees, 270 * degrees);
         ctx->close_path();
+        return true;
     }
-    void operator()(const Ellipse &r)
+    bool operator()(const Ellipse &r)
     {
         ctx->translate(r.x, r.y);
         ctx->scale(r.w, r.h);
         ctx->translate(-r.x, -r.y);
         ctx->begin_new_path();
-        ctx->arc(r.x, r.y, std::max(r.w, r.h) * 0.5, 0, 2 * M_PI);
+        ctx->arc(r.x, r.y, 0.5, 0, 2 * M_PI);
+        ctx->close_path();
+        return true;
     }
-    void operator()(const Text &t)
+    bool operator()(const Text &t)
     {
         ctx->move_to(t.x, t.y);
         ctx->show_text(std::string(t.string));
+        return false;
     }
     void operator()(const RenderAtom &atom)
     {
         const RenderStyle &style = atom.style;
         ctx->save();
         ctx->set_source_rgba(style.color.red, style.color.green, style.color.blue, style.color.alpha);
-        std::visit(*this, atom.renderType);
-        if (style.fill)
+        if (std::visit(*this, atom.renderType))
         {
-            ctx->fill();
-        }
-        else
-        {
-            ctx->stroke();
+            if (style.fill)
+            {
+                ctx->fill();
+            }
+            else
+            {
+                ctx->stroke();
+            }
         }
         ctx->restore();
     }
@@ -86,6 +93,22 @@ bool NotebookPage::on_draw(const Cairo::RefPtr<Cairo::Context> &ctx)
     cairoContext = ctx;
     ctx->set_source_rgba(clearColor.red, clearColor.green, clearColor.blue, clearColor.alpha);
     ctx->paint();
+
+    Gtk::Allocation allocation = get_allocation();
+    double width = allocation.get_width();
+    double height = allocation.get_height();
+
+    Cairo::Matrix matrix = Cairo::identity_matrix();
+    const auto [cx, cy] = viewRect.center();
+
+    matrix.translate(width * 0.5, height * 0.5);
+    matrix.scale(viewRect.w / width, viewRect.h / height);
+    matrix.translate(width * -0.5, height * -0.5);
+
+    matrix.translate(cx - width * 0.5, cy - height * 0.5);
+
+    ctx->set_matrix(matrix);
+
     Drawer drawer(ctx);
     for (const auto &atom : atoms)
     {

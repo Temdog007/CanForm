@@ -130,7 +130,7 @@ void MainWindow::use(void *ptr, RenderAtoms &atoms, CanFormRectangle &viewRect)
     viewRect.x = 0;
     viewRect.y = 0;
 
-    Gtk::Allocation allocation = page->get_allocation();
+    Gtk::Allocation allocation = get_allocation();
     viewRect.w = allocation.get_width();
     viewRect.h = allocation.get_height();
 
