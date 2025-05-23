@@ -43,14 +43,17 @@ class NotebookPage : public Gtk::DrawingArea
 
   public:
     Color clearColor;
-    bool moving;
 
   private:
+    bool moving;
+
     static std::pmr::unordered_set<NotebookPage *> pages;
 
     friend bool CanForm::getCanvasAtoms(std::string_view, RenderAtomsUser &, void *);
 
     NotebookPage();
+
+    void setMoving(bool);
 
     virtual bool on_draw(const Cairo::RefPtr<Cairo::Context> &) override;
     virtual bool on_button_press_event(GdkEventButton *) override;

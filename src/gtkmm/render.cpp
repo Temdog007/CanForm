@@ -188,7 +188,7 @@ bool NotebookPage::on_button_press_event(GdkEventButton *event)
         switch (event->button)
         {
         case 2:
-            moving = !moving;
+            setMoving(!moving);
             break;
         case 3: {
             Gtk::Allocation allocation = get_allocation();
@@ -231,8 +231,13 @@ bool NotebookPage::on_scroll_event(GdkEventScroll *scroll)
 
 bool NotebookPage::on_leave_notify_event(GdkEventCrossing *)
 {
-    moving = false;
+    setMoving(false);
     return true;
+}
+
+void NotebookPage::setMoving(bool b)
+{
+    moving = b;
 }
 
 } // namespace CanForm
