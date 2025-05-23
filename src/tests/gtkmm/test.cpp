@@ -102,13 +102,13 @@ void MainWindow::OnTool()
         auto &menu = menuList.menus.emplace_back();
         menu.title = "Tests";
         menu.add("Modal Form", [this]() {
-            // Form form = makeForm();
-            // printForm(form, executeForm("Modal Form", form, this), this);
+            Form form = makeForm();
+            printForm(form, executeForm("Modal Form", form, this), this);
             return false;
         });
         menu.add("Non Modal Form", [this]() {
-            // showAsyncForm(
-            // makeForm(), "Non Modal Form", [](Form &form, DialogResult result) { printForm(form, result); }, this);
+            showAsyncForm(
+                makeForm(), "Non Modal Form", [](Form &form, DialogResult result) { printForm(form, result); }, this);
             return false;
         });
         menu.add("Add Canvas", [this]() {

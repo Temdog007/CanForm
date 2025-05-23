@@ -1,12 +1,20 @@
 #include <canform.hpp>
 #include <gtkmm.h>
+#include <gtkmm/gtkmm.hpp>
+#include <memory>
 
 namespace CanForm
 {
 
+Glib::ustring convert(const std::string &s)
+{
+    return Glib::locale_to_utf8(s);
+}
+
 Glib::ustring convert(std::string_view s)
 {
-    return Glib::ustring(s.data(), s.size());
+    const std::string string(s);
+    return convert(string);
 }
 
 std::string_view convert(const Glib::ustring &s)
@@ -73,7 +81,6 @@ void MenuList::show(std::string_view title, void *parent)
         Gtk::Notebook notebook;
         Gtk::Box *box = dialog.get_content_area();
         box->add(notebook);
-
         for (auto &menu : menus)
         {
             Gtk::VBox *box = Gtk::manage(new Gtk::VBox());
@@ -105,6 +112,134 @@ void MenuList::show(std::string_view title, void *parent)
         Gtk::Dialog dialog(convert(title), *window, true);
         run(dialog);
     }
+}
+
+class FormVisitor
+{
+  private:
+    std::string_view name;
+
+    Gtk::Widget *makeFrame()
+    {
+        return Gtk::manage(new Gtk::Frame(convert(name)));
+    }
+
+  public:
+    Gtk::Widget *operator()(bool &b)
+    {
+        Gtk::CheckButton *button = Gtk::manage(new Gtk::CheckButton(convert(name)));
+        button->signal_clicked().connect([&b, button]() { b = button->get_active(); });
+        return button;
+    }
+
+    Gtk::Widget *operator()(String &)
+    {
+        return makeFrame();
+    }
+    Gtk::Widget *operator()(Number &)
+    {
+        return makeFrame();
+    }
+    Gtk::Widget *operator()(StringSelection &)
+    {
+        return makeFrame();
+    }
+    Gtk::Widget *operator()(StringMap &)
+    {
+        return makeFrame();
+    }
+    Gtk::Widget *operator()(MultiForm &)
+    {
+        return makeFrame();
+    }
+    Gtk::Widget *operator()(Form &form)
+    {
+        Gtk::Grid *grid = Gtk::manage(new Gtk::Grid());
+        for (auto &[n, data] : form.datas)
+        {
+            name = n;
+            grid->add(*std::visit(*this, *data));
+        }
+        return grid;
+    }
+};
+
+DialogResult executeForm(std::string_view title, Form &form, void *parent)
+{
+    Gtk::Window *window = (Gtk::Window *)parent;
+    const auto run = [&form](Gtk::Dialog &dialog) {
+        Gtk::Box *box = dialog.get_content_area();
+        FormVisitor visitor;
+        box->add(*visitor(form));
+        dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
+        dialog.add_button(Gtk::Stock::OK, Gtk::RESPONSE_OK);
+        dialog.set_default_size(320, 240);
+        dialog.show_all_children();
+        switch (dialog.run())
+        {
+        case Gtk::RESPONSE_OK:
+            return DialogResult::Ok;
+        case Gtk::RESPONSE_CANCEL:
+            return DialogResult::Cancel;
+        default:
+            break;
+        }
+        return DialogResult::Error;
+    };
+    if (window == nullptr)
+    {
+        Gtk::Dialog dialog(convert(title), true);
+        return run(dialog);
+    }
+    else
+    {
+        Gtk::Dialog dialog(convert(title), *window, true);
+        return run(dialog);
+    }
+}
+
+void AsyncForm::show(const std::shared_ptr<AsyncForm> &asyncForm, std::string_view title, void *parent)
+{
+    if (asyncForm == nullptr)
+    {
+        return;
+    }
+    Gtk::Dialog *dialog = nullptr;
+    Gtk::Window *window = (Gtk::Window *)parent;
+
+    if (window == nullptr)
+    {
+        dialog = Gtk::manage(new Gtk::Dialog(convert(title), false));
+    }
+    else
+    {
+        dialog = Gtk::manage(new Gtk::Dialog(convert(title), *window, false));
+    }
+
+    Gtk::Box *box = dialog->get_content_area();
+    FormVisitor visitor;
+    box->add(*visitor(asyncForm->form));
+    dialog->add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
+    dialog->add_button(Gtk::Stock::OK, Gtk::RESPONSE_OK);
+    dialog->set_default_size(320, 240);
+    dialog->show_all_children();
+    dialog->signal_response().connect([dialog, asyncForm](int response) {
+        dialog->hide();
+        DialogResult result = DialogResult::Error;
+        switch (response)
+        {
+        case Gtk::RESPONSE_OK:
+            result = DialogResult::Ok;
+            break;
+        case Gtk::RESPONSE_CANCEL:
+            result = DialogResult::Error;
+            break;
+        default:
+            break;
+        }
+        return asyncForm->onSubmit(result);
+    });
+    dialog->run();
 }
 
 DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const

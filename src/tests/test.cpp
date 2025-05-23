@@ -118,7 +118,7 @@ void printForm(const Form &form, DialogResult result, void *parent)
             std::visit(Printer(os), *data);
             os << std::endl;
         }
-        showMessageBox(MessageBoxType::Information, "Ok", os.str(), parent);
+        showMessageBox(MessageBoxType::Information, "Form Data", os.str(), parent);
     }
     break;
     case DialogResult::Cancel:
