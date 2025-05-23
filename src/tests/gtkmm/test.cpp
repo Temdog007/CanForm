@@ -71,7 +71,7 @@ void MainWindow::OnTool()
             auto s = std::filesystem::current_path().string();
             dialog.startDirectory = s;
             dialog.multiple = true;
-            // dialog.show(*this, this);
+            dialog.show(*this, this);
             return true;
         });
         menu.add("Open Directory", [this]() {
@@ -81,7 +81,7 @@ void MainWindow::OnTool()
             dialog.startDirectory = s;
             dialog.multiple = true;
             dialog.directories = true;
-            // dialog.show(*this, this);
+            dialog.show(*this, this);
             return true;
         });
         menu.add("Save File", [this]() {
@@ -90,7 +90,7 @@ void MainWindow::OnTool()
             auto s = std::filesystem::current_path().string();
             dialog.startDirectory = s;
             dialog.saving = true;
-            // dialog.show(*this, this);
+            dialog.show(*this, this);
             return true;
         });
         menu.add("Exit", [this]() {

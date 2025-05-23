@@ -1,7 +1,5 @@
 #include <canform.hpp>
-#include <gtkmm/gtkmm.hpp>
-#include <gtkmm/messagedialog.h>
-#include <gtkmm/notebook.h>
+#include <gtkmm.h>
 
 namespace CanForm
 {
@@ -106,6 +104,64 @@ void MenuList::show(std::string_view title, void *parent)
     {
         Gtk::Dialog dialog(convert(title), *window, true);
         run(dialog);
+    }
+}
+
+DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
+{
+    Gtk::Window *window = (Gtk::Window *)parent;
+    const auto run = [this, &handler, parent](Gtk::FileChooserDialog &dialog) {
+        dialog.set_current_folder(convert(startDirectory));
+        dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
+        if (directories)
+        {
+            dialog.add_button("Select", Gtk::RESPONSE_OK);
+        }
+        else
+        {
+            dialog.set_current_name(convert(filename));
+            dialog.set_select_multiple(multiple);
+            dialog.add_button(saving ? Gtk::Stock::SAVE : Gtk::Stock::OPEN, Gtk::RESPONSE_OK);
+        }
+        switch (dialog.run())
+        {
+        case Gtk::RESPONSE_OK: {
+            for (auto &file : dialog.get_files())
+            {
+                handler.handle(file->get_path());
+            }
+            return DialogResult::Ok;
+        }
+        break;
+        case Gtk::RESPONSE_CANCEL:
+            return DialogResult::Cancel;
+        default:
+            break;
+        }
+        return DialogResult::Error;
+    };
+    Gtk::FileChooserAction action;
+    if (directories)
+    {
+        action = Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER;
+    }
+    else if (saving)
+    {
+        action = Gtk::FILE_CHOOSER_ACTION_SAVE;
+    }
+    else
+    {
+        action = Gtk::FILE_CHOOSER_ACTION_OPEN;
+    }
+    if (window == nullptr)
+    {
+        Gtk::FileChooserDialog dialog(convert(title), action);
+        return run(dialog);
+    }
+    else
+    {
+        Gtk::FileChooserDialog dialog(*window, convert(title), action);
+        return run(dialog);
     }
 }
 
