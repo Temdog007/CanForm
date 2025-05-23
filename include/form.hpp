@@ -3,6 +3,7 @@
 #include "types.hpp"
 
 #include <memory>
+#include <optional>
 #include <string_view>
 
 namespace CanForm
@@ -191,6 +192,44 @@ struct StringSelection
         {
             set.emplace(item);
         }
+    }
+
+    auto getIterator() const noexcept
+    {
+        int i = index;
+        for (auto iter = set.begin(); iter != set.end(); ++iter, --i)
+        {
+            if (i == 0)
+            {
+                return iter;
+            }
+        }
+        return set.end();
+    }
+
+    std::optional<String> getSelection() const
+    {
+        auto iter = getIterator();
+        if (iter == set.end())
+        {
+            return std::nullopt;
+        }
+        return *iter;
+    }
+
+    bool setSelection(std::string_view newSelection)
+    {
+        int i = 0;
+        for (auto &s : set)
+        {
+            if (s == newSelection)
+            {
+                index = i;
+                return true;
+            }
+            ++i;
+        }
+        return false;
     }
 
     StringSelection &operator=(const StringSelection &) = default;

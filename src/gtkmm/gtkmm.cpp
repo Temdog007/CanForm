@@ -153,6 +153,7 @@ class FormVisitor
         frame->add(*box);
         return frame;
     }
+
     template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true> Gtk::Widget *operator()(T &value)
     {
         auto frame = makeFrame();
@@ -181,14 +182,30 @@ class FormVisitor
     {
         return std::visit(*this, n);
     }
-    Gtk::Widget *operator()(StringSelection &)
+
+    Gtk::Widget *operator()(StringSelection &selection)
     {
-        return makeFrame();
+        auto frame = makeFrame();
+        Gtk::ComboBoxText *box = Gtk::manage(new Gtk::ComboBoxText());
+        for (auto &text : selection.set)
+        {
+            box->append(convert(text));
+        }
+        auto s = selection.getSelection();
+        if (s)
+        {
+            box->set_active_text(convert(*s));
+        }
+        box->signal_changed().connect([box, &selection]() { selection.setSelection(convert(box->get_active_text())); });
+        frame->add(*box);
+        return frame;
     }
+
     Gtk::Widget *operator()(StringMap &)
     {
         return makeFrame();
     }
+
     Gtk::Widget *operator()(MultiForm &multi)
     {
         auto frame = makeFrame();
@@ -216,6 +233,7 @@ class FormVisitor
         });
         return frame;
     }
+
     Gtk::Widget *operator()(Form &form)
     {
         const int rows = std::max(static_cast<size_t>(1), form.datas.size() / 2);
