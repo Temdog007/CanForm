@@ -1,4 +1,6 @@
 #include <canform.hpp>
+#include <filesystem>
+#include <fstream>
 #include <gtkmm.h>
 #include <gtkmm/gtkmm.hpp>
 #include <memory>
@@ -8,7 +10,7 @@ namespace CanForm
 
 Glib::ustring convert(const std::string &s)
 {
-    return Glib::locale_to_utf8(s);
+    return Glib::ustring(s);
 }
 
 Glib::ustring convert(std::string_view s)
@@ -118,13 +120,20 @@ class FormVisitor
 {
   private:
     std::string_view name;
+    Gtk::Window *window;
 
     Gtk::Frame *makeFrame() const
     {
         return Gtk::manage(new Gtk::Frame(convert(name)));
     }
 
+    static bool editTextWithEditor(Glib::RefPtr<Gtk::EntryBuffer>, Gtk::Window *);
+
   public:
+    constexpr FormVisitor(Gtk::Window *w) noexcept : name(), window(w)
+    {
+    }
+
     Gtk::Widget *operator()(bool &b)
     {
         Gtk::CheckButton *button = Gtk::manage(new Gtk::CheckButton(convert(name)));
@@ -149,6 +158,8 @@ class FormVisitor
         box->pack_start(*entry, Gtk::PACK_EXPAND_PADDING, 10);
 
         Gtk::Button *button = Gtk::manage(new Gtk::Button("..."));
+        button->signal_clicked().connect(
+            [buffer, window = window]() { FormVisitor::editTextWithEditor(buffer, window); });
         box->pack_start(*button, Gtk::PACK_EXPAND_WIDGET);
 
         frame->add(*box);
@@ -267,9 +278,9 @@ class FormVisitor
 DialogResult executeForm(std::string_view title, Form &form, void *parent)
 {
     Gtk::Window *window = (Gtk::Window *)parent;
-    const auto run = [&form](Gtk::Dialog &dialog) {
+    const auto run = [&form, window](Gtk::Dialog &dialog) {
         Gtk::Box *box = dialog.get_content_area();
-        FormVisitor visitor;
+        FormVisitor visitor(&dialog);
         box->add(*visitor(form));
         dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
         dialog.add_button(Gtk::Stock::OK, Gtk::RESPONSE_OK);
@@ -317,7 +328,7 @@ void AsyncForm::show(const std::shared_ptr<AsyncForm> &asyncForm, std::string_vi
     }
 
     Gtk::Box *box = dialog->get_content_area();
-    FormVisitor visitor;
+    FormVisitor visitor(dialog);
     box->add(*visitor(asyncForm->form));
     dialog->add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
     dialog->add_button(Gtk::Stock::OK, Gtk::RESPONSE_OK);
@@ -400,4 +411,162 @@ DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
     }
 }
 
+static bool askQuestion(const char *question, Gtk::Window *window)
+{
+    Glib::ustring string(question);
+    const auto run = [window](Gtk::Dialog &dialog) {
+        dialog.add_button("No", Gtk::RESPONSE_CANCEL);
+        dialog.add_button("Yes", Gtk::RESPONSE_OK);
+        dialog.show_all_children();
+        return dialog.run() == Gtk::RESPONSE_OK;
+    };
+    if (window == nullptr)
+    {
+        Gtk::Dialog dialog(string, true);
+        return run(dialog);
+    }
+    else
+    {
+        Gtk::Dialog dialog(string, *window, true);
+        return run(dialog);
+    }
+}
+
+static bool openFileAndWait(const TempFile &tempFile, Glib::ustring &s, Gtk::Window *window)
+{
+    const bool success = tempFile.spawnEditor();
+    if (success && askQuestion("Read changes from file?", window))
+    {
+        return tempFile.read(s);
+    }
+    return success;
+}
+
+bool FormVisitor::editTextWithEditor(Glib::RefPtr<Gtk::EntryBuffer> buffer, Gtk::Window *window)
+{
+    Glib::ustring string("Edit in Text Editor?");
+    const auto run = [buffer, window](Gtk::Dialog &dialog) {
+        Glib::ustring currentText(buffer->get_text());
+
+        Gtk::HBox hBox;
+        hBox.set_spacing(10);
+
+        Gtk::Label label("Enter temporary file extension:");
+        hBox.pack_start(label, Gtk::PACK_SHRINK);
+
+        Gtk::Entry entry;
+        entry.get_buffer()->set_text("txt");
+        hBox.pack_start(entry, Gtk::PACK_EXPAND_WIDGET);
+
+        Gtk::Box *box = dialog.get_vbox();
+        box->add(hBox);
+
+        dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
+        dialog.add_button(Gtk::Stock::OK, Gtk::RESPONSE_OK);
+        dialog.show_all_children();
+        if (dialog.run() != Gtk::RESPONSE_OK)
+        {
+            return false;
+        }
+
+        TempFile file(entry.get_buffer()->get_text());
+
+        file.write(buffer->get_text());
+
+        if (!openFileAndWait(file, currentText, window))
+        {
+            goto error;
+        }
+        buffer->set_text(currentText);
+        return true;
+
+    error:
+        showMessageBox(MessageBoxType::Error, "Process Error", "Error creating process or temporary file", window);
+        return false;
+    };
+    if (window == nullptr)
+    {
+        Gtk::Dialog dialog(string, true);
+        return run(dialog);
+    }
+    else
+    {
+        Gtk::Dialog dialog(string, *window, true);
+        return run(dialog);
+    }
+}
+
+TempFile::TempFile(const Glib::ustring &ext) : path(randomString(3, 8)), extension(ext)
+{
+}
+
+TempFile::~TempFile()
+{
+    std::error_code err;
+    std::filesystem::remove(getPath(), err);
+}
+
+Glib::ustring TempFile::getName() const
+{
+    return Glib::ustring::sprintf("%s.%s", path, extension);
+}
+
+std::filesystem::path TempFile::getPath() const
+{
+    return std::filesystem::path(convert(getName()));
+}
+
+bool TempFile::spawnEditor() const
+{
+    std::string openCommand =
+#if _WIN32
+        "open";
+#else
+        "xdg-open";
+#endif
+    std::string args = getName();
+    char *argv[3] = {openCommand.data(), args.data(), nullptr};
+    return g_spawn_sync(nullptr, argv, nullptr,
+                        (GSpawnFlags)(G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL),
+                        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+}
+
+bool TempFile::read(Glib::ustring &s) const
+{
+    String string(convert(s));
+    if (read(string))
+    {
+        s = convert(string);
+        return true;
+    }
+    return false;
+}
+
+bool TempFile::read(String &string) const
+{
+    std::ifstream file(getPath());
+    if (file.is_open())
+    {
+        string.assign(std::istreambuf_iterator<char>{file}, {});
+        return true;
+    }
+    return false;
+}
+
+bool TempFile::write(const Glib::ustring &s) const
+{
+    const String string(convert(s));
+    return write(string);
+}
+
+bool TempFile::write(const String &string) const
+{
+    std::ofstream file(getPath());
+    if (file.is_open())
+    {
+        file << string;
+        return true;
+    }
+    return false;
+}
 } // namespace CanForm
