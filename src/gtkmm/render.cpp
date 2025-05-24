@@ -6,7 +6,8 @@ namespace CanForm
 std::pmr::unordered_set<NotebookPage *> NotebookPage::pages;
 
 NotebookPage::NotebookPage()
-    : Gtk::DrawingArea(), atoms(), viewRect(), lastMouse(0, 0), clearColor(), needRedraw(true), moving(false)
+    : Gtk::DrawingArea(), atoms(), viewRect(), lastMouse(0, 0), lastUpdate(now()), movePoint(std::nullopt),
+      clearColor(), delta(0.0)
 {
     clearColor.red = 0.5;
     clearColor.green = 0.5;
@@ -16,8 +17,6 @@ NotebookPage::NotebookPage()
     add_events(Gdk::BUTTON_PRESS_MASK);
     add_events(Gdk::SMOOTH_SCROLL_MASK);
     add_events(Gdk::LEAVE_NOTIFY_MASK);
-
-    Glib::signal_idle().connect(sigc::mem_fun(*this, &NotebookPage::Update));
 }
 
 NotebookPage::~NotebookPage()
@@ -32,19 +31,55 @@ NotebookPage *NotebookPage::create()
     return page;
 }
 
-bool NotebookPage::Update()
+constexpr double clampIfSmall(double d) noexcept
 {
-    if (is_visible())
+    if (std::abs(d - 0.01) < 0.0)
     {
-        if (needRedraw)
-        {
-            queue_draw();
-            needRedraw = false;
-        }
-        // TODO: Handle moving
-        return true;
+        return 0.0;
     }
-    return false;
+    return d;
+}
+
+bool NotebookPage::Update(int)
+{
+    const auto current = now();
+    bool again = false;
+    if (movePoint)
+    {
+        const auto &point = *movePoint;
+        delta += std::chrono::duration<double>(current - lastUpdate).count();
+        if (delta > 0.01)
+        {
+            const double diff = std::min(0.1, delta);
+            viewRect.x += clampIfSmall((point.first - lastMouse.first)) * diff;
+            viewRect.y += clampIfSmall((point.second - lastMouse.second)) * diff;
+            delta -= diff;
+            queue_draw();
+        }
+        again = true;
+    }
+    else
+    {
+        queue_draw();
+    }
+    lastUpdate = current;
+    return again;
+}
+
+NotebookPage::Timer::Timer(NotebookPage &page) : connection()
+{
+    sigc::slot<bool> slot = sigc::bind(sigc::mem_fun(page, &NotebookPage::Update), 0);
+    connection = Glib::signal_timeout().connect(slot, 1);
+}
+
+NotebookPage::Timer::~Timer()
+{
+    connection.disconnect();
+}
+
+bool NotebookPage::Timer::is_connected() const
+{
+    return connection.connected();
 }
 
 constexpr double degrees = M_PI / 180.0;
@@ -120,21 +155,28 @@ bool NotebookPage::on_draw(const Cairo::RefPtr<Cairo::Context> &ctx)
     double width = allocation.get_width();
     double height = allocation.get_height();
 
-    Cairo::Matrix matrix = Cairo::identity_matrix();
     const auto [cx, cy] = viewRect.center();
 
-    matrix.translate(width * 0.5, height * 0.5);
-    matrix.scale(viewRect.w / width, viewRect.h / height);
-    matrix.translate(width * -0.5, height * -0.5);
-
-    matrix.translate(cx - width * 0.5, cy - height * 0.5);
-
-    ctx->set_matrix(matrix);
+    ctx->set_identity_matrix();
+    ctx->translate(width * 0.5, height * 0.5);
+    ctx->scale(viewRect.w / width, viewRect.h / height);
+    ctx->translate(width * -0.5, height * -0.5);
+    ctx->translate(cx - width * 0.5, cy - height * 0.5);
 
     Drawer drawer(ctx);
     for (const auto &atom : atoms)
     {
         drawer(atom);
+    }
+    if (movePoint)
+    {
+        ctx->set_identity_matrix();
+        ctx->set_source_rgb(1.0, 1.0, 1.0);
+        ctx->begin_new_path();
+        ctx->arc(movePoint->first, movePoint->second, 20.0, 0, M_PI * 2.0);
+        ctx->fill_preserve();
+        ctx->set_source_rgb(0.0, 0.0, 0.0);
+        ctx->stroke();
     }
     return true;
 }
@@ -206,7 +248,15 @@ bool NotebookPage::on_button_press_event(GdkEventButton *event)
         switch (event->button)
         {
         case 2:
-            setMoving(!moving);
+            if (movePoint)
+            {
+                movePoint.reset();
+            }
+            else
+            {
+                movePoint.emplace(event->x, event->y);
+            }
+            redraw();
             break;
         case 3: {
             Gtk::Allocation allocation = get_allocation();
@@ -214,7 +264,8 @@ bool NotebookPage::on_button_press_event(GdkEventButton *event)
             viewRect.y = 0;
             viewRect.w = allocation.get_width();
             viewRect.h = allocation.get_height();
-            needRedraw = true;
+            movePoint.reset();
+            redraw();
         }
         break;
         default:
@@ -226,14 +277,12 @@ bool NotebookPage::on_button_press_event(GdkEventButton *event)
 
 bool NotebookPage::on_motion_notify_event(GdkEventMotion *motion)
 {
-    if (moving)
-    {
-        viewRect.x += motion->x - lastMouse.first;
-        viewRect.y += motion->y - lastMouse.second;
-        needRedraw = true;
-    }
     lastMouse.first = motion->x;
     lastMouse.second = motion->y;
+    if (movePoint)
+    {
+        redraw();
+    }
     return true;
 }
 
@@ -242,20 +291,24 @@ bool NotebookPage::on_scroll_event(GdkEventScroll *scroll)
     viewRect.expand(viewRect.w * scroll->delta_y * -0.01, viewRect.h * scroll->delta_y * -0.01);
     viewRect.w = std::clamp(viewRect.w, 10.0, 10000.0);
     viewRect.h = std::clamp(viewRect.h, 10.0, 10000.0);
-    needRedraw = true;
+    redraw();
 
     return true;
 }
 
 bool NotebookPage::on_leave_notify_event(GdkEventCrossing *)
 {
-    setMoving(false);
+    movePoint.reset();
+    redraw();
     return true;
 }
 
-void NotebookPage::setMoving(bool b)
+void NotebookPage::redraw()
 {
-    moving = b;
+    if (timer == nullptr || !timer->is_connected())
+    {
+        timer = std::make_unique<Timer>(*this);
+    }
 }
 
 } // namespace CanForm

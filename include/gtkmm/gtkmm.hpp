@@ -34,29 +34,47 @@ class TempFile
     bool spawnEditor() const;
 };
 
+using TimePoint = std::chrono::system_clock::time_point;
+static inline TimePoint now() noexcept
+{
+    return std::chrono::system_clock::now();
+}
+
 class NotebookPage : public Gtk::DrawingArea
 {
   private:
     RenderAtoms atoms;
     CanFormRectangle viewRect;
     std::pair<gdouble, gdouble> lastMouse;
+    TimePoint lastUpdate;
+    std::optional<std::pair<gdouble, gdouble>> movePoint;
+
+    class Timer
+    {
+      private:
+        sigc::connection connection;
+
+      public:
+        Timer(NotebookPage &);
+        ~Timer();
+
+        bool is_connected() const;
+    };
+    std::unique_ptr<Timer> timer;
 
   public:
     Color clearColor;
 
   private:
-    bool needRedraw;
-    bool moving;
+    double delta;
 
-    bool Update();
+    bool Update(int);
 
     static std::pmr::unordered_set<NotebookPage *> pages;
 
     friend bool CanForm::getCanvasAtoms(std::string_view, RenderAtomsUser &, void *);
 
     NotebookPage();
-
-    void setMoving(bool);
 
     virtual bool on_draw(const Cairo::RefPtr<Cairo::Context> &) override;
     virtual bool on_button_press_event(GdkEventButton *) override;
@@ -94,5 +112,7 @@ class NotebookPage : public Gtk::DrawingArea
             func(*page);
         }
     }
+
+    void redraw();
 };
 } // namespace CanForm
