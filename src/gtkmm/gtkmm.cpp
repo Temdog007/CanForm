@@ -19,9 +19,9 @@ Glib::ustring convert(std::string_view s)
     return convert(string);
 }
 
-String convert(const Glib::ustring &s)
+std::string convert(const Glib::ustring &s)
 {
-    return String(s.data(), s.size());
+    return std::string(s);
 }
 
 std::string_view toView(const Glib::ustring &s)

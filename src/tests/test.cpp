@@ -139,7 +139,6 @@ void printForm(const Form &form, DialogResult result, void *parent)
             os << std::endl;
         }
         auto s = os.str();
-        std::cout << s << std::endl;
         showMessageBox(MessageBoxType::Information, "Form Data", s, parent);
     }
     break;

@@ -11,7 +11,7 @@ namespace CanForm
 {
 extern Glib::ustring convert(const std::string &s);
 extern Glib::ustring convert(std::string_view);
-extern String convert(const Glib::ustring &);
+extern std::string convert(const Glib::ustring &);
 extern std::string_view toView(const Glib::ustring &);
 
 struct IBufferSetter
