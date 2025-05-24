@@ -180,6 +180,23 @@ void RandomRender::operator()(Text &t)
 {
     randomPosition(t.x, t.y);
     t.string = randomString(5, 10);
+    switch (rand() % 5)
+    {
+    case 0:
+        t.string.insert(0, "<b>");
+        t.string.append("</b>");
+        break;
+    case 1:
+        t.string.insert(0, "<i>");
+        t.string.append("</i>");
+        break;
+    case 2:
+        t.string.insert(0, "<u>");
+        t.string.append("</u>");
+        break;
+    default:
+        break;
+    }
 }
 
 RenderAtom RandomRender::operator()()

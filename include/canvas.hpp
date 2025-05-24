@@ -121,7 +121,7 @@ using RenderType = std::variant<Rectangle, RoundedRectangle, Ellipse, Text>;
 extern std::pair<double, double> getPosition(const RenderType &) noexcept;
 extern void setPosition(RenderType &, double x, double y) noexcept;
 extern Rectangle getRectangle(const RenderType &) noexcept;
-extern Rectangle getTextBounds(std::string_view) noexcept;
+extern std::pair<double, double> getTextSize(std::string_view) noexcept;
 
 struct Color
 {

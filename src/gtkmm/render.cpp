@@ -88,7 +88,7 @@ struct Drawer
 {
     const Cairo::RefPtr<Cairo::Context> &ctx;
 
-    constexpr Drawer(const Cairo::RefPtr<Cairo::Context> &c) noexcept : ctx(c)
+    Drawer(const Cairo::RefPtr<Cairo::Context> &c) : ctx(c)
     {
     }
 
@@ -120,8 +120,10 @@ struct Drawer
     }
     bool operator()(const Text &t)
     {
+        auto layout = Pango::Layout::create(ctx);
+        layout->set_markup(convert(t.string));
         ctx->move_to(t.x, t.y);
-        ctx->show_text(std::string(t.string));
+        layout->show_in_cairo_context(ctx);
         return false;
     }
     void operator()(const RenderAtom &atom)
@@ -182,8 +184,10 @@ bool NotebookPage::on_draw(const Cairo::RefPtr<Cairo::Context> &ctx)
         ctx->set_identity_matrix();
         ctx->translate(x + movePoint->first, y + movePoint->second);
 
-        const double angle =
-            angleBetween(1, 0, lastMouse.first - movePoint->first, lastMouse.second - movePoint->second);
+        const double rx = lastMouse.first - movePoint->first;
+        const double ry = lastMouse.second - movePoint->second;
+
+        const double angle = angleBetween(1, 0, rx, ry);
         ctx->rotate(angle);
 
         ctx->set_source_rgb(1.0, 1.0, 1.0);
@@ -193,26 +197,32 @@ bool NotebookPage::on_draw(const Cairo::RefPtr<Cairo::Context> &ctx)
         ctx->set_source_rgb(0.0, 0.0, 0.0);
         ctx->stroke();
 
-        ctx->begin_new_path();
         ctx->move_to(-10, -10);
         ctx->line_to(-10, 10);
         ctx->line_to(15, 0);
         ctx->fill();
+
+        ctx->move_to(0, 0);
+        ctx->line_to(std::sqrt(rx * rx + ry * ry), 0);
+        ctx->stroke();
     }
     return true;
 }
 
-Rectangle getTextBounds(std::string_view s) noexcept
+std::pair<double, double> getTextSize(std::string_view s) noexcept
 {
-    Rectangle r;
+    std::pair<double, double> pair(0, 0);
     if (cairoContext)
     {
-        Cairo::TextExtents extents;
-        cairoContext->get_text_extents(std::string(s), extents);
-        r.w = extents.width;
-        r.h = extents.height;
+        auto layout = Pango::Layout::create(cairoContext);
+        layout->set_markup(convert(s));
+        int width;
+        int height;
+        layout->get_pixel_size(width, height);
+        pair.first = width;
+        pair.second = height;
     }
-    return r;
+    return pair;
 }
 
 bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, void *ptr)
@@ -276,7 +286,6 @@ bool NotebookPage::on_button_press_event(GdkEventButton *event)
             else
             {
                 movePoint.emplace(event->x, event->y);
-                delta = 0.0;
             }
             redraw();
             break;
@@ -322,6 +331,7 @@ void NotebookPage::redraw()
 {
     if (!timer || !timer->is_connected())
     {
+        delta = 0.0;
         timer.emplace(*this);
     }
 }

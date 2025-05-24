@@ -68,9 +68,15 @@ Rectangle getRectangle(const RenderType &rt) noexcept
             r.h = e.h;
             return r;
         }
-        Rectangle operator()(const Text &r) const noexcept
+        Rectangle operator()(const Text &t) const noexcept
         {
-            return getTextBounds(r.string);
+            Rectangle r;
+            r.x = t.x;
+            r.y = t.x;
+            auto [w, h] = getTextSize(t.string);
+            r.w = w;
+            r.h = h;
+            return r;
         }
     };
     return std::visit(Visitor(), rt);
