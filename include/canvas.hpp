@@ -19,10 +19,18 @@ struct Rectangle
 
     constexpr Rectangle &expand(double dx, double dy) noexcept
     {
-        x -= dx;
-        y -= dy;
-        w += dx * 2.0;
-        h += dy * 2.0;
+        const double newW = w + (dx * 2.0);
+        if (newW > 0)
+        {
+            x -= dx;
+            w = newW;
+        }
+        const double newY = h + (dy * 2.0);
+        if (newY > 0)
+        {
+            y -= dy;
+            h = newY;
+        }
         return *this;
     }
 

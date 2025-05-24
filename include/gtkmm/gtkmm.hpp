@@ -45,9 +45,9 @@ class NotebookPage : public Gtk::DrawingArea
   private:
     RenderAtoms atoms;
     CanFormRectangle viewRect;
+    std::optional<std::pair<gdouble, gdouble>> movePoint;
     std::pair<gdouble, gdouble> lastMouse;
     TimePoint lastUpdate;
-    std::optional<std::pair<gdouble, gdouble>> movePoint;
 
     class Timer
     {
@@ -60,7 +60,7 @@ class NotebookPage : public Gtk::DrawingArea
 
         bool is_connected() const;
     };
-    std::unique_ptr<Timer> timer;
+    std::optional<Timer> timer;
 
   public:
     Color clearColor;

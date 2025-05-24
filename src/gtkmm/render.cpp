@@ -6,8 +6,8 @@ namespace CanForm
 std::pmr::unordered_set<NotebookPage *> NotebookPage::pages;
 
 NotebookPage::NotebookPage()
-    : Gtk::DrawingArea(), atoms(), viewRect(), lastMouse(0, 0), lastUpdate(now()), movePoint(std::nullopt),
-      clearColor(), delta(0.0)
+    : Gtk::DrawingArea(), atoms(), viewRect(), movePoint(std::nullopt), lastMouse(0, 0), lastUpdate(now()),
+      timer(std::nullopt), clearColor(), delta(0.0)
 {
     clearColor.red = 0.5;
     clearColor.green = 0.5;
@@ -144,6 +144,13 @@ struct Drawer
     }
 };
 
+constexpr double angleBetween(double x1, double y1, double x2, double y2) noexcept
+{
+    const double dot = x1 * x2 + y1 * y2;
+    const double det = x1 * y2 - y1 * x2;
+    return std::atan2(det, dot);
+}
+
 static Cairo::RefPtr<Cairo::Context> cairoContext;
 bool NotebookPage::on_draw(const Cairo::RefPtr<Cairo::Context> &ctx)
 {
@@ -152,14 +159,16 @@ bool NotebookPage::on_draw(const Cairo::RefPtr<Cairo::Context> &ctx)
     ctx->paint();
 
     Gtk::Allocation allocation = get_allocation();
-    double width = allocation.get_width();
-    double height = allocation.get_height();
+    const double x = allocation.get_x();
+    const double y = allocation.get_y();
+    const double width = allocation.get_width();
+    const double height = allocation.get_height();
 
     const auto [cx, cy] = viewRect.center();
 
     ctx->set_identity_matrix();
     ctx->translate(width * 0.5, height * 0.5);
-    ctx->scale(viewRect.w / width, viewRect.h / height);
+    ctx->scale(width / viewRect.w, height / viewRect.h);
     ctx->translate(width * -0.5, height * -0.5);
     ctx->translate(cx - width * 0.5, cy - height * 0.5);
 
@@ -171,12 +180,24 @@ bool NotebookPage::on_draw(const Cairo::RefPtr<Cairo::Context> &ctx)
     if (movePoint)
     {
         ctx->set_identity_matrix();
+        ctx->translate(x + movePoint->first, y + movePoint->second);
+
+        const double angle =
+            angleBetween(1, 0, lastMouse.first - movePoint->first, lastMouse.second - movePoint->second);
+        ctx->rotate(angle);
+
         ctx->set_source_rgb(1.0, 1.0, 1.0);
         ctx->begin_new_path();
-        ctx->arc(movePoint->first, movePoint->second, 20.0, 0, M_PI * 2.0);
+        ctx->arc(0, 0, 20.0, 0, M_PI * 2.0);
         ctx->fill_preserve();
         ctx->set_source_rgb(0.0, 0.0, 0.0);
         ctx->stroke();
+
+        ctx->begin_new_path();
+        ctx->move_to(-10, -10);
+        ctx->line_to(-10, 10);
+        ctx->line_to(15, 0);
+        ctx->fill();
     }
     return true;
 }
@@ -255,6 +276,7 @@ bool NotebookPage::on_button_press_event(GdkEventButton *event)
             else
             {
                 movePoint.emplace(event->x, event->y);
+                delta = 0.0;
             }
             redraw();
             break;
@@ -279,20 +301,13 @@ bool NotebookPage::on_motion_notify_event(GdkEventMotion *motion)
 {
     lastMouse.first = motion->x;
     lastMouse.second = motion->y;
-    if (movePoint)
-    {
-        redraw();
-    }
     return true;
 }
 
 bool NotebookPage::on_scroll_event(GdkEventScroll *scroll)
 {
-    viewRect.expand(viewRect.w * scroll->delta_y * -0.01, viewRect.h * scroll->delta_y * -0.01);
-    viewRect.w = std::clamp(viewRect.w, 10.0, 10000.0);
-    viewRect.h = std::clamp(viewRect.h, 10.0, 10000.0);
+    viewRect.expand(viewRect.w * scroll->delta_y * 0.01, viewRect.h * scroll->delta_y * 0.01);
     redraw();
-
     return true;
 }
 
@@ -305,9 +320,9 @@ bool NotebookPage::on_leave_notify_event(GdkEventCrossing *)
 
 void NotebookPage::redraw()
 {
-    if (timer == nullptr || !timer->is_connected())
+    if (!timer || !timer->is_connected())
     {
-        timer = std::make_unique<Timer>(*this);
+        timer.emplace(*this);
     }
 }
 
