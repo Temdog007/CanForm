@@ -50,6 +50,8 @@ MainWindow::MainWindow() : vBox(), notebook(), toolbar(), item("☰") // U+2630
     item.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::OnTool));
 
     vBox.pack_start(notebook, PACK_EXPAND_WIDGET);
+    notebook.set_scrollable();
+    notebook.popup_enable();
 
     show_all_children();
 }

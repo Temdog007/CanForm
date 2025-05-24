@@ -240,6 +240,7 @@ bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, void *ptr)
                 if (widget != nullptr && target == book->get_tab_label_text(*widget))
                 {
                     users.use(&page, page.atoms, page.viewRect);
+                    book->set_current_page(i);
                     found = true;
                     return;
                 }
@@ -263,13 +264,34 @@ bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, void *ptr)
     if (auto book = dynamic_cast<Gtk::Notebook *>(parent))
     {
         NotebookPage *page = NotebookPage::create();
-        book->append_page(*page, convert(canvas));
+        page->appendToNotebook(*book, canvas);
         users.use(page, page->atoms, page->viewRect);
         book->show_all_children();
+        book->set_current_page(book->get_n_pages() - 1);
         return true;
     }
 
     return false;
+}
+
+void NotebookPage::appendToNotebook(Gtk::Notebook &book, std::string_view tabName)
+{
+    Gtk::HBox *box = Gtk::manage(new Gtk::HBox());
+
+    Gtk::Label *label = Gtk::manage(new Gtk::Label(convert(tabName)));
+    box->pack_start(*label, Gtk::PACK_EXPAND_WIDGET);
+
+    Gtk::Button *button = Gtk::manage(new Gtk::Button("✖"));
+    button->set_relief(Gtk::RELIEF_NONE);
+    button->signal_clicked().connect([this, &book]() { book.remove_page(*this); });
+    box->pack_start(*button, Gtk::PACK_SHRINK);
+
+    box->set_spacing(10);
+
+    box->show_all_children();
+
+    label = Gtk::manage(new Gtk::Label(convert(tabName)));
+    book.append_page(*this, *box, *label);
 }
 
 bool NotebookPage::on_button_press_event(GdkEventButton *event)

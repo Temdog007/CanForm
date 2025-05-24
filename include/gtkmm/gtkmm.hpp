@@ -105,6 +105,8 @@ class NotebookPage : public Gtk::DrawingArea
         return viewRect;
     }
 
+    void appendToNotebook(Gtk::Notebook &, std::string_view);
+
     template <typename F> static void forEachPage(F func)
     {
         for (auto page : pages)
