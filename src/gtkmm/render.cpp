@@ -15,6 +15,7 @@ NotebookPage::NotebookPage()
     clearColor.alpha = 1.0;
     add_events(Gdk::POINTER_MOTION_MASK);
     add_events(Gdk::BUTTON_PRESS_MASK);
+    add_events(Gdk::BUTTON_RELEASE_MASK);
     add_events(Gdk::SMOOTH_SCROLL_MASK);
     add_events(Gdk::LEAVE_NOTIFY_MASK);
 }
@@ -40,7 +41,7 @@ constexpr double clampIfSmall(double d) noexcept
     return d;
 }
 
-constexpr int UpdateRate = 30;
+constexpr int UpdateRate = 10;
 constexpr double UpdateRateInMilliseconds = UpdateRate * 0.001;
 
 bool NotebookPage::Update(int)
@@ -309,15 +310,8 @@ bool NotebookPage::on_button_press_event(GdkEventButton *event)
     {
         switch (event->button)
         {
-        case 2:
-            if (movePoint)
-            {
-                movePoint.reset();
-            }
-            else
-            {
-                movePoint.emplace(event->x, event->y);
-            }
+        case 1:
+            movePoint.emplace(event->x, event->y);
             redraw();
             break;
         case 3: {
@@ -330,6 +324,23 @@ bool NotebookPage::on_button_press_event(GdkEventButton *event)
             redraw();
         }
         break;
+        default:
+            break;
+        }
+    }
+    return true;
+}
+
+bool NotebookPage::on_button_release_event(GdkEventButton *event)
+{
+    if (event->type == GDK_BUTTON_RELEASE)
+    {
+        switch (event->button)
+        {
+        case 1:
+            movePoint.reset();
+            redraw();
+            break;
         default:
             break;
         }

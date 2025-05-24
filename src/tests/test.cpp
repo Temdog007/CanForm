@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <iostream>
 #include <sstream>
 #include <tests/test.hpp>
 
@@ -25,6 +26,19 @@ Form makeForm()
         map.emplace(a, rand() % 2 == 0);
     }
     form["Multiple Selections"] = std::move(map);
+
+    ComplexString c;
+    c.string = "2 + 2";
+    StringSet u;
+    u.emplace("+");
+    u.emplace("-");
+    u.emplace("×");
+    u.emplace("÷");
+    c.map.emplace("Binary Operator", std::move(u));
+    u.emplace("−");
+    u.emplace("√");
+    c.map.emplace("Unary Operator", std::move(u));
+    form["Expression"] = std::move(c);
 
     MultiForm multi;
     multi.tabs["Extra1"] =
@@ -60,6 +74,11 @@ struct Printer
         return os;
     }
 
+    std::ostream &operator()(const ComplexString &s)
+    {
+        return operator()(s.string);
+    }
+
     std::ostream &operator()(const StringMap &map)
     {
         for (const auto &[name, flag] : map)
@@ -83,7 +102,7 @@ struct Printer
             const auto &form = iter->second;
             for (const auto &[name, formData] : *form)
             {
-                os << "Entry: " << name << " → ";
+                os << "\tEntry: " << name << std::endl;
                 std::visit(*this, *formData);
                 os << std::endl;
             }
@@ -119,7 +138,9 @@ void printForm(const Form &form, DialogResult result, void *parent)
             std::visit(Printer(os), *data);
             os << std::endl;
         }
-        showMessageBox(MessageBoxType::Information, "Form Data", os.str(), parent);
+        auto s = os.str();
+        std::cout << s << std::endl;
+        showMessageBox(MessageBoxType::Information, "Form Data", s, parent);
     }
     break;
     case DialogResult::Cancel:

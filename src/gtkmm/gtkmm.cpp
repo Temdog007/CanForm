@@ -19,9 +19,14 @@ Glib::ustring convert(std::string_view s)
     return convert(string);
 }
 
-std::string_view convert(const Glib::ustring &s)
+String convert(const Glib::ustring &s)
 {
-    return std::string_view(s.data(), s.size());
+    return String(s.data(), s.size());
+}
+
+std::string_view toView(const Glib::ustring &s)
+{
+    return std::string(s.data(), s.size());
 }
 
 constexpr Gtk::MessageType getType(MessageBoxType type) noexcept
@@ -107,7 +112,7 @@ class FormVisitor
         return Gtk::manage(new Gtk::Frame(convert(name)));
     }
 
-    static bool editTextWithEditor(Glib::RefPtr<Gtk::EntryBuffer>, Gtk::Window *);
+    template <typename T> static bool editTextWithEditor(T, Gtk::Window *);
 
   public:
     constexpr FormVisitor(Gtk::Window *w) noexcept : name(), window(w)
@@ -141,6 +146,55 @@ class FormVisitor
         button->signal_clicked().connect(
             [buffer, window = window]() { FormVisitor::editTextWithEditor(buffer, window); });
         box->pack_start(*button, Gtk::PACK_EXPAND_WIDGET);
+
+        frame->add(*box);
+        return frame;
+    }
+
+    Gtk::Widget *operator()(ComplexString &s)
+    {
+        auto frame = makeFrame();
+        Gtk::VBox *box = Gtk::manage(new Gtk::VBox());
+
+        Gtk::TextView *entry = Gtk::manage(new Gtk::TextView());
+        auto buffer = entry->get_buffer();
+
+        buffer->set_text(convert(s.string));
+        buffer->signal_changed().connect([&s, buffer]() { s.string = convert(buffer->get_text()); });
+
+        box->pack_start(*entry, Gtk::PACK_EXPAND_PADDING, 10);
+
+        Gtk::Expander *expander = Gtk::manage(new Gtk::Expander());
+        expander->set_label("Text Insertions");
+        expander->set_label_fill(true);
+        expander->set_resize_toplevel(true);
+
+        Gtk::VBox *box2 = Gtk::manage(new Gtk::VBox());
+        for (auto &[label, set] : s.map)
+        {
+            Gtk::Frame *frame = Gtk::manage(new Gtk::Frame(convert(label)));
+            Gtk::FlowBox *flow = Gtk::manage(new Gtk::FlowBox());
+            for (auto &s : set)
+            {
+                Gtk::Button *button = Gtk::manage(new Gtk::Button(convert(s)));
+                button->signal_clicked().connect([buffer, entry, &s]() {
+                    buffer->insert_at_cursor(s.data(), s.data() + s.size());
+                    buffer->set_modified(true);
+                    entry->grab_focus();
+                });
+                flow->add(*button);
+            }
+            frame->add(*flow);
+            box2->add(*frame);
+        }
+
+        Gtk::Button *button = Gtk::manage(new Gtk::Button("..."));
+        button->signal_clicked().connect(
+            [buffer, window = window]() { FormVisitor::editTextWithEditor(buffer, window); });
+        box2->add(*button);
+
+        expander->add(*box2);
+        box->pack_end(*expander);
 
         frame->add(*box);
         return frame;
@@ -412,7 +466,7 @@ static bool askQuestion(const char *question, Gtk::Window *window)
     }
 }
 
-bool FormVisitor::editTextWithEditor(Glib::RefPtr<Gtk::EntryBuffer> buffer, Gtk::Window *window)
+template <typename T> bool FormVisitor::editTextWithEditor(T buffer, Gtk::Window *window)
 {
     Glib::ustring string("Edit in Text Editor?");
     const auto run = [buffer, window](Gtk::Dialog &dialog) {
@@ -442,7 +496,8 @@ bool FormVisitor::editTextWithEditor(Glib::RefPtr<Gtk::EntryBuffer> buffer, Gtk:
         std::shared_ptr<TempFile> file = std::make_shared<TempFile>(entry.get_buffer()->get_text());
         file->write(buffer->get_text());
 
-        if (TempFile::spawnEditor(file, buffer, window))
+        if (TempFile::spawnEditor(
+                file, [buffer](Glib::ustring &&s) { buffer->set_text(s); }, window))
         {
             return true;
         }
@@ -487,7 +542,7 @@ std::filesystem::path TempFile::getPath() const
     return path;
 }
 
-bool TempFile::spawnEditor(std::shared_ptr<TempFile> tempFile, Glib::RefPtr<Gtk::EntryBuffer> buffer,
+bool TempFile::spawnEditor(std::shared_ptr<TempFile> tempFile, std::shared_ptr<IBufferSetter> &&buffer,
                            Gtk::Window *window)
 {
     try
@@ -512,7 +567,7 @@ bool TempFile::spawnEditor(std::shared_ptr<TempFile> tempFile, Glib::RefPtr<Gtk:
                                                                         false, Gtk::MESSAGE_INFO, Gtk::BUTTONS_NONE));
         dialog->show();
         Glib::signal_child_watch().connect(
-            [tempFile, dialog, buffer, window](GPid pid, int status) {
+            [tempFile, dialog, buffer = std::move(buffer), window](GPid pid, int status) {
                 dialog->hide();
                 if (g_spawn_check_wait_status(status, nullptr))
                 {
@@ -521,7 +576,7 @@ bool TempFile::spawnEditor(std::shared_ptr<TempFile> tempFile, Glib::RefPtr<Gtk:
                         Glib::ustring s;
                         if (tempFile->read(s))
                         {
-                            buffer->set_text(s);
+                            buffer->set(std::move(s));
                         }
                     }
                 }

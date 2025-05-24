@@ -4,13 +4,38 @@
 #include <filesystem>
 #include <glibmm/ustring.h>
 #include <gtkmm/drawingarea.h>
+#include <memory>
 #include <unordered_set>
 
 namespace CanForm
 {
 extern Glib::ustring convert(const std::string &s);
 extern Glib::ustring convert(std::string_view);
-extern std::string_view convert(const Glib::ustring &);
+extern String convert(const Glib::ustring &);
+extern std::string_view toView(const Glib::ustring &);
+
+struct IBufferSetter
+{
+    virtual ~IBufferSetter()
+    {
+    }
+    virtual void set(Glib::ustring &&) = 0;
+};
+
+template <typename F> struct BufferSetter : public IBufferSetter
+{
+    F func;
+    BufferSetter(F &&f) : func(std::move(f))
+    {
+    }
+    virtual ~BufferSetter()
+    {
+    }
+    virtual void set(Glib::ustring &&s) override
+    {
+        func(std::move(s));
+    }
+};
 
 class TempFile
 {
@@ -31,7 +56,14 @@ class TempFile
     bool read(Glib::ustring &) const;
     bool write(const Glib::ustring &) const;
 
-    static bool spawnEditor(std::shared_ptr<TempFile>, Glib::RefPtr<Gtk::EntryBuffer>, Gtk::Window *);
+    static bool spawnEditor(std::shared_ptr<TempFile>, std::shared_ptr<IBufferSetter> &&, Gtk::Window *);
+
+    template <typename F, std::enable_if_t<std::is_invocable<F, Glib::ustring &&>::value, bool> = true>
+    static bool spawnEditor(std::shared_ptr<TempFile> file, F f, Gtk::Window *window)
+    {
+        std::shared_ptr<BufferSetter<F>> setter = std::make_shared<BufferSetter<F>>(std::move(f));
+        return spawnEditor(file, std::move(setter), window);
+    }
 };
 
 using TimePoint = std::chrono::system_clock::time_point;
@@ -76,6 +108,7 @@ class NotebookPage : public Gtk::DrawingArea
 
     virtual bool on_draw(const Cairo::RefPtr<Cairo::Context> &) override;
     virtual bool on_button_press_event(GdkEventButton *) override;
+    virtual bool on_button_release_event(GdkEventButton *) override;
     virtual bool on_motion_notify_event(GdkEventMotion *) override;
     virtual bool on_scroll_event(GdkEventScroll *) override;
     virtual bool on_leave_notify_event(GdkEventCrossing *) override;
