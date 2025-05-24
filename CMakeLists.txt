@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.16.0 FATAL_ERROR)
 
 option(CANFORM_BUILD_SHARED "Build shared library" ${BUILD_SHARED_LIBS})
 option(CANFORM_BUILD_TEST "Build test" ON)
-option(CANFORM_BUILD_WX "Build wxWidgets version" OFF)
-option(CANFORM_BUILD_GTKMM "Build GTK version" ON)
 
 project(CANFORM
 	VERSION 1.0.0
@@ -30,72 +28,38 @@ target_include_directories(canform PRIVATE include)
 
 if(EMSCRIPTEN)
 else()
-	if(CANFORM_BUILD_WX)
-		find_package(wxWidgets REQUIRED COMPONENTS core base)
-		include(${wxWidgets_USE_FILE})
+	add_compile_definitions(CANFORM_COLOR_FLOAT=1)
+	find_package(PkgConfig REQUIRED)
+	pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)
 
-		add_library(canform_wx ${CANFORM_TYPE}
-			src/wx/wx.cpp
-			src/wx/render.cpp)
+	add_library(canform_gtkmm ${CANFORM_TYPE}
+		src/gtkmm/gtkmm.cpp
+		src/gtkmm/render.cpp)
 
-		target_include_directories(canform_wx PRIVATE include)
+	target_include_directories(canform_gtkmm PRIVATE
+		include
+		${GTKMM_INCLUDE_DIRS})
 
-		target_link_libraries(canform_wx PRIVATE ${wxWidgets_LIBRARIES})
+	target_link_libraries(canform_gtkmm PRIVATE ${GTKMM_LIBRARIES})
 
-		if(CANFORM_BUILD_TEST)
-			set(CANFORM_WX_SOURCES
-				src/tests/wx/test.cpp
-				src/tests/test.cpp)
+	if(CANFORM_BUILD_TEST)
+		set(CANFORM_GTKMM_SOURCES
+			src/tests/gtkmm/test.cpp
+			src/tests/test.cpp)
 
-			if(WIN32)
-				add_executable(canform_wx_test WIN32 ${CANFORM_WX_SOURCES})
-			else()
-				add_executable(canform_wx_test ${CANFORM_WX_SOURCES})
-			endif()
-
-			target_include_directories(canform_wx_test PRIVATE
-				include)
-
-			target_link_libraries(canform_wx_test PRIVATE
-				${wxWidgets_LIBRARIES}
-				canform
-				canform_wx)
+		if(WIN32)
+			add_executable(canform_gtkmm_test WIN32 ${CANFORM_GTKMM_SOURCES})
+		else()
+			add_executable(canform_gtkmm_test ${CANFORM_GTKMM_SOURCES})
 		endif()
-	endif()
-	if(CANFORM_BUILD_GTKMM)
-		add_compile_definitions(CANFORM_COLOR_FLOAT=1)
-		find_package(PkgConfig REQUIRED)
-		pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)
 
-		add_library(canform_gtkmm ${CANFORM_TYPE}
-			src/gtkmm/gtkmm.cpp
-			src/gtkmm/render.cpp)
-
-		target_include_directories(canform_gtkmm PRIVATE
+		target_include_directories(canform_gtkmm_test PRIVATE
 			include
 			${GTKMM_INCLUDE_DIRS})
 
-		target_link_libraries(canform_gtkmm PRIVATE ${GTKMM_LIBRARIES})
-
-		if(CANFORM_BUILD_TEST)
-			set(CANFORM_GTKMM_SOURCES
-				src/tests/gtkmm/test.cpp
-				src/tests/test.cpp)
-
-			if(WIN32)
-				add_executable(canform_gtkmm_test WIN32 ${CANFORM_GTKMM_SOURCES})
-			else()
-				add_executable(canform_gtkmm_test ${CANFORM_GTKMM_SOURCES})
-			endif()
-
-			target_include_directories(canform_gtkmm_test PRIVATE
-				include
-				${GTKMM_INCLUDE_DIRS})
-
-			target_link_libraries(canform_gtkmm_test PRIVATE
-				${GTKMM_LIBRARIES}
-				canform
-				canform_gtkmm)
-		endif()
+		target_link_libraries(canform_gtkmm_test PRIVATE
+			${GTKMM_LIBRARIES}
+			canform
+			canform_gtkmm)
 	endif()
 endif()

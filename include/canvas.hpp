@@ -117,16 +117,16 @@ extern Rectangle getTextBounds(std::string_view) noexcept;
 
 struct Color
 {
-#if CANFORM_COLOR_FLOAT
-    constexpr static bool UseFloat = true;
-    double red, green, blue, alpha;
-    constexpr Color() noexcept : red(1.0), green(1.0), blue(1.0), alpha(1.0)
-    {
-    }
-#else
+#if CANFORM_COLOR_8BIT
     constexpr static bool UseFloat = false;
     uint8_t red, green, blue, alpha;
     constexpr Color() noexcept : red(255u), green(255u), blue(255u), alpha(255u)
+    {
+    }
+#else
+    constexpr static bool UseFloat = true;
+    double red, green, blue, alpha;
+    constexpr Color() noexcept : red(1.0), green(1.0), blue(1.0), alpha(1.0)
     {
     }
 #endif
