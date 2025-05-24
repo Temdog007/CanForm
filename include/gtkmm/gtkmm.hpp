@@ -45,9 +45,9 @@ class NotebookPage : public Gtk::DrawingArea
   private:
     RenderAtoms atoms;
     CanFormRectangle viewRect;
+    CanFormRectangle viewBounds;
     std::optional<std::pair<gdouble, gdouble>> movePoint;
     std::pair<gdouble, gdouble> lastMouse;
-    TimePoint lastUpdate;
 
     class Timer
     {
@@ -66,8 +66,6 @@ class NotebookPage : public Gtk::DrawingArea
     Color clearColor;
 
   private:
-    double delta;
-
     bool Update(int);
 
     static std::pmr::unordered_set<NotebookPage *> pages;

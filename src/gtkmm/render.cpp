@@ -6,8 +6,8 @@ namespace CanForm
 std::pmr::unordered_set<NotebookPage *> NotebookPage::pages;
 
 NotebookPage::NotebookPage()
-    : Gtk::DrawingArea(), atoms(), viewRect(), movePoint(std::nullopt), lastMouse(0, 0), lastUpdate(now()),
-      timer(std::nullopt), clearColor(), delta(0.0)
+    : Gtk::DrawingArea(), atoms(), viewRect(), movePoint(std::nullopt), lastMouse(0, 0), timer(std::nullopt),
+      clearColor()
 {
     clearColor.red = 0.5;
     clearColor.green = 0.5;
@@ -40,36 +40,27 @@ constexpr double clampIfSmall(double d) noexcept
     return d;
 }
 
+constexpr int UpdateRate = 30;
+constexpr double UpdateRateInMilliseconds = UpdateRate * 0.001;
+
 bool NotebookPage::Update(int)
 {
-    const auto current = now();
     bool again = false;
     if (movePoint)
     {
         const auto &point = *movePoint;
-        delta += std::chrono::duration<double>(current - lastUpdate).count();
-        if (delta > 0.01)
-        {
-            const double diff = std::min(0.1, delta);
-            viewRect.x += clampIfSmall((point.first - lastMouse.first)) * diff;
-            viewRect.y += clampIfSmall((point.second - lastMouse.second)) * diff;
-            delta -= diff;
-            queue_draw();
-        }
+        viewRect.x += clampIfSmall((point.first - lastMouse.first)) * UpdateRateInMilliseconds;
+        viewRect.y += clampIfSmall((point.second - lastMouse.second)) * UpdateRateInMilliseconds;
         again = true;
     }
-    else
-    {
-        queue_draw();
-    }
-    lastUpdate = current;
+    queue_draw();
     return again;
 }
 
 NotebookPage::Timer::Timer(NotebookPage &page) : connection()
 {
     sigc::slot<bool> slot = sigc::bind(sigc::mem_fun(page, &NotebookPage::Update), 0);
-    connection = Glib::signal_timeout().connect(slot, 1);
+    connection = Glib::signal_timeout().connect(slot, UpdateRate);
 }
 
 NotebookPage::Timer::~Timer()
@@ -156,6 +147,23 @@ constexpr double angleBetween(double x1, double y1, double x2, double y2) noexce
 static Cairo::RefPtr<Cairo::Context> cairoContext;
 bool NotebookPage::on_draw(const Cairo::RefPtr<Cairo::Context> &ctx)
 {
+    if (viewRect.w < viewBounds.w)
+    {
+        viewRect.x = std::clamp(viewRect.x, viewBounds.x, (viewBounds.x + viewBounds.w) - viewRect.w);
+    }
+    else
+    {
+        viewRect.x = viewBounds.x + (viewBounds.w - viewRect.w) * 0.5;
+    }
+    if (viewRect.h < viewBounds.h)
+    {
+        viewRect.y = std::clamp(viewRect.y, viewBounds.y, (viewBounds.y + viewBounds.h) - viewRect.h);
+    }
+    else
+    {
+        viewRect.y = viewBounds.y + (viewBounds.h - viewRect.h) * 0.5;
+    }
+
     cairoContext = ctx;
     ctx->set_source_rgba(clearColor.red, clearColor.green, clearColor.blue, clearColor.alpha);
     ctx->paint();
@@ -239,7 +247,7 @@ bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, void *ptr)
                 Gtk::Widget *widget = book->get_nth_page(i);
                 if (widget != nullptr && target == book->get_tab_label_text(*widget))
                 {
-                    users.use(&page, page.atoms, page.viewRect);
+                    users.use(&page, page.atoms, page.viewRect, page.viewBounds);
                     book->set_current_page(i);
                     found = true;
                     return;
@@ -250,7 +258,7 @@ bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, void *ptr)
         {
             if (window->get_title() == target)
             {
-                users.use(&page, page.atoms, page.viewRect);
+                users.use(&page, page.atoms, page.viewRect, page.viewBounds);
                 found = true;
                 return;
             }
@@ -265,7 +273,7 @@ bool getCanvasAtoms(std::string_view canvas, RenderAtomsUser &users, void *ptr)
     {
         NotebookPage *page = NotebookPage::create();
         page->appendToNotebook(*book, canvas);
-        users.use(page, page->atoms, page->viewRect);
+        users.use(page, page->atoms, page->viewRect, page->viewBounds);
         book->show_all_children();
         book->set_current_page(book->get_n_pages() - 1);
         return true;
@@ -353,7 +361,6 @@ void NotebookPage::redraw()
 {
     if (!timer || !timer->is_connected())
     {
-        delta = 0.0;
         timer.emplace(*this);
     }
 }

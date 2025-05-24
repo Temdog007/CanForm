@@ -131,10 +131,16 @@ struct Color
     constexpr Color() noexcept : red(255u), green(255u), blue(255u), alpha(255u)
     {
     }
+    constexpr Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255u) noexcept : red(r), green(g), blue(b), alpha(a)
+    {
+    }
 #else
     constexpr static bool UseFloat = true;
     double red, green, blue, alpha;
     constexpr Color() noexcept : red(1.0), green(1.0), blue(1.0), alpha(1.0)
+    {
+    }
+    constexpr Color(double r, double g, double b, double a = 1.f) noexcept : red(r), green(g), blue(b), alpha(a)
     {
     }
 #endif
@@ -204,7 +210,7 @@ struct RenderAtomsUser
     {
     }
 
-    virtual void use(void *, RenderAtoms &, Rectangle &) = 0;
+    virtual void use(void *, RenderAtoms &, Rectangle &view, Rectangle &bounds) = 0;
 };
 
 extern bool getCanvasAtoms(std::string_view, RenderAtomsUser &, void *parent = nullptr);

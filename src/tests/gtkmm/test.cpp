@@ -24,7 +24,7 @@ class MainWindow : public Window, public FileDialog::Handler, public RenderAtoms
     }
 
     virtual bool handle(std::string_view) override;
-    virtual void use(void *, RenderAtoms &, CanFormRectangle &) override;
+    virtual void use(void *, RenderAtoms &, CanFormRectangle &, CanFormRectangle &) override;
 };
 
 int main(int argc, char **argv)
@@ -124,7 +124,7 @@ void MainWindow::OnTool()
     menuList.show("Main Menu", this);
 }
 
-void MainWindow::use(void *, RenderAtoms &atoms, CanFormRectangle &viewRect)
+void MainWindow::use(void *, RenderAtoms &atoms, CanFormRectangle &viewRect, CanFormRectangle &viewBounds)
 {
     atoms.clear();
 
@@ -135,17 +135,28 @@ void MainWindow::use(void *, RenderAtoms &atoms, CanFormRectangle &viewRect)
     viewRect.w = allocation.get_width();
     viewRect.h = allocation.get_height();
 
-    {
-        RenderAtom atom;
-        atom.renderType.emplace<CanFormRectangle>(viewRect);
-        atoms.emplace_back(std::move(atom));
-    }
+    viewBounds.x = -viewRect.w * 0.5;
+    viewBounds.y = -viewRect.h * 0.5;
+    viewBounds.w = viewRect.w * 2;
+    viewBounds.h = viewRect.h * 2;
 
     const size_t n = rand() % 100 + 100;
     RandomRender random(viewRect.w, viewRect.h);
     for (size_t i = 0; i < n; ++i)
     {
         atoms.emplace_back(random());
+    }
+
+    {
+        RenderAtom atom;
+        atom.renderType.emplace<CanFormRectangle>(viewRect);
+        atoms.emplace_back(std::move(atom));
+    }
+    {
+        RenderAtom atom;
+        atom.style.color = Color(1.f, 0.f, 1.f);
+        atom.renderType.emplace<CanFormRectangle>(viewBounds);
+        atoms.emplace_back(std::move(atom));
     }
 
     queue_draw();
