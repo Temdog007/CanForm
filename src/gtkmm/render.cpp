@@ -124,13 +124,14 @@ struct Drawer
         ctx->set_source_rgba(style.color.red, style.color.green, style.color.blue, style.color.alpha);
         if (std::visit(*this, atom.renderType))
         {
-            if (style.fill)
+            if (style.lineWidth)
             {
-                ctx->fill();
+                ctx->set_line_width(*style.lineWidth);
+                ctx->stroke();
             }
             else
             {
-                ctx->stroke();
+                ctx->fill();
             }
         }
         ctx->restore();

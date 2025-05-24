@@ -131,19 +131,24 @@ void printForm(const Form &form, DialogResult result, void *parent)
     }
 }
 
+double randomDouble() noexcept
+{
+    return ((double)rand() / RAND_MAX);
+}
+
 void RandomRender::randomPosition(double &x, double &y)
 {
-    x = ((double)rand() / RAND_MAX) * size.first;
-    y = ((double)rand() / RAND_MAX) * size.second;
+    x = randomDouble() * size.first;
+    y = randomDouble() * size.second;
 }
 
 void RandomRender::operator()(RenderStyle &style)
 {
     if constexpr (Color::UseFloat)
     {
-        style.color.red = ((double)rand() / RAND_MAX);
-        style.color.green = ((double)rand() / RAND_MAX);
-        style.color.blue = ((double)rand() / RAND_MAX);
+        style.color.red = randomDouble();
+        style.color.green = randomDouble();
+        style.color.blue = randomDouble();
         style.color.alpha = 1.0;
     }
     else
@@ -153,7 +158,14 @@ void RandomRender::operator()(RenderStyle &style)
         style.color.blue = rand() % 256;
         style.color.alpha = 255u;
     }
-    style.fill = rand() % 2 == 0;
+    if (rand() % 2 == 0)
+    {
+        style.lineWidth.emplace(randomDouble() * 10);
+    }
+    else
+    {
+        style.lineWidth.reset();
+    }
 }
 
 void RandomRender::operator()(CanFormRectangle &r)
@@ -173,7 +185,7 @@ void RandomRender::operator()(CanFormEllipse &r)
 void RandomRender::operator()(RoundedRectangle &r)
 {
     operator()(r.rectangle);
-    r.radius = std::min(r.rectangle.w, r.rectangle.h) * ((double)rand() / RAND_MAX) * 0.4 + 0.1;
+    r.radius = std::min(r.rectangle.w, r.rectangle.h) * randomDouble() * 0.4 + 0.1;
 }
 
 void RandomRender::operator()(Text &t)

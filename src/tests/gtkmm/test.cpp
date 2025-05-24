@@ -149,11 +149,13 @@ void MainWindow::use(void *, RenderAtoms &atoms, CanFormRectangle &viewRect, Can
 
     {
         RenderAtom atom;
+        atom.style.lineWidth = 1.0;
         atom.renderType.emplace<CanFormRectangle>(viewRect);
         atoms.emplace_back(std::move(atom));
     }
     {
         RenderAtom atom;
+        atom.style.lineWidth = 1.0;
         atom.style.color = Color(1.f, 0.f, 1.f);
         atom.renderType.emplace<CanFormRectangle>(viewBounds);
         atoms.emplace_back(std::move(atom));

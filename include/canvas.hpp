@@ -3,6 +3,8 @@
 #include "tie.hpp"
 #include "types.hpp"
 
+#include <optional>
+
 namespace CanForm
 {
 struct Rectangle
@@ -161,9 +163,9 @@ struct Color
 struct RenderStyle
 {
     Color color;
-    bool fill;
+    std::optional<double> lineWidth;
 
-    constexpr RenderStyle() noexcept : color(), fill(false)
+    constexpr RenderStyle() noexcept : color(), lineWidth(std::nullopt)
     {
     }
     constexpr RenderStyle(const RenderStyle &) noexcept = default;
@@ -174,7 +176,7 @@ struct RenderStyle
 
     constexpr auto makeTie() const noexcept
     {
-        return std::tie(color, fill);
+        return std::tie(color, lineWidth);
     }
 
     TIE(RenderStyle)
