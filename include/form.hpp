@@ -86,53 +86,6 @@ struct MenuList
     void show(std::string_view, void *parent = nullptr);
 };
 
-struct RunAfter
-{
-    virtual ~RunAfter()
-    {
-    }
-    virtual bool isReady() = 0;
-    virtual void run()
-    {
-    }
-};
-
-template <typename Base, typename F> class RunAfterLambda : public Base
-{
-  private:
-    static_assert(std::is_base_of<RunAfter, Base>::value);
-
-    F func;
-
-  public:
-    template <typename... Args>
-    RunAfterLambda(F &&f, Args &&...args) noexcept : Base(std::forward<Args>(args)...), func(std::move(f))
-    {
-    }
-    virtual ~RunAfterLambda()
-    {
-    }
-
-    virtual void run() override
-    {
-        func();
-    }
-};
-
-template <typename Base, typename F, typename... Args> RunAfterLambda<Base, F> makeRunAfter(F &&func, Args &&...args)
-{
-    return RunAfterLambda<Base, F>(std::move(func), std::forward<Args>(args)...);
-}
-
-template <typename Base, typename F, typename... Args>
-std::shared_ptr<RunAfterLambda<Base, F>> shareRunAfter(F &&func, Args &&...args)
-{
-    return std::make_shared<RunAfterLambda<Base, F>>(std::move(func), std::forward<Args>(args)...);
-}
-
-extern void waitUntilMessage(std::string_view title, std::string_view message, const std::shared_ptr<RunAfter> &,
-                             void *parent = nullptr);
-
 enum class DialogResult
 {
     Ok,
@@ -146,14 +99,12 @@ struct FileDialog
     std::string_view message;
     std::string_view startDirectory;
     std::string_view filename;
-    std::string_view filters;
     bool directories;
     bool saving;
     bool multiple;
 
     constexpr FileDialog() noexcept
-        : title(), message(), startDirectory(), filename(), filters(), directories(false), saving(false),
-          multiple(false)
+        : title(), message(), startDirectory(), filename(), directories(false), saving(false), multiple(false)
     {
     }
 

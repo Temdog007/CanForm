@@ -31,7 +31,7 @@ class TempFile
     bool read(Glib::ustring &) const;
     bool write(const Glib::ustring &) const;
 
-    bool spawnEditor() const;
+    static bool spawnEditor(std::shared_ptr<TempFile>, Glib::RefPtr<Gtk::EntryBuffer>, Gtk::Window *);
 };
 
 using TimePoint = std::chrono::system_clock::time_point;

@@ -412,16 +412,6 @@ static bool askQuestion(const char *question, Gtk::Window *window)
     }
 }
 
-static bool openFileAndWait(const TempFile &tempFile, Glib::ustring &s, Gtk::Window *window)
-{
-    const bool success = tempFile.spawnEditor();
-    if (success && askQuestion("Read changes from file?", window))
-    {
-        return tempFile.read(s);
-    }
-    return success;
-}
-
 bool FormVisitor::editTextWithEditor(Glib::RefPtr<Gtk::EntryBuffer> buffer, Gtk::Window *window)
 {
     Glib::ustring string("Edit in Text Editor?");
@@ -449,18 +439,14 @@ bool FormVisitor::editTextWithEditor(Glib::RefPtr<Gtk::EntryBuffer> buffer, Gtk:
             return false;
         }
 
-        TempFile file(entry.get_buffer()->get_text());
+        std::shared_ptr<TempFile> file = std::make_shared<TempFile>(entry.get_buffer()->get_text());
+        file->write(buffer->get_text());
 
-        file.write(buffer->get_text());
-
-        if (!openFileAndWait(file, currentText, window))
+        if (TempFile::spawnEditor(file, buffer, window))
         {
-            goto error;
+            return true;
         }
-        buffer->set_text(currentText);
-        return true;
 
-    error:
         showMessageBox(MessageBoxType::Error, "Process Error", "Error creating process or temporary file", window);
         return false;
     };
@@ -495,22 +481,60 @@ Glib::ustring TempFile::getName() const
 
 std::filesystem::path TempFile::getPath() const
 {
-    return std::filesystem::path(convert(getName()));
+    std::error_code err;
+    std::filesystem::path path = std::filesystem::temp_directory_path(err);
+    path /= convert(getName());
+    return path;
 }
 
-bool TempFile::spawnEditor() const
+bool TempFile::spawnEditor(std::shared_ptr<TempFile> tempFile, Glib::RefPtr<Gtk::EntryBuffer> buffer,
+                           Gtk::Window *window)
 {
-    std::string openCommand =
+    try
+    {
+        std::string workingDirectory;
+        std::vector<std::string> argv;
+        argv.emplace_back(
 #if _WIN32
-        "open";
+            "open"
 #else
-        "xdg-open";
+            "xdg-open"
 #endif
-    std::string args = getName();
-    char *argv[3] = {openCommand.data(), args.data(), nullptr};
-    return g_spawn_sync(nullptr, argv, nullptr,
-                        (GSpawnFlags)(G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL),
-                        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+        );
+        argv.emplace_back(tempFile->getPath().string());
+        GPid id;
+        const Glib::SlotSpawnChildSetup setup;
+        Glib::spawn_async(workingDirectory, argv,
+                          Glib::SPAWN_SEARCH_PATH | Glib::SPAWN_DO_NOT_REAP_CHILD | Glib::SPAWN_STDOUT_TO_DEV_NULL |
+                              Glib::SPAWN_STDERR_TO_DEV_NULL,
+                          setup, &id);
+        Gtk::MessageDialog *dialog = Gtk::manage(new Gtk::MessageDialog(*window, "Waiting for text editor to close...",
+                                                                        false, Gtk::MESSAGE_INFO, Gtk::BUTTONS_NONE));
+        dialog->show();
+        Glib::signal_child_watch().connect(
+            [tempFile, dialog, buffer, window](GPid pid, int status) {
+                dialog->hide();
+                if (g_spawn_check_wait_status(status, nullptr))
+                {
+                    if (askQuestion("Read changes from file?", window))
+                    {
+                        Glib::ustring s;
+                        if (tempFile->read(s))
+                        {
+                            buffer->set_text(s);
+                        }
+                    }
+                }
+                g_spawn_close_pid(pid);
+            },
+            id);
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        fprintf(stderr, "%s\n", e.what());
+        return false;
+    }
 }
 
 bool TempFile::read(Glib::ustring &s) const
