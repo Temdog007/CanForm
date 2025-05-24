@@ -45,7 +45,10 @@ class NotebookPage : public Gtk::DrawingArea
     Color clearColor;
 
   private:
+    bool needRedraw;
     bool moving;
+
+    bool Update();
 
     static std::pmr::unordered_set<NotebookPage *> pages;
 

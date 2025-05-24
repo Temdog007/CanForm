@@ -5,7 +5,7 @@ GUI library that contains 2 things:
 - Canvas for rendering shapes and text.
 
 ## Backends
-- [x] Implemented with wxWidgets for desktops
+- [x] Implemented with GTK for desktops
 - [ ] Implemented with Emscripten for web browsers
 - [ ] Implemented for Android
 - [ ] Implemented for iOS

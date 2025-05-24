@@ -28,7 +28,6 @@ target_include_directories(canform PRIVATE include)
 
 if(EMSCRIPTEN)
 else()
-	add_compile_definitions(CANFORM_COLOR_FLOAT=1)
 	find_package(PkgConfig REQUIRED)
 	pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)
 

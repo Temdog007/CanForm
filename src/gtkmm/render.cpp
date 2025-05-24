@@ -5,7 +5,8 @@ namespace CanForm
 {
 std::pmr::unordered_set<NotebookPage *> NotebookPage::pages;
 
-NotebookPage::NotebookPage() : Gtk::DrawingArea(), atoms(), viewRect(), lastMouse(0, 0), clearColor(), moving(false)
+NotebookPage::NotebookPage()
+    : Gtk::DrawingArea(), atoms(), viewRect(), lastMouse(0, 0), clearColor(), needRedraw(true), moving(false)
 {
     clearColor.red = 0.5;
     clearColor.green = 0.5;
@@ -15,6 +16,8 @@ NotebookPage::NotebookPage() : Gtk::DrawingArea(), atoms(), viewRect(), lastMous
     add_events(Gdk::BUTTON_PRESS_MASK);
     add_events(Gdk::SMOOTH_SCROLL_MASK);
     add_events(Gdk::LEAVE_NOTIFY_MASK);
+
+    Glib::signal_idle().connect(sigc::mem_fun(*this, &NotebookPage::Update));
 }
 
 NotebookPage::~NotebookPage()
@@ -27,6 +30,21 @@ NotebookPage *NotebookPage::create()
     NotebookPage *page = Gtk::manage(new NotebookPage());
     pages.insert(page);
     return page;
+}
+
+bool NotebookPage::Update()
+{
+    if (is_visible())
+    {
+        if (needRedraw)
+        {
+            queue_draw();
+            needRedraw = false;
+        }
+        // TODO: Handle moving
+        return true;
+    }
+    return false;
 }
 
 constexpr double degrees = M_PI / 180.0;
@@ -196,7 +214,7 @@ bool NotebookPage::on_button_press_event(GdkEventButton *event)
             viewRect.y = 0;
             viewRect.w = allocation.get_width();
             viewRect.h = allocation.get_height();
-            queue_draw();
+            needRedraw = true;
         }
         break;
         default:
@@ -212,7 +230,7 @@ bool NotebookPage::on_motion_notify_event(GdkEventMotion *motion)
     {
         viewRect.x += motion->x - lastMouse.first;
         viewRect.y += motion->y - lastMouse.second;
-        queue_draw();
+        needRedraw = true;
     }
     lastMouse.first = motion->x;
     lastMouse.second = motion->y;
@@ -224,7 +242,7 @@ bool NotebookPage::on_scroll_event(GdkEventScroll *scroll)
     viewRect.expand(viewRect.w * scroll->delta_y * -0.01, viewRect.h * scroll->delta_y * -0.01);
     viewRect.w = std::clamp(viewRect.w, 10.0, 10000.0);
     viewRect.h = std::clamp(viewRect.h, 10.0, 10000.0);
-    queue_draw();
+    needRedraw = true;
 
     return true;
 }
