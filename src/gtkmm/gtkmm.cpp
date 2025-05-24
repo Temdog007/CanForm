@@ -145,7 +145,7 @@ class FormVisitor
         Gtk::Button *button = Gtk::manage(new Gtk::Button("..."));
         button->signal_clicked().connect(
             [buffer, window = window]() { FormVisitor::editTextWithEditor(buffer, window); });
-        box->pack_start(*button, Gtk::PACK_EXPAND_WIDGET);
+        box->pack_start(*button, Gtk::PACK_EXPAND_PADDING);
 
         frame->add(*box);
         return frame;
@@ -250,7 +250,7 @@ class FormVisitor
     Gtk::Widget *operator()(StringMap &map)
     {
         auto frame = makeFrame();
-        Gtk::VBox *box = Gtk::manage(new Gtk::VBox());
+        Gtk::FlowBox *box = Gtk::manage(new Gtk::FlowBox());
         for (auto &pair : map)
         {
             Gtk::CheckButton *button = Gtk::manage(new Gtk::CheckButton(convert(pair.first)));
@@ -292,15 +292,16 @@ class FormVisitor
 
     Gtk::Widget *operator()(Form &form)
     {
-        const int rows = std::max(static_cast<size_t>(1), form.datas.size() / 2);
-        Gtk::Table *table = Gtk::manage(new Gtk::Table(rows, 2));
+        constexpr int columns = 2;
+        const int rows = std::max(static_cast<size_t>(1), form.datas.size() / columns);
+        Gtk::Table *table = Gtk::manage(new Gtk::Table(rows, columns));
 
         size_t index = 0;
-        const Gtk::AttachOptions options = Gtk::FILL | Gtk::EXPAND;
+        const Gtk::AttachOptions options = Gtk::SHRINK;
         for (auto &[n, data] : form.datas)
         {
-            const int row = index / 2;
-            const int column = index % 2;
+            const int row = index / columns;
+            const int column = index % columns;
             name = n;
             table->attach(*std::visit(*this, *data), column, column + 1, row, row + 1, options, options, 10, 10);
             ++index;
@@ -309,16 +310,35 @@ class FormVisitor
     }
 };
 
+static std::pair<int, int> getMonitorSize(Gtk::Window &window)
+{
+    auto screen = window.get_screen();
+    auto w = screen->get_active_window();
+    int i = screen->get_monitor_at_window(w);
+    Gdk::Rectangle r;
+    screen->get_monitor_geometry(i, r);
+    return std::make_pair(r.get_width(), r.get_height());
+}
+
+static void setDialogSize(Gtk::Window &window)
+{
+    auto [w, h] = getMonitorSize(window);
+    window.set_default_size(w / 2, h / 2);
+}
+
 DialogResult executeForm(std::string_view title, Form &form, void *parent)
 {
     Gtk::Window *window = (Gtk::Window *)parent;
     const auto run = [&form, window](Gtk::Dialog &dialog) {
         Gtk::Box *box = dialog.get_content_area();
         FormVisitor visitor(&dialog);
-        box->add(*visitor(form));
+        Gtk::ScrolledWindow *scroll = Gtk::manage(new Gtk::ScrolledWindow());
+        scroll->add(*visitor(form));
+        box->pack_start(*scroll, true, true);
         dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
         dialog.add_button(Gtk::Stock::OK, Gtk::RESPONSE_OK);
-        dialog.set_default_size(320, 240);
+        setDialogSize(dialog);
+        dialog.set_resizable(true);
         dialog.show_all_children();
         switch (dialog.run())
         {
@@ -363,10 +383,13 @@ void AsyncForm::show(const std::shared_ptr<AsyncForm> &asyncForm, std::string_vi
 
     Gtk::Box *box = dialog->get_content_area();
     FormVisitor visitor(dialog);
-    box->add(*visitor(asyncForm->form));
+    Gtk::ScrolledWindow *scroll = Gtk::manage(new Gtk::ScrolledWindow());
+    scroll->add(*visitor(asyncForm->form));
+    box->pack_start(*scroll, Gtk::PACK_EXPAND_WIDGET);
     dialog->add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
     dialog->add_button(Gtk::Stock::OK, Gtk::RESPONSE_OK);
-    dialog->set_default_size(320, 240);
+    setDialogSize(*dialog);
+    dialog->set_resizable(true);
     dialog->show_all_children();
     dialog->signal_response().connect([dialog, asyncForm](int response) {
         dialog->hide();
