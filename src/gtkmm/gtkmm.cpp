@@ -202,25 +202,9 @@ class FormVisitor
 
     template <typename B> void addSyncFile(Gtk::Box &box, B buffer) const
     {
-        std::shared_ptr<TempFile> tempFile = std::make_shared<TempFile>();
-        tempFile->write(buffer->get_text());
-
         Gtk::HBox *hBox = Gtk::manage(new Gtk::HBox());
 
-        Gtk::Button *button = Gtk::manage(new Gtk::Button("Sync to File?"));
-        button->signal_clicked().connect([tempFile, b = button, buffer, hBox]() {
-            hBox->remove(*b);
-
-            Gtk::Frame *frame = Gtk::manage(new Gtk::Frame(convert(tempFile->getPath().string())));
-            hBox->add(*frame);
-
-            Gtk::Button *button = Gtk::manage(new Gtk::Button("Open File"));
-            button->signal_clicked().connect([tempFile]() { tempFile->open(); });
-            frame->add(*button);
-            TempFile::syncBuffer(tempFile, buffer);
-
-            hBox->show_all_children();
-        });
+        SyncButton *button = Gtk::manage(new SyncButton(buffer));
         hBox->add(*button);
 
         box.pack_start(*hBox, Gtk::PACK_SHRINK);

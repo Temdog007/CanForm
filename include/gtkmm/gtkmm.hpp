@@ -61,7 +61,7 @@ class TempFile
 
     void open() const;
 
-    template <typename B> static void syncBuffer(std::weak_ptr<TempFile> ptr, B buffer)
+    template <typename B> static auto syncBuffer(std::weak_ptr<TempFile> ptr, B buffer)
     {
         auto slot = [ptr, buffer]() {
             auto file = ptr.lock();
@@ -85,7 +85,37 @@ class TempFile
             }
             return false;
         };
-        Glib::signal_timeout().connect(slot, 100);
+        return Glib::signal_timeout().connect(slot, 100);
+    }
+};
+
+struct SyncButton : public Gtk::Button
+{
+    template <typename B> SyncButton(B buffer) : Gtk::Button("Sync to File?")
+    {
+        signal_clicked().connect([this, buffer]() {
+            auto parent = get_parent();
+            if (parent == nullptr)
+            {
+                return;
+            }
+            parent->remove(*this);
+
+            std::shared_ptr<TempFile> tempFile = std::make_shared<TempFile>();
+            tempFile->write(buffer->get_text());
+
+            Gtk::Frame *frame = Gtk::manage(new Gtk::Frame(convert(tempFile->getPath().string())));
+            parent->add(*frame);
+
+            Gtk::Button *button = Gtk::manage(new Gtk::Button("Open File"));
+            button->signal_clicked().connect([tempFile]() { tempFile->open(); });
+            frame->add(*button);
+
+            auto connection = TempFile::syncBuffer(tempFile, buffer);
+            frame->signal_hide().connect([connection]() mutable { connection.disconnect(); });
+
+            parent->show_all_children();
+        });
     }
 };
 
