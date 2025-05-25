@@ -196,6 +196,9 @@ class FormVisitor
         Gtk::VBox *box = Gtk::manage(new Gtk::VBox());
 
         Gtk::TextView *entry = Gtk::manage(new Gtk::TextView());
+        entry->set_pixels_above_lines(5);
+        entry->set_pixels_below_lines(5);
+        entry->set_bottom_margin(10);
         auto buffer = entry->get_buffer();
 
         buffer->set_text(convert(s.string));
