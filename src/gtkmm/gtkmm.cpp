@@ -604,7 +604,7 @@ bool TempFile::read(std::string &string, bool updateTimePoint) const
                 {
                     break;
                 }
-                string.replace(pos, 1, "␍");
+                string.replace(pos, 1, "␍"); // U + 240D
             }
             goto storeWrite;
         }
