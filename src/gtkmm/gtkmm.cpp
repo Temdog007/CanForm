@@ -204,7 +204,7 @@ class FormVisitor
     {
         Gtk::HBox *hBox = Gtk::manage(new Gtk::HBox());
 
-        SyncButton *button = Gtk::manage(new SyncButton(buffer));
+        SyncButton *button = Gtk::manage(new SyncButton(convert(name), buffer));
         hBox->add(*button);
 
         box.pack_start(*hBox, Gtk::PACK_SHRINK);
@@ -555,14 +555,7 @@ DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
 
 TempFile::TempFile(const Glib::ustring &ext) : filename(), extension(ext), timePoint()
 {
-    auto random = randomString(3, 8);
-    filename.assign(random.c_str(), random.size());
-}
-
-TempFile::~TempFile()
-{
-    std::error_code err;
-    std::filesystem::remove(getPath(), err);
+    randomString(filename, 3, 8);
 }
 
 Glib::ustring TempFile::getName() const
@@ -593,7 +586,8 @@ bool TempFile::read(String &string, bool updateTimePoint) const
 {
     const auto path = getPath();
     {
-        const auto fileSize = std::filesystem::file_size(path);
+        std::error_code err;
+        const auto fileSize = std::filesystem::file_size(path, err);
         std::ifstream file(path);
         if (file.is_open())
         {
@@ -644,21 +638,39 @@ storeWrite:
     return true;
 }
 
-bool TempFile::open() const
+bool TempFile::changed() const
+{
+    std::error_code err;
+    return timePoint != std::filesystem::last_write_time(getPath(), err);
+}
+
+bool TempFile::openFile(std::string_view filePath)
 {
     try
     {
-        std::vector<std::string> argv;
-#if _WIN32
-        argv.emplace_back("open");
+        std::error_code err;
+        auto path = std::filesystem::temp_directory_path(err);
+        if (!filePath.empty())
+        {
+            path /= filePath;
+        }
+        auto pathString = path.string();
+        pathString.insert(0, "file://");
+#if __WIN32
+        const HRESULT hr = CoInitialize();
+        if (FAILED(hr))
+        {
+            return false;
+        }
+        HINSTANCE rc = ShellExecute(nullptr, "open", pathString.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        return rc <= (HINSTANCE)32;
 #else
+        std::vector<std::string> argv;
         argv.emplace_back("xdg-open");
-#endif
-        auto path = getPath().string();
-        path.insert(0, "file://");
-        argv.emplace_back(std::move(path));
+        argv.emplace_back(std::move(pathString));
         Glib::spawn_async("", argv,
                           Glib::SPAWN_SEARCH_PATH | Glib::SPAWN_STDOUT_TO_DEV_NULL | Glib::SPAWN_STDERR_TO_DEV_NULL);
+#endif
         return true;
     }
     catch (const std::exception &e)
@@ -668,10 +680,14 @@ bool TempFile::open() const
     }
 }
 
-bool TempFile::changed() const
+bool TempFile::open() const
 {
-    std::error_code err;
-    return timePoint != std::filesystem::last_write_time(getPath(), err);
+    return openFile(convert(getName()));
+}
+
+bool TempFile::openTempDirectory()
+{
+    return openFile("");
 }
 
 } // namespace CanForm

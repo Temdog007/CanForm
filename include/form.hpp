@@ -425,6 +425,22 @@ void showAsyncForm(Form &&form, std::string_view title, F &&f, size_t columns, v
     AsyncForm::show(asyncForm, title, columns, parent);
 }
 
+extern char randomCharacter();
+
 extern String randomString(size_t min, size_t max);
 extern String randomString(size_t n);
+
+template <typename T> inline void randomString(T &s, size_t n)
+{
+    const size_t oldSize = s.size();
+    while (s.size() - oldSize < n)
+    {
+        s.push_back(randomCharacter());
+    }
+}
+
+template <typename T> inline void randomString(T &string, size_t min, size_t max)
+{
+    randomString(string, rand() % (max - min) + min);
+}
 } // namespace CanForm

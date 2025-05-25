@@ -46,7 +46,6 @@ class TempFile
 
   public:
     TempFile(const Glib::ustring &ext = "txt");
-    ~TempFile();
 
     Glib::ustring getName() const;
     std::filesystem::path getPath() const;
@@ -60,6 +59,9 @@ class TempFile
     bool write(const Glib::ustring &) const;
 
     bool open() const;
+
+    static bool openFile(std::string_view);
+    static bool openTempDirectory();
 
     template <typename B> static auto syncBuffer(std::weak_ptr<TempFile> ptr, B buffer)
     {
@@ -91,9 +93,9 @@ class TempFile
 
 struct SyncButton : public Gtk::Button
 {
-    template <typename B> SyncButton(B buffer) : Gtk::Button("Sync to File?")
+    template <typename B> SyncButton(const Glib::ustring &s, B buffer) : Gtk::Button("Sync to File?")
     {
-        signal_clicked().connect([this, buffer]() {
+        signal_clicked().connect([this, s, buffer]() {
             auto parent = get_parent();
             if (parent == nullptr)
             {
@@ -107,9 +109,17 @@ struct SyncButton : public Gtk::Button
             Gtk::Frame *frame = Gtk::manage(new Gtk::Frame(convert(tempFile->getPath().string())));
             parent->add(*frame);
 
+            Gtk::HBox *hBox = Gtk::manage(new Gtk::HBox());
+
             Gtk::Button *button = Gtk::manage(new Gtk::Button("Open File"));
             button->signal_clicked().connect([tempFile]() { tempFile->open(); });
-            frame->add(*button);
+            hBox->add(*button);
+
+            button = Gtk::manage(new Gtk::Button("Open Directory"));
+            button->signal_clicked().connect([]() { TempFile::openTempDirectory(); });
+            hBox->add(*button);
+
+            frame->add(*hBox);
 
             auto connection = TempFile::syncBuffer(tempFile, buffer);
             frame->signal_hide().connect([connection]() mutable { connection.disconnect(); });
