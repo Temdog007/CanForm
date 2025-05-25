@@ -99,6 +99,25 @@ void showMessageBox(MessageBoxType type, std::string_view title, std::string_vie
     }
 }
 
+bool askQuestion(std::string_view title, std::string_view message, void *parent)
+{
+    Gtk::Window *window = (Gtk::Window *)parent;
+    const auto run = [message](Gtk::MessageDialog &dialog) {
+        dialog.set_secondary_text(convert(message));
+        return dialog.run() == Gtk::RESPONSE_YES;
+    };
+    if (window == nullptr)
+    {
+        Gtk::MessageDialog dialog(convert(title), true, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
+        return run(dialog);
+    }
+    else
+    {
+        Gtk::MessageDialog dialog(*window, convert(title), true, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
+        return run(dialog);
+    }
+}
+
 void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &awaiter, void *ptr)
 {
     Gtk::Window *parent = (Gtk::Window *)ptr;
@@ -533,27 +552,6 @@ DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
     }
 }
 
-static bool askQuestion(const char *question, Gtk::Window *window)
-{
-    Glib::ustring string(question);
-    const auto run = [window](Gtk::Dialog &dialog) {
-        dialog.add_button("No", Gtk::RESPONSE_CANCEL);
-        dialog.add_button("Yes", Gtk::RESPONSE_OK);
-        dialog.show_all_children();
-        return dialog.run() == Gtk::RESPONSE_OK;
-    };
-    if (window == nullptr)
-    {
-        Gtk::Dialog dialog(string, true);
-        return run(dialog);
-    }
-    else
-    {
-        Gtk::Dialog dialog(string, *window, true);
-        return run(dialog);
-    }
-}
-
 template <typename T> bool FormVisitor::editTextWithEditor(T buffer, Gtk::Window *window)
 {
     Glib::ustring string("Edit in Text Editor?");
@@ -644,13 +642,14 @@ bool TempFile::spawnEditor(std::shared_ptr<TempFile> tempFile, std::shared_ptr<I
             "xdg-open"
 #endif
         );
-        argv.emplace_back(tempFile->getPath().string());
+        auto &s = argv.emplace_back(tempFile->getPath().string());
+        s.insert(0, "file://");
         GPid id;
-        const Glib::SlotSpawnChildSetup setup;
-        Glib::spawn_async(workingDirectory, argv,
-                          Glib::SPAWN_SEARCH_PATH | Glib::SPAWN_DO_NOT_REAP_CHILD | Glib::SPAWN_STDOUT_TO_DEV_NULL |
-                              Glib::SPAWN_STDERR_TO_DEV_NULL,
-                          setup, &id);
+        Glib::spawn_async(
+            workingDirectory, argv,
+            Glib::SPAWN_SEARCH_PATH | Glib::SPAWN_DO_NOT_REAP_CHILD | Glib::SPAWN_STDOUT_TO_DEV_NULL |
+                Glib::SPAWN_STDERR_TO_DEV_NULL,
+            []() {}, &id);
         std::shared_ptr<DefaultAwaiter> waiter = std::make_shared<DefaultAwaiter>();
         showPopupUntil("Waiting for text editor to close...", waiter, window);
         Glib::signal_child_watch().connect(
@@ -659,7 +658,7 @@ bool TempFile::spawnEditor(std::shared_ptr<TempFile> tempFile, std::shared_ptr<I
                 GError *error = nullptr;
                 if (g_spawn_check_wait_status(status, &error))
                 {
-                    if (askQuestion("Read changes from file?", window))
+                    if (askQuestion("Text Editor Process Completed", "Read changes from file?", window))
                     {
                         Glib::ustring s;
                         if (tempFile->read(s))

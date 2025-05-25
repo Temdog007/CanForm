@@ -16,6 +16,7 @@ enum class MessageBoxType
 };
 
 extern void showMessageBox(MessageBoxType, std::string_view title, std::string_view message, void *parent = nullptr);
+extern bool askQuestion(std::string_view title, std::string_view question, void *parent = nullptr);
 
 struct Awaiter
 {
