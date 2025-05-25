@@ -42,31 +42,53 @@ class TempFile
   private:
     Glib::ustring path;
     Glib::ustring extension;
+    std::filesystem::file_time_type timePoint;
 
   public:
-    TempFile(const Glib::ustring &ext);
+    TempFile(const Glib::ustring &ext = "txt");
     ~TempFile();
 
     Glib::ustring getName() const;
     std::filesystem::path getPath() const;
 
+    bool changed() const;
+
     bool read(String &string) const;
-    bool write(const String &string) const;
+    bool write(const String &string);
 
     bool read(Glib::ustring &) const;
-    bool write(const Glib::ustring &) const;
+    bool write(const Glib::ustring &);
 
-    static bool spawnEditor(std::shared_ptr<TempFile>, std::shared_ptr<IBufferSetter> &&, Gtk::Window *);
+    void open() const;
 
-    template <typename F, std::enable_if_t<std::is_invocable<F, Glib::ustring &&>::value, bool> = true>
-    static bool spawnEditor(std::shared_ptr<TempFile> file, F f, Gtk::Window *window)
+    template <typename B> static void syncBuffer(std::weak_ptr<TempFile> ptr, B buffer)
     {
-        std::shared_ptr<BufferSetter<F>> setter = std::make_shared<BufferSetter<F>>(std::move(f));
-        return spawnEditor(file, std::move(setter), window);
+        auto slot = [ptr, buffer]() {
+            auto file = ptr.lock();
+            if (file == nullptr)
+            {
+                return false;
+            }
+            if (!file->changed())
+            {
+                return true;
+            }
+            Glib::ustring string;
+            if (!file->read(string))
+            {
+                return false;
+            }
+            if (buffer)
+            {
+                buffer->set_text(string);
+                return true;
+            }
+            return false;
+        };
+        Glib::signal_timeout().connect(slot, 100);
     }
 };
 
-using TimePoint = std::chrono::system_clock::time_point;
 static inline TimePoint now() noexcept
 {
     return std::chrono::system_clock::now();

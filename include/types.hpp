@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <map>
 #include <memory_resource>
 #include <set>
@@ -14,4 +15,6 @@ using String = std::pmr::string;
 using StringSet = std::pmr::set<String>;
 
 using StringMap = std::pmr::map<String, bool>;
+
+using TimePoint = std::chrono::system_clock::time_point;
 } // namespace CanForm

@@ -25,7 +25,8 @@ struct Awaiter
     }
     virtual bool isDone() = 0;
 };
-extern void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &, void *parent = nullptr);
+extern void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &, size_t checkRate,
+                           void *parent = nullptr);
 
 struct DefaultAwaiter : public Awaiter
 {

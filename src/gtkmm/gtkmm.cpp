@@ -118,7 +118,7 @@ bool askQuestion(std::string_view title, std::string_view message, void *parent)
     }
 }
 
-void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &awaiter, void *ptr)
+void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &awaiter, size_t checkRate, void *ptr)
 {
     Gtk::Window *parent = (Gtk::Window *)ptr;
     Gtk::Window *window = Gtk::manage(new Gtk::Window(Gtk::WINDOW_POPUP));
@@ -136,8 +136,8 @@ void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &aw
     window->show_all_children();
     window->show();
 
-    sigc::slot<bool> slot = sigc::bind(
-        [window, awaiter](int) {
+    Glib::signal_timeout().connect(
+        [window, awaiter]() {
             if (awaiter->isDone())
             {
                 window->hide();
@@ -145,8 +145,7 @@ void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &aw
             }
             return true;
         },
-        0);
-    Glib::signal_timeout().connect(slot, 100);
+        checkRate);
 }
 
 void MenuList::show(std::string_view title, void *parent)
@@ -201,7 +200,31 @@ class FormVisitor
         return Gtk::manage(new Gtk::Frame(convert(name)));
     }
 
-    template <typename T> static bool editTextWithEditor(T, Gtk::Window *);
+    template <typename B> void addSyncFile(Gtk::Box &box, B buffer) const
+    {
+        std::shared_ptr<TempFile> tempFile = std::make_shared<TempFile>();
+        tempFile->write(buffer->get_text());
+
+        Gtk::HBox *hBox = Gtk::manage(new Gtk::HBox());
+
+        Gtk::Button *button = Gtk::manage(new Gtk::Button("Sync to File?"));
+        button->signal_clicked().connect([tempFile, b = button, buffer, hBox]() {
+            hBox->remove(*b);
+
+            Gtk::Frame *frame = Gtk::manage(new Gtk::Frame(convert(tempFile->getPath().string())));
+            hBox->add(*frame);
+
+            Gtk::Button *button = Gtk::manage(new Gtk::Button("Open File"));
+            button->signal_clicked().connect([tempFile]() { tempFile->open(); });
+            frame->add(*button);
+            TempFile::syncBuffer(tempFile, buffer);
+
+            hBox->show_all_children();
+        });
+        hBox->add(*button);
+
+        box.pack_start(*hBox, Gtk::PACK_SHRINK);
+    }
 
   public:
     constexpr FormVisitor(size_t c, Gtk::Window *w) noexcept : name(), columns(c), window(w)
@@ -231,10 +254,7 @@ class FormVisitor
 
         box->pack_start(*entry, Gtk::PACK_EXPAND_PADDING, 10);
 
-        Gtk::Button *button = Gtk::manage(new Gtk::Button("..."));
-        button->signal_clicked().connect(
-            [buffer, window = window]() { FormVisitor::editTextWithEditor(buffer, window); });
-        box->pack_start(*button, Gtk::PACK_EXPAND_PADDING);
+        addSyncFile(*box, buffer);
 
         frame->add(*box);
         return frame;
@@ -255,6 +275,8 @@ class FormVisitor
         buffer->signal_changed().connect([&s, buffer]() { s.string = convert(buffer->get_text()); });
 
         box->pack_start(*entry, Gtk::PACK_EXPAND_WIDGET, 10);
+
+        addSyncFile(*box, buffer);
 
         Gtk::Expander *expander = Gtk::manage(new Gtk::Expander());
         expander->set_label("Text Insertions");
@@ -278,11 +300,6 @@ class FormVisitor
             frame->add(*flow);
             box2->add(*frame);
         }
-
-        Gtk::Button *button = Gtk::manage(new Gtk::Button("..."));
-        button->signal_clicked().connect(
-            [buffer, window = window]() { FormVisitor::editTextWithEditor(buffer, window); });
-        box2->add(*button);
 
         expander->add(*box2);
         box->pack_start(*expander, Gtk::PACK_EXPAND_PADDING);
@@ -552,58 +569,7 @@ DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
     }
 }
 
-template <typename T> bool FormVisitor::editTextWithEditor(T buffer, Gtk::Window *window)
-{
-    Glib::ustring string("Edit in Text Editor?");
-    const auto run = [buffer, window](Gtk::Dialog &dialog) {
-        Glib::ustring currentText(buffer->get_text());
-
-        Gtk::HBox hBox;
-        hBox.set_spacing(10);
-
-        Gtk::Label label("Enter temporary file extension:");
-        hBox.pack_start(label, Gtk::PACK_SHRINK);
-
-        Gtk::Entry entry;
-        entry.get_buffer()->set_text("txt");
-        hBox.pack_start(entry, Gtk::PACK_EXPAND_WIDGET);
-
-        Gtk::Box *box = dialog.get_vbox();
-        box->add(hBox);
-
-        dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
-        dialog.add_button(Gtk::Stock::OK, Gtk::RESPONSE_OK);
-        dialog.show_all_children();
-        if (dialog.run() != Gtk::RESPONSE_OK)
-        {
-            return false;
-        }
-
-        std::shared_ptr<TempFile> file = std::make_shared<TempFile>(entry.get_buffer()->get_text());
-        file->write(buffer->get_text());
-
-        if (TempFile::spawnEditor(
-                file, [buffer](Glib::ustring &&s) { buffer->set_text(s); }, window))
-        {
-            return true;
-        }
-
-        showMessageBox(MessageBoxType::Error, "Process Error", "Error creating process or temporary file", window);
-        return false;
-    };
-    if (window == nullptr)
-    {
-        Gtk::Dialog dialog(string, true);
-        return run(dialog);
-    }
-    else
-    {
-        Gtk::Dialog dialog(string, *window, true);
-        return run(dialog);
-    }
-}
-
-TempFile::TempFile(const Glib::ustring &ext) : path(), extension(ext)
+TempFile::TempFile(const Glib::ustring &ext) : path(), extension(ext), timePoint()
 {
     auto random = randomString(3, 8);
     path.assign(random.c_str(), random.size());
@@ -628,62 +594,6 @@ std::filesystem::path TempFile::getPath() const
     return path;
 }
 
-bool TempFile::spawnEditor(std::shared_ptr<TempFile> tempFile, std::shared_ptr<IBufferSetter> &&buffer,
-                           Gtk::Window *window)
-{
-    try
-    {
-        std::string workingDirectory;
-        std::vector<std::string> argv;
-        argv.emplace_back(
-#if _WIN32
-            "open"
-#else
-            "xdg-open"
-#endif
-        );
-        auto &s = argv.emplace_back(tempFile->getPath().string());
-        s.insert(0, "file://");
-        GPid id;
-        Glib::spawn_async(
-            workingDirectory, argv,
-            Glib::SPAWN_SEARCH_PATH | Glib::SPAWN_DO_NOT_REAP_CHILD | Glib::SPAWN_STDOUT_TO_DEV_NULL |
-                Glib::SPAWN_STDERR_TO_DEV_NULL,
-            []() {}, &id);
-        std::shared_ptr<DefaultAwaiter> waiter = std::make_shared<DefaultAwaiter>();
-        showPopupUntil("Waiting for text editor to close...", waiter, window);
-        Glib::signal_child_watch().connect(
-            [tempFile, waiter, buffer = std::move(buffer), window](GPid pid, int status) {
-                waiter->setDone();
-                GError *error = nullptr;
-                if (g_spawn_check_wait_status(status, &error))
-                {
-                    if (askQuestion("Text Editor Process Completed", "Read changes from file?", window))
-                    {
-                        Glib::ustring s;
-                        if (tempFile->read(s))
-                        {
-                            buffer->set(std::move(s));
-                        }
-                    }
-                }
-                else
-                {
-                    showMessageBox(MessageBoxType::Error, "Error in child process", error->message, window);
-                }
-                g_spawn_close_pid(pid);
-            },
-            id);
-        return true;
-    }
-    catch (const std::exception &e)
-    {
-        showMessageBox(MessageBoxType::Error, "Unexpected process error", e.what(), window);
-        fprintf(stderr, "%s\n", e.what());
-        return false;
-    }
-}
-
 bool TempFile::read(Glib::ustring &s) const
 {
     String string(convert(s));
@@ -706,20 +616,53 @@ bool TempFile::read(String &string) const
     return false;
 }
 
-bool TempFile::write(const Glib::ustring &s) const
+bool TempFile::write(const Glib::ustring &s)
 {
     const String string(convert(s));
     return write(string);
 }
 
-bool TempFile::write(const String &string) const
+bool TempFile::write(const String &string)
 {
-    std::ofstream file(getPath());
-    if (file.is_open())
+    const auto path = getPath();
     {
-        file << string;
-        return true;
+        std::ofstream file(path);
+        if (file.is_open())
+        {
+            file << string;
+            goto storeWrite;
+        }
     }
     return false;
+storeWrite:
+    std::error_code err;
+    timePoint = std::filesystem::last_write_time(path, err);
+    if (err)
+    {
+        return false;
+    }
+    return true;
 }
+
+void TempFile::open() const
+{
+    std::vector<std::string> argv;
+#if _WIN32
+    argv.emplace_back("open");
+#else
+    argv.emplace_back("xdg-open");
+#endif
+    auto path = getPath().string();
+    path.insert(0, "file://");
+    argv.emplace_back(std::move(path));
+    Glib::spawn_async("", argv,
+                      Glib::SPAWN_SEARCH_PATH | Glib::SPAWN_STDOUT_TO_DEV_NULL | Glib::SPAWN_STDERR_TO_DEV_NULL);
+}
+
+bool TempFile::changed() const
+{
+    std::error_code err;
+    return timePoint != std::filesystem::last_write_time(getPath(), err);
+}
+
 } // namespace CanForm
