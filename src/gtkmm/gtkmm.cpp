@@ -7,7 +7,6 @@
 
 namespace CanForm
 {
-
 Glib::ustring convert(const std::string &s)
 {
     return Glib::ustring(s);
@@ -27,6 +26,45 @@ std::string convert(const Glib::ustring &s)
 std::string_view toView(const Glib::ustring &s)
 {
     return std::string(s.data(), s.size());
+}
+
+static std::pair<int, int> getWindowSize(Gtk::Window &window)
+{
+    auto w = window.get_transient_for();
+    if (w == nullptr)
+    {
+        std::pair<int, int> pair(0, 0);
+        window.get_size(pair.first, pair.second);
+        return pair;
+    }
+    else
+    {
+        return getWindowSize(*w);
+    }
+}
+
+static std::pair<int, int> getMonitorSize(Gtk::Window &window)
+{
+    auto screen = window.get_screen();
+    if (!screen)
+    {
+        return getWindowSize(window);
+    }
+    auto w = screen->get_active_window();
+    if (!w)
+    {
+        return getWindowSize(window);
+    }
+    int i = screen->get_monitor_at_window(w);
+    Gdk::Rectangle r;
+    screen->get_monitor_geometry(i, r);
+    return std::make_pair(r.get_width(), r.get_height());
+}
+
+static void setDialogSize(Gtk::Window &window)
+{
+    auto [w, h] = getMonitorSize(window);
+    window.set_default_size(w / 2, h / 2);
 }
 
 constexpr Gtk::MessageType getType(MessageBoxType type) noexcept
@@ -309,22 +347,6 @@ class FormVisitor
         return table;
     }
 };
-
-static std::pair<int, int> getMonitorSize(Gtk::Window &window)
-{
-    auto screen = window.get_screen();
-    auto w = screen->get_active_window();
-    int i = screen->get_monitor_at_window(w);
-    Gdk::Rectangle r;
-    screen->get_monitor_geometry(i, r);
-    return std::make_pair(r.get_width(), r.get_height());
-}
-
-static void setDialogSize(Gtk::Window &window)
-{
-    auto [w, h] = getMonitorSize(window);
-    window.set_default_size(w / 2, h / 2);
-}
 
 DialogResult executeForm(std::string_view title, Form &form, void *parent)
 {

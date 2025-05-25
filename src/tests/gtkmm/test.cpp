@@ -7,15 +7,38 @@
 using namespace CanForm;
 using namespace Gtk;
 
-class MainWindow : public Window, public FileDialog::Handler, public RenderAtomsUser
+class MainWindow : public Window, public FileDialog::Handler
 {
   private:
     void OnTool();
+    void OnCreate();
 
-    VBox vBox;
-    Notebook notebook;
+    Form createForm() const;
+
+    VBox box;
+    FlowBox flowBox;
+    SpinButton bools, integers, floats, strings, selections, flags;
+    Button button;
+    CheckButton asyncButton;
     Toolbar toolbar;
     ToolButton item;
+
+    void add(Glib::ustring name, SpinButton &button)
+    {
+        button.set_range(0, 10);
+        button.set_increments(1, 2);
+        Frame *frame = manage(new Frame(name));
+        frame->add(button);
+        flowBox.add(*frame);
+    }
+
+    template <typename T> void add(Form &form, const SpinButton &button) const
+    {
+        for (size_t i = 0; i < button.get_value(); ++i)
+        {
+            addForm(form, randomString(3, 8), T());
+        }
+    }
 
   public:
     MainWindow();
@@ -24,7 +47,6 @@ class MainWindow : public Window, public FileDialog::Handler, public RenderAtoms
     }
 
     virtual bool handle(std::string_view) override;
-    virtual void use(void *, RenderAtoms &, CanFormRectangle &, CanFormRectangle &) override;
 };
 
 int main(int argc, char **argv)
@@ -37,21 +59,31 @@ int main(int argc, char **argv)
     return 0;
 }
 
-MainWindow::MainWindow() : vBox(), notebook(), toolbar(), item("☰") // U+2630
+MainWindow::MainWindow() : button("Create"), asyncButton("Asynchrous Form"), item("☰") // U+2630
 {
     set_title("CanForm GTKMM Test");
     set_default_size(800, 600);
     maximize();
-    add(vBox);
+    Window::add(box);
 
-    vBox.pack_start(toolbar, PACK_SHRINK);
+    box.pack_start(toolbar, PACK_SHRINK);
 
     toolbar.append(item);
     item.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::OnTool));
 
-    vBox.pack_start(notebook, PACK_EXPAND_WIDGET);
-    notebook.set_scrollable();
-    notebook.popup_enable();
+    add("Booleans", bools);
+    add("Integers", integers);
+    add("Floats", floats);
+    add("Strings", strings);
+    add("Selections", selections);
+    add("Flags", flags);
+
+    flowBox.add(asyncButton);
+    flowBox.add(button);
+
+    button.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::OnCreate));
+
+    box.pack_start(flowBox, PACK_EXPAND_PADDING);
 
     show_all_children();
 }
@@ -115,51 +147,32 @@ void MainWindow::OnTool()
                 [this](Form &form, DialogResult result) { printForm(form, result, this); }, this);
             return false;
         });
-        menu.add("Add Canvas", [this]() {
-            getCanvasAtoms(randomString(5, 10), *this, &notebook);
-            return true;
-        });
     }
 
     menuList.show("Main Menu", this);
 }
 
-void MainWindow::use(void *, RenderAtoms &atoms, CanFormRectangle &viewRect, CanFormRectangle &viewBounds)
+void MainWindow::OnCreate()
 {
-    atoms.clear();
-
-    viewRect.x = 0;
-    viewRect.y = 0;
-
-    Gtk::Allocation allocation = get_allocation();
-    viewRect.w = allocation.get_width();
-    viewRect.h = allocation.get_height();
-
-    viewBounds.x = -viewRect.w * 0.5;
-    viewBounds.y = -viewRect.h * 0.5;
-    viewBounds.w = viewRect.w * 2;
-    viewBounds.h = viewRect.h * 2;
-
-    const size_t n = rand() % 100 + 100;
-    RandomRender random(viewRect.w, viewRect.h);
-    for (size_t i = 0; i < n; ++i)
+    if (asyncButton.get_active())
     {
-        atoms.emplace_back(random());
+        showAsyncForm(
+            createForm(), "Non Modal Form", [this](Form &form, DialogResult result) { printForm(form, result, this); },
+            this);
     }
-
+    else
     {
-        RenderAtom atom;
-        atom.style.lineWidth = 1.0;
-        atom.renderType.emplace<CanFormRectangle>(viewRect);
-        atoms.emplace_back(std::move(atom));
+        Form form = createForm();
+        printForm(form, executeForm("Modal Form", form, this), this);
     }
-    {
-        RenderAtom atom;
-        atom.style.lineWidth = 1.0;
-        atom.style.color = Color(1.f, 0.f, 1.f);
-        atom.renderType.emplace<CanFormRectangle>(viewBounds);
-        atoms.emplace_back(std::move(atom));
-    }
+}
 
-    queue_draw();
+Form MainWindow::createForm() const
+{
+    Form form;
+    add<bool>(form, bools);
+    add<int64_t>(form, integers);
+    add<double>(form, floats);
+    add<String>(form, strings);
+    return form;
 }

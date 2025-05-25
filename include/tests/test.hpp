@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../canvas.hpp"
 #include "../form.hpp"
 
 namespace CanForm
@@ -8,22 +7,64 @@ namespace CanForm
 extern Form makeForm();
 extern void printForm(const Form &, DialogResult, void *parent = nullptr);
 
-struct RandomRender
+template <typename T> T random() noexcept
 {
-    std::pair<double, double> size;
+    if constexpr (std::is_floating_point_v<T>)
+    {
+        return ((T)rand() / RAND_MAX);
+    }
+    else
+    {
+        return (T)((double)std::numeric_limits<T>::min() + (double)(std::numeric_limits<T>::max()) -
+                   (double)(std::numeric_limits<T>::min()) * random<double>());
+    }
+}
 
-    template <typename... Args> RandomRender(Args &&...args) noexcept : size(std::forward<Args>(args)...)
+inline StringSet randomSet(size_t n, size_t min, size_t max)
+{
+    StringSet set;
+    for (size_t i = 0; i < n; ++i)
+    {
+        set.emplace(randomString(min, max));
+    }
+    return set;
+}
+
+template <typename T> inline void addForm(Form &form, String &&s, T &&t)
+{
+    if constexpr (std::is_arithmetic_v<T>)
+    {
+        t = random<T>();
+        form[std::move(s)] = std::move(t);
+    }
+    else
     {
     }
+}
 
-    void randomPosition(double &x, double &y);
-    void operator()(RenderStyle &style);
-    void operator()(CanFormRectangle &r);
-    void operator()(CanFormEllipse &r);
-    void operator()(RoundedRectangle &r);
+template <> inline void addForm<bool>(Form &form, String &&s, bool &&b)
+{
+    b = rand() % 2 == 0;
+    form[std::move(s)] = std::move(b);
+}
 
-    void operator()(Text &t);
-
-    RenderAtom operator()();
-};
+template <> inline void addForm<String>(Form &form, String &&s, String &&value)
+{
+    value = randomString(3, 8);
+    if (rand() % 2 == 0)
+    {
+        form[std::move(s)] = std::move(value);
+    }
+    else
+    {
+        ComplexString c;
+        c.string = std::move(value);
+        const size_t n = rand() % 9 + 1;
+        for (size_t i = 0; i < n; ++i)
+        {
+            c.map.emplace(randomString(3, 8), randomSet(rand() % 4 + 1, 3, 8));
+        }
+        form[std::move(s)] = std::move(c);
+    }
+}
 } // namespace CanForm

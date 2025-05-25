@@ -22,7 +22,7 @@ else()
 endif()
 
 add_library(canform ${CANFORM_TYPE}
-	src/canvas.cpp)
+	src/canform.cpp)
 
 target_include_directories(canform PRIVATE include)
 
@@ -32,14 +32,13 @@ else()
 	pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)
 
 	add_library(canform_gtkmm ${CANFORM_TYPE}
-		src/gtkmm/gtkmm.cpp
-		src/gtkmm/render.cpp)
+		src/gtkmm/gtkmm.cpp)
 
 	target_include_directories(canform_gtkmm PRIVATE
 		include
 		${GTKMM_INCLUDE_DIRS})
 
-	target_link_libraries(canform_gtkmm PRIVATE ${GTKMM_LIBRARIES})
+	target_link_libraries(canform_gtkmm PRIVATE canform ${GTKMM_LIBRARIES})
 
 	if(CANFORM_BUILD_TEST)
 		set(CANFORM_GTKMM_SOURCES
