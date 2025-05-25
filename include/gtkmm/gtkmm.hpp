@@ -82,15 +82,6 @@ class TempFile
             }
             if (buffer)
             {
-                while (true)
-                {
-                    const auto pos = string.find('\r');
-                    if (pos >= string.size())
-                    {
-                        break;
-                    }
-                    string.replace(pos, 1, "␍");
-                }
                 buffer->set_text(string);
                 return true;
             }
