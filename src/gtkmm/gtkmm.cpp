@@ -590,13 +590,14 @@ bool TempFile::read(std::string &string, bool updateTimePoint) const
 {
     const auto path = getPath();
     {
-        std::error_code err;
-        const auto fileSize = std::filesystem::file_size(path, err);
         std::ifstream file(path);
         if (file.is_open())
         {
-            string.resize(fileSize);
-            file.read(string.data(), fileSize);
+            std::error_code err;
+            const auto fileSize = std::filesystem::file_size(path, err);
+            std::vector<char> v(fileSize, '\0');
+            file.read(v.data(), fileSize);
+            string.assign(v.data(), v.size());
             goto storeWrite;
         }
     }
