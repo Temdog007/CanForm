@@ -52,8 +52,8 @@ class TempFile
 
     bool changed() const;
 
-    bool read(String &string, bool updatedTimePoint) const;
-    bool write(const String &string) const;
+    bool read(std::string &string, bool updatedTimePoint) const;
+    bool write(const std::string &string) const;
 
     bool read(Glib::ustring &, bool updatedTimePoint) const;
     bool write(const Glib::ustring &) const;

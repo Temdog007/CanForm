@@ -577,7 +577,7 @@ std::filesystem::path TempFile::getPath() const
 
 bool TempFile::read(Glib::ustring &s, bool updateTimePoint) const
 {
-    String string(convert(s));
+    std::string string(convert(s));
     if (read(string, updateTimePoint))
     {
         s = convert(string);
@@ -586,7 +586,7 @@ bool TempFile::read(Glib::ustring &s, bool updateTimePoint) const
     return false;
 }
 
-bool TempFile::read(String &string, bool updateTimePoint) const
+bool TempFile::read(std::string &string, bool updateTimePoint) const
 {
     const auto path = getPath();
     {
@@ -616,11 +616,11 @@ storeWrite:
 
 bool TempFile::write(const Glib::ustring &s) const
 {
-    const String string(convert(s));
+    const std::string string(s);
     return write(string);
 }
 
-bool TempFile::write(const String &string) const
+bool TempFile::write(const std::string &string) const
 {
     const auto path = getPath();
     {
@@ -671,7 +671,7 @@ bool TempFile::openFile(std::string_view filePath)
             return false;
         }
         HINSTANCE rc = ShellExecute(nullptr, "open", pathString.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-        CoUnitialize();
+        CoUninitialize();
         return rc <= (HINSTANCE)32;
 #else
         std::vector<std::string> argv;
