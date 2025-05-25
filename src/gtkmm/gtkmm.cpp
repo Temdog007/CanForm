@@ -553,10 +553,10 @@ DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
     }
 }
 
-TempFile::TempFile(const Glib::ustring &ext) : path(), extension(ext), timePoint()
+TempFile::TempFile(const Glib::ustring &ext) : filename(), extension(ext), timePoint()
 {
     auto random = randomString(3, 8);
-    path.assign(random.c_str(), random.size());
+    filename.assign(random.c_str(), random.size());
 }
 
 TempFile::~TempFile()
@@ -567,7 +567,7 @@ TempFile::~TempFile()
 
 Glib::ustring TempFile::getName() const
 {
-    return Glib::ustring::sprintf("%s.%s", path, extension);
+    return Glib::ustring::sprintf("%s.%s", filename, extension);
 }
 
 std::filesystem::path TempFile::getPath() const
@@ -578,10 +578,10 @@ std::filesystem::path TempFile::getPath() const
     return path;
 }
 
-bool TempFile::read(Glib::ustring &s) const
+bool TempFile::read(Glib::ustring &s, bool updateTimePoint) const
 {
     String string(convert(s));
-    if (read(string))
+    if (read(string, updateTimePoint))
     {
         s = convert(string);
         return true;
@@ -589,24 +589,40 @@ bool TempFile::read(Glib::ustring &s) const
     return false;
 }
 
-bool TempFile::read(String &string) const
+bool TempFile::read(String &string, bool updateTimePoint) const
 {
-    std::ifstream file(getPath());
-    if (file.is_open())
+    const auto path = getPath();
     {
-        string.assign(std::istreambuf_iterator<char>{file}, {});
-        return true;
+        const auto fileSize = std::filesystem::file_size(path);
+        std::ifstream file(path);
+        if (file.is_open())
+        {
+            string.resize(fileSize);
+            file.read(string.data(), fileSize);
+            goto storeWrite;
+        }
     }
     return false;
+storeWrite:
+    if (updateTimePoint)
+    {
+        std::error_code err;
+        timePoint = std::filesystem::last_write_time(path, err);
+        if (err)
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
-bool TempFile::write(const Glib::ustring &s)
+bool TempFile::write(const Glib::ustring &s) const
 {
     const String string(convert(s));
     return write(string);
 }
 
-bool TempFile::write(const String &string)
+bool TempFile::write(const String &string) const
 {
     const auto path = getPath();
     {
@@ -628,7 +644,7 @@ storeWrite:
     return true;
 }
 
-void TempFile::open() const
+bool TempFile::open() const
 {
     try
     {
@@ -643,10 +659,12 @@ void TempFile::open() const
         argv.emplace_back(std::move(path));
         Glib::spawn_async("", argv,
                           Glib::SPAWN_SEARCH_PATH | Glib::SPAWN_STDOUT_TO_DEV_NULL | Glib::SPAWN_STDERR_TO_DEV_NULL);
+        return true;
     }
     catch (const std::exception &e)
     {
         showMessageBox(MessageBoxType::Error, "Failed to open text editor", e.what());
+        return false;
     }
 }
 

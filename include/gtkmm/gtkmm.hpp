@@ -40,9 +40,9 @@ template <typename F> struct BufferSetter : public IBufferSetter
 class TempFile
 {
   private:
-    Glib::ustring path;
+    Glib::ustring filename;
     Glib::ustring extension;
-    std::filesystem::file_time_type timePoint;
+    mutable std::filesystem::file_time_type timePoint;
 
   public:
     TempFile(const Glib::ustring &ext = "txt");
@@ -53,13 +53,13 @@ class TempFile
 
     bool changed() const;
 
-    bool read(String &string) const;
-    bool write(const String &string);
+    bool read(String &string, bool updatedTimePoint) const;
+    bool write(const String &string) const;
 
-    bool read(Glib::ustring &) const;
-    bool write(const Glib::ustring &);
+    bool read(Glib::ustring &, bool updatedTimePoint) const;
+    bool write(const Glib::ustring &) const;
 
-    void open() const;
+    bool open() const;
 
     template <typename B> static auto syncBuffer(std::weak_ptr<TempFile> ptr, B buffer)
     {
@@ -74,7 +74,7 @@ class TempFile
                 return true;
             }
             Glib::ustring string;
-            if (!file->read(string))
+            if (!file->read(string, true))
             {
                 return false;
             }
