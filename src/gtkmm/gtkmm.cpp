@@ -143,6 +143,7 @@ class FormVisitor
 {
   private:
     std::string_view name;
+    size_t columns;
     Gtk::Window *window;
 
     Gtk::Frame *makeFrame() const
@@ -153,7 +154,7 @@ class FormVisitor
     template <typename T> static bool editTextWithEditor(T, Gtk::Window *);
 
   public:
-    constexpr FormVisitor(Gtk::Window *w) noexcept : name(), window(w)
+    constexpr FormVisitor(size_t c, Gtk::Window *w) noexcept : name(), columns(c), window(w)
     {
     }
 
@@ -200,7 +201,7 @@ class FormVisitor
         buffer->set_text(convert(s.string));
         buffer->signal_changed().connect([&s, buffer]() { s.string = convert(buffer->get_text()); });
 
-        box->pack_start(*entry, Gtk::PACK_EXPAND_PADDING, 10);
+        box->pack_start(*entry, Gtk::PACK_EXPAND_WIDGET, 10);
 
         Gtk::Expander *expander = Gtk::manage(new Gtk::Expander());
         expander->set_label("Text Insertions");
@@ -217,7 +218,6 @@ class FormVisitor
                 Gtk::Button *button = Gtk::manage(new Gtk::Button(convert(s)));
                 button->signal_clicked().connect([buffer, entry, &s]() {
                     buffer->insert_at_cursor(s.data(), s.data() + s.size());
-                    buffer->set_modified(true);
                     entry->grab_focus();
                 });
                 flow->add(*button);
@@ -232,7 +232,7 @@ class FormVisitor
         box2->add(*button);
 
         expander->add(*box2);
-        box->pack_end(*expander);
+        box->pack_start(*expander, Gtk::PACK_EXPAND_PADDING);
 
         frame->add(*box);
         return frame;
@@ -330,7 +330,6 @@ class FormVisitor
 
     Gtk::Widget *operator()(Form &form)
     {
-        constexpr int columns = 2;
         const int rows = std::max(static_cast<size_t>(1), form.datas.size() / columns);
         Gtk::Table *table = Gtk::manage(new Gtk::Table(rows, columns));
 
@@ -348,13 +347,23 @@ class FormVisitor
     }
 };
 
-DialogResult executeForm(std::string_view title, Form &form, void *parent)
+static Gtk::ScrolledWindow *makeScroll()
+{
+    Gtk::ScrolledWindow *scroll = Gtk::manage(new Gtk::ScrolledWindow());
+    scroll->set_min_content_width(320);
+    scroll->set_min_content_height(240);
+    scroll->set_propagate_natural_width(true);
+    scroll->set_propagate_natural_height(true);
+    return scroll;
+}
+
+DialogResult executeForm(std::string_view title, Form &form, size_t columns, void *parent)
 {
     Gtk::Window *window = (Gtk::Window *)parent;
-    const auto run = [&form, window](Gtk::Dialog &dialog) {
+    const auto run = [&form, window, columns](Gtk::Dialog &dialog) {
         Gtk::Box *box = dialog.get_content_area();
-        FormVisitor visitor(&dialog);
-        Gtk::ScrolledWindow *scroll = Gtk::manage(new Gtk::ScrolledWindow());
+        FormVisitor visitor(columns, &dialog);
+        auto scroll = makeScroll();
         scroll->add(*visitor(form));
         box->pack_start(*scroll, true, true);
         dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
@@ -385,7 +394,7 @@ DialogResult executeForm(std::string_view title, Form &form, void *parent)
     }
 }
 
-void AsyncForm::show(const std::shared_ptr<AsyncForm> &asyncForm, std::string_view title, void *parent)
+void AsyncForm::show(const std::shared_ptr<AsyncForm> &asyncForm, std::string_view title, size_t columns, void *parent)
 {
     if (asyncForm == nullptr)
     {
@@ -404,10 +413,10 @@ void AsyncForm::show(const std::shared_ptr<AsyncForm> &asyncForm, std::string_vi
     }
 
     Gtk::Box *box = dialog->get_content_area();
-    FormVisitor visitor(dialog);
-    Gtk::ScrolledWindow *scroll = Gtk::manage(new Gtk::ScrolledWindow());
+    FormVisitor visitor(columns, dialog);
+    auto scroll = makeScroll();
     scroll->add(*visitor(asyncForm->form));
-    box->pack_start(*scroll, Gtk::PACK_EXPAND_WIDGET);
+    box->pack_start(*scroll, true, true);
     dialog->add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
     dialog->add_button(Gtk::Stock::OK, Gtk::RESPONSE_OK);
     setDialogSize(*dialog);

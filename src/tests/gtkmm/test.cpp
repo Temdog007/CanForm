@@ -17,16 +17,16 @@ class MainWindow : public Window, public FileDialog::Handler
 
     VBox box;
     FlowBox flowBox;
-    SpinButton bools, integers, floats, strings, selections, flags;
+    SpinButton columns, bools, integers, floats, strings, selections, flags;
     Button button;
     CheckButton asyncButton;
     Toolbar toolbar;
     ToolButton item;
 
-    void add(Glib::ustring name, SpinButton &button)
+    void add(Glib::ustring name, SpinButton &button, int min = 0, int max = 10)
     {
-        button.set_range(0, 10);
-        button.set_increments(1, 2);
+        button.set_range(min, max);
+        button.set_increments(1, (max - min) / 10);
         Frame *frame = manage(new Frame(name));
         frame->add(button);
         flowBox.add(*frame);
@@ -77,6 +77,7 @@ MainWindow::MainWindow() : button("Create"), asyncButton("Asynchrous Form"), ite
     add("Strings", strings);
     add("Selections", selections);
     add("Flags", flags);
+    add("Columns", columns, 1, 10);
 
     flowBox.add(asyncButton);
     flowBox.add(button);
@@ -138,13 +139,13 @@ void MainWindow::OnTool()
         menu.title = "Tests";
         menu.add("Modal Form", [this]() {
             Form form = makeForm();
-            printForm(form, executeForm("Modal Form", form, this), this);
+            printForm(form, executeForm("Modal Form", form, 2, this), this);
             return false;
         });
         menu.add("Non Modal Form", [this]() {
             showAsyncForm(
                 makeForm(), "Non Modal Form",
-                [this](Form &form, DialogResult result) { printForm(form, result, this); }, this);
+                [this](Form &form, DialogResult result) { printForm(form, result, this); }, 2, this);
             return false;
         });
     }
@@ -158,12 +159,12 @@ void MainWindow::OnCreate()
     {
         showAsyncForm(
             createForm(), "Non Modal Form", [this](Form &form, DialogResult result) { printForm(form, result, this); },
-            this);
+            columns.get_value(), this);
     }
     else
     {
         Form form = createForm();
-        printForm(form, executeForm("Modal Form", form, this), this);
+        printForm(form, executeForm("Modal Form", form, columns.get_value(), this), this);
     }
 }
 
@@ -174,5 +175,7 @@ Form MainWindow::createForm() const
     add<int64_t>(form, integers);
     add<double>(form, floats);
     add<String>(form, strings);
+    add<StringSelection>(form, selections);
+    add<StringMap>(form, flags);
     return form;
 }

@@ -342,7 +342,7 @@ struct Form
     }
 };
 
-extern DialogResult executeForm(std::string_view, Form &, void *parent = nullptr);
+extern DialogResult executeForm(std::string_view, Form &, size_t columns, void *parent = nullptr);
 
 struct AsyncForm
 {
@@ -353,7 +353,7 @@ struct AsyncForm
     }
 
     virtual void onSubmit(DialogResult) = 0;
-    static void show(const std::shared_ptr<AsyncForm> &, std::string_view, void *parent = nullptr);
+    static void show(const std::shared_ptr<AsyncForm> &, std::string_view, size_t columns, void *parent = nullptr);
 };
 
 template <typename F> struct AsyncFormLambda : public AsyncForm
@@ -382,11 +382,12 @@ template <typename F> struct AsyncFormLambda : public AsyncForm
     }
 };
 
-template <typename F> void showAsyncForm(Form &&form, std::string_view title, F &&f, void *parent = nullptr)
+template <typename F>
+void showAsyncForm(Form &&form, std::string_view title, F &&f, size_t columns, void *parent = nullptr)
 {
     std::shared_ptr<AsyncForm> asyncForm = std::make_shared<AsyncFormLambda<F>>(std::move(f));
     asyncForm->form = std::move(form);
-    AsyncForm::show(asyncForm, title, parent);
+    AsyncForm::show(asyncForm, title, columns, parent);
 }
 
 extern String randomString(size_t min, size_t max);
