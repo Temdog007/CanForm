@@ -630,17 +630,24 @@ storeWrite:
 
 void TempFile::open() const
 {
-    std::vector<std::string> argv;
+    try
+    {
+        std::vector<std::string> argv;
 #if _WIN32
-    argv.emplace_back("open");
+        argv.emplace_back("open");
 #else
-    argv.emplace_back("xdg-open");
+        argv.emplace_back("xdg-open");
 #endif
-    auto path = getPath().string();
-    path.insert(0, "file://");
-    argv.emplace_back(std::move(path));
-    Glib::spawn_async("", argv,
-                      Glib::SPAWN_SEARCH_PATH | Glib::SPAWN_STDOUT_TO_DEV_NULL | Glib::SPAWN_STDERR_TO_DEV_NULL);
+        auto path = getPath().string();
+        path.insert(0, "file://");
+        argv.emplace_back(std::move(path));
+        Glib::spawn_async("", argv,
+                          Glib::SPAWN_SEARCH_PATH | Glib::SPAWN_STDOUT_TO_DEV_NULL | Glib::SPAWN_STDERR_TO_DEV_NULL);
+    }
+    catch (const std::exception &e)
+    {
+        showMessageBox(MessageBoxType::Error, "Failed to open text editor", e.what());
+    }
 }
 
 bool TempFile::changed() const
