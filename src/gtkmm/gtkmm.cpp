@@ -99,6 +99,37 @@ void showMessageBox(MessageBoxType type, std::string_view title, std::string_vie
     }
 }
 
+void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &awaiter, void *ptr)
+{
+    Gtk::Window *parent = (Gtk::Window *)ptr;
+    Gtk::Window *window = Gtk::manage(new Gtk::Window(Gtk::WINDOW_POPUP));
+    if (parent != nullptr)
+    {
+        window->set_transient_for(*parent);
+    }
+    window->set_urgency_hint(true);
+    window->set_keep_above(true);
+    window->set_modal(true);
+    window->set_default_size(320, 240);
+    window->set_position(Gtk::WIN_POS_CENTER_ON_PARENT);
+    Gtk::Label *label = Gtk::manage(new Gtk::Label(convert(message)));
+    window->add(*label);
+    window->show_all_children();
+    window->show();
+
+    sigc::slot<bool> slot = sigc::bind(
+        [window, awaiter](int) {
+            if (awaiter->isDone())
+            {
+                window->hide();
+                return false;
+            }
+            return true;
+        },
+        0);
+    Glib::signal_timeout().connect(slot, 100);
+}
+
 void MenuList::show(std::string_view title, void *parent)
 {
     Gtk::Window *window = (Gtk::Window *)parent;
@@ -620,13 +651,13 @@ bool TempFile::spawnEditor(std::shared_ptr<TempFile> tempFile, std::shared_ptr<I
                           Glib::SPAWN_SEARCH_PATH | Glib::SPAWN_DO_NOT_REAP_CHILD | Glib::SPAWN_STDOUT_TO_DEV_NULL |
                               Glib::SPAWN_STDERR_TO_DEV_NULL,
                           setup, &id);
-        Gtk::MessageDialog *dialog = Gtk::manage(new Gtk::MessageDialog(*window, "Waiting for text editor to close...",
-                                                                        false, Gtk::MESSAGE_INFO, Gtk::BUTTONS_NONE));
-        dialog->show();
+        std::shared_ptr<DefaultAwaiter> waiter = std::make_shared<DefaultAwaiter>();
+        showPopupUntil("Waiting for text editor to close...", waiter, window);
         Glib::signal_child_watch().connect(
-            [tempFile, dialog, buffer = std::move(buffer), window](GPid pid, int status) {
-                dialog->hide();
-                if (g_spawn_check_wait_status(status, nullptr))
+            [tempFile, waiter, buffer = std::move(buffer), window](GPid pid, int status) {
+                waiter->setDone();
+                GError *error = nullptr;
+                if (g_spawn_check_wait_status(status, &error))
                 {
                     if (askQuestion("Read changes from file?", window))
                     {
@@ -637,6 +668,10 @@ bool TempFile::spawnEditor(std::shared_ptr<TempFile> tempFile, std::shared_ptr<I
                         }
                     }
                 }
+                else
+                {
+                    showMessageBox(MessageBoxType::Error, "Error in child process", error->message, window);
+                }
                 g_spawn_close_pid(pid);
             },
             id);
@@ -644,6 +679,7 @@ bool TempFile::spawnEditor(std::shared_ptr<TempFile> tempFile, std::shared_ptr<I
     }
     catch (const std::exception &e)
     {
+        showMessageBox(MessageBoxType::Error, "Unexpected process error", e.what(), window);
         fprintf(stderr, "%s\n", e.what());
         return false;
     }

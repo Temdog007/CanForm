@@ -17,6 +17,39 @@ enum class MessageBoxType
 
 extern void showMessageBox(MessageBoxType, std::string_view title, std::string_view message, void *parent = nullptr);
 
+struct Awaiter
+{
+    virtual ~Awaiter()
+    {
+    }
+    virtual bool isDone() = 0;
+};
+extern void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &, void *parent = nullptr);
+
+struct DefaultAwaiter : public Awaiter
+{
+  protected:
+    bool done;
+
+  public:
+    DefaultAwaiter() : done(false)
+    {
+    }
+
+    virtual ~DefaultAwaiter()
+    {
+    }
+
+    void setDone()
+    {
+        done = true;
+    }
+    virtual bool isDone() override
+    {
+        return done;
+    }
+};
+
 struct MenuItem
 {
     String label;
