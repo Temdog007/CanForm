@@ -5,6 +5,10 @@
 #include <gtkmm/gtkmm.hpp>
 #include <memory>
 
+#if __WIN32
+#include <Windows.h>
+#endif
+
 namespace CanForm
 {
 Glib::ustring convert(const std::string &s)
@@ -657,12 +661,17 @@ bool TempFile::openFile(std::string_view filePath)
         auto pathString = path.string();
         pathString.insert(0, "file://");
 #if __WIN32
-        const HRESULT hr = CoInitialize();
-        if (FAILED(hr))
+        HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        if (hr == RPC_E_CHANGED_MODE)
+        {
+            hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        }
+        if (hr != S_FALSE && FAILED(hr))
         {
             return false;
         }
         HINSTANCE rc = ShellExecute(nullptr, "open", pathString.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        CoUnitialize();
         return rc <= (HINSTANCE)32;
 #else
         std::vector<std::string> argv;
