@@ -169,7 +169,7 @@ struct MenuItemHandler
         }
     }
 
-    void operator()(MenuItem::NewMenu &&result)
+    void operator()(MenuItem::NewMenuPtr &&result)
     {
         Gtk::Widget *parent = dialog.get_parent();
         dialog.hide();

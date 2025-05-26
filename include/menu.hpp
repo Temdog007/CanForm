@@ -11,8 +11,9 @@ struct MenuList;
 
 struct MenuItem
 {
-    using NewMenu = std::shared_ptr<std::pair<String, MenuList>>;
-    using Result = std::variant<bool, NewMenu>;
+    using NewMenu = std::pair<String, MenuList>;
+    using NewMenuPtr = std::shared_ptr<NewMenu>;
+    using Result = std::variant<bool, NewMenuPtr>;
 
     String label;
     virtual ~MenuItem()
@@ -23,6 +24,41 @@ struct MenuItem
 };
 
 using MenuItems = std::pmr::vector<std::unique_ptr<MenuItem>>;
+
+struct Menu
+{
+    String title;
+    MenuItems items;
+
+    Menu() = default;
+    Menu(const Menu &) = delete;
+    Menu(Menu &&) noexcept = default;
+
+    template <typename T, typename... Args> void add(Args &&...args)
+    {
+        auto ptr = std::make_unique<T>(std::forward<Args>(args)...);
+        items.emplace_back(std::move(ptr));
+    }
+
+    template <typename F> void add(String &&, F &&);
+};
+
+using Menus = std::pmr::vector<Menu>;
+
+struct MenuList
+{
+    Menus menus;
+
+    MenuList() = default;
+    MenuList(const MenuList &) = delete;
+    MenuList(MenuList &&) noexcept = default;
+
+    virtual ~MenuList()
+    {
+    }
+
+    void show(std::string_view, void *parent = nullptr);
+};
 
 template <typename F> class MenuItemLambda : public MenuItem
 {
@@ -52,34 +88,25 @@ template <typename F> MenuItemLambda<F> makeItemMenu(String &&s, F &&f)
     return menuItem;
 }
 
-struct Menu
+template <typename F> void Menu::add(String &&s, F &&f)
 {
-    String title;
-    MenuItems items;
+    auto ptr = std::make_unique<MenuItemLambda<F>>(std::move(f));
+    ptr->label = std::move(s);
+    items.emplace_back(std::move(ptr));
+}
 
-    template <typename T, typename... Args> void add(Args &&...args)
-    {
-        auto ptr = std::make_unique<T>(std::forward<Args>(args)...);
-        items.emplace_back(std::move(ptr));
-    }
-
-    template <typename F> void add(String &&s, F &&f)
-    {
-        auto ptr = std::make_unique<MenuItemLambda<F>>(std::move(f));
-        ptr->label = std::move(s);
-        items.emplace_back(std::move(ptr));
-    }
-};
-
-using Menus = std::pmr::vector<Menu>;
-
-struct MenuList
+template <bool S, typename A, typename B>
+typename std::conditional<S, MenuItem::NewMenuPtr, MenuItem::NewMenu>::type makeNewMenu(A &&a, B &&b)
 {
-    Menus menus;
-    virtual ~MenuList()
+    auto pair = std::make_pair(std::move(a), std::move(b));
+    if constexpr (S)
     {
+        return std::make_shared<MenuItem::NewMenu>(std::move(pair));
     }
+    else
+    {
+        return pair;
+    }
+}
 
-    void show(std::string_view, void *parent = nullptr);
-};
 } // namespace CanForm

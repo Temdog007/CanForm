@@ -9,13 +9,12 @@ namespace CanForm
 
 Form makeForm()
 {
-    std::pmr::memory_resource *resource = std::pmr::new_delete_resource();
     Form form;
     form["Flag"] = false;
     form["Signed Integer"] = 0;
     form["Unsigned Integer"] = 0u;
     form["Float"] = 0.f;
-    form["String"] = String("Hello", resource);
+    form["String"] = String("Hello");
 
     constexpr std::array<std::string_view, 5> Classes = {"Mammal", "Bird", "Reptile", "Amphibian", "Fish"};
     form["Single Selection"] = StringSelection(Classes);

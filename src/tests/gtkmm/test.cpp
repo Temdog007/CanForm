@@ -152,6 +152,13 @@ void MainWindow::OnTool()
             showPopupUntil("Waiting...", std::chrono::seconds(3), 500, this);
             return false;
         });
+        menu.add("Replace Menu", [this]() {
+            MenuList menuList;
+            auto &menu = menuList.menus.emplace_back();
+            menu.title = "Secondary Menu";
+            menu.add("Close", []() { return true; });
+            return makeNewMenu<true>("New Menu", std::move(menuList));
+        });
     }
 
     menuList.show("Main Menu", this);
