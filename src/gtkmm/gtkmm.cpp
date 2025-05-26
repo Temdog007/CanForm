@@ -597,15 +597,6 @@ bool TempFile::read(std::string &string, bool updateTimePoint) const
             const auto fileSize = std::filesystem::file_size(path, err);
             string.resize(fileSize, '\0');
             file.read(string.data(), fileSize);
-            while (true)
-            {
-                const auto pos = string.find('\r');
-                if (pos >= string.size())
-                {
-                    break;
-                }
-                string.replace(pos, 1, "␍"); // U + 240D
-            }
             goto storeWrite;
         }
     }

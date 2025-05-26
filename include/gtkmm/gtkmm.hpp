@@ -1,6 +1,7 @@
 #pragma once
 
 #include <canform.hpp>
+#include <cstring>
 #include <filesystem>
 #include <glibmm/ustring.h>
 #include <gtkmm/drawingarea.h>
@@ -82,7 +83,7 @@ class TempFile
             }
             if (buffer)
             {
-                buffer->set_text(string);
+                buffer->set_text(string.make_valid());
                 return true;
             }
             return false;
