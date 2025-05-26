@@ -353,6 +353,94 @@ class FormVisitor
         return std::visit(*this, n);
     }
 
+    enum class RepositionMode
+    {
+        Swap,
+        MoveBefore,
+        MoveAfter,
+    };
+
+    static void setStringList(Gtk::VBox *box, std::shared_ptr<RepositionMode> mode, StringList &list)
+    {
+        box->foreach ([box](Gtk::Widget &widget) { box->remove(widget); });
+        using Pair = std::optional<size_t>;
+        std::shared_ptr<Pair> ptr = std::make_shared<Pair>();
+        for (size_t i = 0; i < list.size(); ++i)
+        {
+            Gtk::ToggleButton *button = Gtk::manage(new Gtk::ToggleButton(convert(list[i].first)));
+            button->signal_toggled().connect([&list, button, box, mode, ptr, i]() {
+                Pair &pair = *ptr;
+                if (button->get_active())
+                {
+                    if (pair)
+                    {
+                        if (*pair != i)
+                        {
+                            auto [min, max] = std::minmax(i, *pair);
+                            auto minIter = list.begin() + min;
+                            auto maxIter = list.begin() + max;
+                            switch (*mode)
+                            {
+                            case RepositionMode::MoveBefore:
+                                std::rotate(minIter, maxIter, maxIter + 1);
+                                break;
+                            case RepositionMode::MoveAfter:
+                                std::rotate(minIter + 1, maxIter, maxIter + 1);
+                                break;
+                            default:
+                                std::swap(*minIter, *maxIter);
+                                break;
+                            }
+                            setStringList(box, mode, list);
+                        }
+                    }
+                    else
+                    {
+                        pair.emplace(i);
+                    }
+                }
+                else if (pair == i)
+                {
+                    pair.reset();
+                }
+            });
+            box->add(*button);
+        }
+        box->show_all_children();
+    }
+
+    Gtk::Widget *operator()(StringList &list)
+    {
+        auto frame = makeFrame();
+        Gtk::VBox *vBox = Gtk::manage(new Gtk::VBox());
+
+        Gtk::HBox *hBox = Gtk::manage(new Gtk::HBox());
+        vBox->add(*hBox);
+
+        Gtk::RadioButtonGroup group;
+
+        std::shared_ptr<RepositionMode> mode = std::make_shared<RepositionMode>();
+
+        Gtk::RadioButton *button = Gtk::manage(new Gtk::RadioButton(group, "Swap"));
+        button->signal_clicked().connect([mode]() { *mode = RepositionMode::Swap; });
+        hBox->add(*button);
+
+        button = Gtk::manage(new Gtk::RadioButton(group, "Move Before"));
+        button->signal_clicked().connect([mode]() { *mode = RepositionMode::MoveBefore; });
+        hBox->add(*button);
+
+        button = Gtk::manage(new Gtk::RadioButton(group, "Move After"));
+        button->signal_clicked().connect([mode]() { *mode = RepositionMode::MoveAfter; });
+        hBox->add(*button);
+
+        Gtk::VBox *box = Gtk::manage(new Gtk::VBox());
+        setStringList(box, mode, list);
+        vBox->add(*box);
+
+        frame->add(*vBox);
+        return frame;
+    }
+
     Gtk::Widget *operator()(StringSelection &selection)
     {
         auto frame = makeFrame();

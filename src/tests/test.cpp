@@ -6,6 +6,15 @@
 
 namespace CanForm
 {
+StringList makeList(std::initializer_list<std::string_view> list)
+{
+    StringList s;
+    for (auto item : list)
+    {
+        s.emplace_back(item, nullptr);
+    }
+    return s;
+}
 
 Form makeForm()
 {
@@ -26,6 +35,8 @@ Form makeForm()
         map.emplace(a, rand() % 2 == 0);
     }
     form["Multiple Selections"] = std::move(map);
+
+    form["Ordering"] = makeList({"First", "Second", "Third", "Fourth", "Fifth"});
 
     ComplexString c;
     c.string = "2 + 2";
@@ -91,6 +102,15 @@ struct Printer
     std::ostream &operator()(const Number &n)
     {
         return std::visit(*this, n);
+    }
+
+    std::ostream &operator()(const StringList &list)
+    {
+        for (auto &[name, _] : list)
+        {
+            os << name << std::endl;
+        }
+        return os;
     }
 
     std::ostream &operator()(const MultiForm &multi)
