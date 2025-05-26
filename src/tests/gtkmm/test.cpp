@@ -148,6 +148,10 @@ void MainWindow::OnTool()
                 [this](Form &form, DialogResult result) { printForm(form, result, this); }, 2, this);
             return false;
         });
+        menu.add("Wait for 3 seconds", [this]() {
+            showPopupUntil("Waiting...", std::chrono::seconds(3), 500, this);
+            return false;
+        });
     }
 
     menuList.show("Main Menu", this);

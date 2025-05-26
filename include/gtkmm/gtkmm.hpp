@@ -130,8 +130,4 @@ struct SyncButton : public Gtk::Button
     }
 };
 
-static inline TimePoint now() noexcept
-{
-    return std::chrono::system_clock::now();
-}
 } // namespace CanForm

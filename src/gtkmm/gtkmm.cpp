@@ -152,6 +152,41 @@ void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &aw
         checkRate);
 }
 
+struct MenuItemHandler
+{
+    MenuItem &item;
+    Gtk::Dialog &dialog;
+
+    constexpr MenuItemHandler(MenuItem &i, Gtk::Dialog &d) noexcept : item(i), dialog(d)
+    {
+    }
+
+    void operator()(bool b)
+    {
+        if (b)
+        {
+            dialog.hide();
+        }
+    }
+
+    void operator()(MenuItem::NewMenu &&result)
+    {
+        Gtk::Widget *parent = dialog.get_parent();
+        dialog.hide();
+        Glib::signal_timeout().connect(
+            [parent, result = std::move(result)]() {
+                result->second.show(result->first, parent);
+                return false;
+            },
+            10);
+    }
+
+    void operator()()
+    {
+        std::visit(*this, item.onClick());
+    }
+};
+
 void MenuList::show(std::string_view title, void *parent)
 {
     Gtk::Window *window = (Gtk::Window *)parent;
@@ -165,12 +200,7 @@ void MenuList::show(std::string_view title, void *parent)
             for (auto &item : menu.items)
             {
                 Gtk::Button *button = Gtk::manage(new Gtk::Button(convert(item->label)));
-                button->signal_clicked().connect([&item, &dialog]() {
-                    if (item->onClick())
-                    {
-                        dialog.hide();
-                    }
-                });
+                button->signal_clicked().connect(MenuItemHandler(*item, dialog));
                 box->add(*button);
             }
             notebook.append_page(*box, convert(menu.title));
