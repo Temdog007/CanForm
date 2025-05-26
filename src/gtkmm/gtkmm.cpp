@@ -152,7 +152,7 @@ void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &aw
         checkRate);
 }
 
-static void showMenu(const Menus &menus, Gtk::Dialog &dialog, bool setup);
+static void showMenu(const Menus &menus, Gtk::Dialog &dialog);
 
 struct MenuItemHandler
 {
@@ -174,7 +174,7 @@ struct MenuItemHandler
     void operator()(MenuItem::NewMenuPtr &&result)
     {
         dialog.set_title(convert(result->first));
-        showMenu(result->second.menus, dialog, false);
+        showMenu(result->second.menus, dialog);
     }
 
     void operator()()
@@ -183,7 +183,7 @@ struct MenuItemHandler
     }
 };
 
-static void showMenu(const Menus &menus, Gtk::Dialog &dialog, bool setup)
+static void showMenu(const Menus &menus, Gtk::Dialog &dialog)
 {
     Gtk::Notebook notebook;
     Gtk::Box *box = dialog.get_content_area();
@@ -200,11 +200,7 @@ static void showMenu(const Menus &menus, Gtk::Dialog &dialog, bool setup)
         }
         notebook.append_page(*box, convert(menu.title));
     }
-    if (setup)
-    {
-        dialog.add_button("Back", -1);
-        dialog.set_default_size(320, 240);
-    }
+    dialog.set_default_size(320, 240);
     dialog.show_all_children();
     dialog.run();
 }
@@ -215,12 +211,12 @@ void MenuList::show(std::string_view title, void *parent)
     if (window == nullptr)
     {
         Gtk::Dialog dialog(convert(title), true);
-        showMenu(menus, dialog, true);
+        showMenu(menus, dialog);
     }
     else
     {
         Gtk::Dialog dialog(convert(title), *window, true);
-        showMenu(menus, dialog, true);
+        showMenu(menus, dialog);
     }
 }
 
