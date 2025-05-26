@@ -360,6 +360,21 @@ class FormVisitor
         MoveAfter,
     };
 
+    template <typename T> static void reposition(T &list, size_t oldPosition, size_t newPosition)
+    {
+        auto iter = list.begin() + oldPosition;
+        auto item = std::move(*iter);
+        list.erase(iter);
+        if (newPosition < list.size())
+        {
+            list.emplace(list.begin() + newPosition, std::move(item));
+        }
+        else
+        {
+            list.emplace_back(std::move(item));
+        }
+    }
+
     static void setStringList(Gtk::VBox *box, std::shared_ptr<RepositionMode> mode, StringList &list)
     {
         box->foreach ([box](Gtk::Widget &widget) { box->remove(widget); });
@@ -370,39 +385,36 @@ class FormVisitor
             Gtk::ToggleButton *button = Gtk::manage(new Gtk::ToggleButton(convert(list[i].first)));
             button->signal_toggled().connect([&list, button, box, mode, ptr, i]() {
                 Pair &pair = *ptr;
-                if (button->get_active())
+                if (!button->get_active())
                 {
-                    if (pair)
+                    if (pair == i)
                     {
-                        if (*pair != i)
-                        {
-                            auto [min, max] = std::minmax(i, *pair);
-                            auto minIter = list.begin() + min;
-                            auto maxIter = list.begin() + max;
-                            switch (*mode)
-                            {
-                            case RepositionMode::MoveBefore:
-                                std::rotate(minIter, maxIter, maxIter + 1);
-                                break;
-                            case RepositionMode::MoveAfter:
-                                std::rotate(minIter + 1, maxIter, maxIter + 1);
-                                break;
-                            default:
-                                std::swap(*minIter, *maxIter);
-                                break;
-                            }
-                            setStringList(box, mode, list);
-                        }
-                    }
-                    else
-                    {
-                        pair.emplace(i);
+                        pair.reset();
+                        return;
                     }
                 }
-                else if (pair == i)
+                if (!pair)
                 {
-                    pair.reset();
+                    pair.emplace(i);
+                    return;
                 }
+                if (*pair == i)
+                {
+                    return;
+                }
+                switch (*mode)
+                {
+                case RepositionMode::MoveBefore:
+                    reposition(list, *pair, i);
+                    break;
+                case RepositionMode::MoveAfter:
+                    reposition(list, *pair, i + 1);
+                    break;
+                default:
+                    std::swap(list[*pair], list[i]);
+                    break;
+                }
+                setStringList(box, mode, list);
             });
             box->add(*button);
         }
