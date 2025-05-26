@@ -27,6 +27,34 @@ add_library(canform ${CANFORM_TYPE}
 target_include_directories(canform PRIVATE include)
 
 if(EMSCRIPTEN)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS} -sALLOW_MEMORY_GROWTH=1")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS} -ASYNCIFY_DEBUG=1")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS} -sASYNCIFY=1")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS} -sASYNCIFY_STACK_SIZE=134217728")
+    set(CMAKE_EXE_LINKER_FLAGS
+    	"${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS} -sEXPORTED_RUNTIME_METHODS=ccall,stringToNewUTF8")
+
+	add_library(canform_em ${CANFORM_TYPE}
+		src/em/em.cpp)
+
+	target_include_directories(canform_em PRIVATE
+		include)
+
+	target_link_libraries(canform_em PRIVATE canform)
+
+	if(CANFORM_BUILD_TEST)
+		add_executable(canform_em_test
+			src/tests/test.cpp
+			src/tests/em/main.cpp
+			src/tests/em/test.cpp)
+
+		target_include_directories(canform_em_test PRIVATE
+			include)
+
+		target_link_libraries(canform_em_test PRIVATE
+			canform
+			canform_em)
+	endif()
 else()
 	find_package(PkgConfig REQUIRED)
 	pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)

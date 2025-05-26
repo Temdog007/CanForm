@@ -1,0 +1,73 @@
+body {
+	background-color: silver;
+}
+
+#menuButton{
+	position: fixed;
+	left: 0;
+	top: 0;
+	margin: 1vh 1vw;
+}
+#closeButton {
+	position: absolute;
+	right: 0;
+	top : 0;
+	margin: 1vh 1vw;
+	color:white;
+	background-color: red;
+}
+
+.tab {
+	overflow: hidden;
+	border: 1px solid #ccc;
+	background-color: #f1f1f1;
+}
+
+.tabButton {
+	background-color: inherit;
+	float: left;
+	border: none;
+	outline: none;
+	cursor: pointer;
+	padding: 1vh 1vw;
+	transition: 0.3s;
+	border: 1px solid black;
+}
+.tabButton.active {
+	background-color: #ccc;
+}
+.tabButton.hover {
+	background-color: #ddd;
+}
+
+.tabContent{
+	display: none;
+	border: 1px solid #ccc;
+	border-top: none;
+	animation: fadeEffect 1s;
+}
+.tabContent.active {
+	display: grid;
+	grid-template-columns: 1fr;
+}
+
+@keyframes fadeEffect {
+  from {opacity: 0;}
+  to {opacity: 1;}
+}
+
+.Warning{
+	color:yellow;
+}
+.Error{
+	color: red;
+}
+
+.yes {
+	color: green;
+	float:right;
+}
+.no {
+	color: red;
+	float:left;
+}
