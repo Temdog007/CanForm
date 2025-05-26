@@ -152,6 +152,8 @@ void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &aw
         checkRate);
 }
 
+static void showMenu(const Menus &menus, Gtk::Dialog &dialog, bool setup);
+
 struct MenuItemHandler
 {
     MenuItem &item;
@@ -171,14 +173,8 @@ struct MenuItemHandler
 
     void operator()(MenuItem::NewMenuPtr &&result)
     {
-        Gtk::Widget *parent = dialog.get_parent();
-        dialog.hide();
-        Glib::signal_timeout().connect(
-            [parent, result = std::move(result)]() {
-                result->second.show(result->first, parent);
-                return false;
-            },
-            10);
+        dialog.set_title(convert(result->first));
+        showMenu(result->second.menus, dialog, false);
     }
 
     void operator()()
@@ -187,38 +183,44 @@ struct MenuItemHandler
     }
 };
 
+static void showMenu(const Menus &menus, Gtk::Dialog &dialog, bool setup)
+{
+    Gtk::Notebook notebook;
+    Gtk::Box *box = dialog.get_content_area();
+    box->foreach ([box](Gtk::Widget &widget) { box->remove(widget); });
+    box->add(notebook);
+    for (auto &menu : menus)
+    {
+        Gtk::VBox *box = Gtk::manage(new Gtk::VBox());
+        for (auto &item : menu.items)
+        {
+            Gtk::Button *button = Gtk::manage(new Gtk::Button(convert(item->label)));
+            button->signal_clicked().connect(MenuItemHandler(*item, dialog));
+            box->add(*button);
+        }
+        notebook.append_page(*box, convert(menu.title));
+    }
+    if (setup)
+    {
+        dialog.add_button("Back", -1);
+        dialog.set_default_size(320, 240);
+    }
+    dialog.show_all_children();
+    dialog.run();
+}
+
 void MenuList::show(std::string_view title, void *parent)
 {
     Gtk::Window *window = (Gtk::Window *)parent;
-    const auto run = [this](Gtk::Dialog &dialog) {
-        Gtk::Notebook notebook;
-        Gtk::Box *box = dialog.get_content_area();
-        box->add(notebook);
-        for (auto &menu : menus)
-        {
-            Gtk::VBox *box = Gtk::manage(new Gtk::VBox());
-            for (auto &item : menu.items)
-            {
-                Gtk::Button *button = Gtk::manage(new Gtk::Button(convert(item->label)));
-                button->signal_clicked().connect(MenuItemHandler(*item, dialog));
-                box->add(*button);
-            }
-            notebook.append_page(*box, convert(menu.title));
-        }
-        dialog.add_button("Back", -1);
-        dialog.set_default_size(320, 240);
-        dialog.show_all_children();
-        dialog.run();
-    };
     if (window == nullptr)
     {
         Gtk::Dialog dialog(convert(title), true);
-        run(dialog);
+        showMenu(menus, dialog, true);
     }
     else
     {
         Gtk::Dialog dialog(convert(title), *window, true);
-        run(dialog);
+        showMenu(menus, dialog, true);
     }
 }
 
