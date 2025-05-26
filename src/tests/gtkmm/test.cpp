@@ -23,7 +23,7 @@ class MainWindow : public Window, public FileDialog::Handler
     Toolbar toolbar;
     ToolButton item;
 
-    void add(Glib::ustring name, SpinButton &button, int min = 0, int max = 10)
+    void addToSpinButton(Glib::ustring name, SpinButton &button, int min = 0, int max = 10)
     {
         button.set_range(min, max);
         button.set_increments(1, (max - min) / 10);
@@ -32,7 +32,7 @@ class MainWindow : public Window, public FileDialog::Handler
         flowBox.add(*frame);
     }
 
-    template <typename T> void add(Form &form, const SpinButton &button) const
+    template <typename T> void addToForm(Form &form, const SpinButton &button) const
     {
         for (size_t i = 0; i < button.get_value(); ++i)
         {
@@ -71,13 +71,13 @@ MainWindow::MainWindow() : button("Create"), asyncButton("Asynchrous Form"), ite
     toolbar.append(item);
     item.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::OnTool));
 
-    add("Booleans", bools);
-    add("Integers", integers);
-    add("Floats", floats);
-    add("Strings", strings);
-    add("Selections", selections);
-    add("Flags", flags);
-    add("Columns", columns, 1, 10);
+    addToSpinButton("Booleans", bools);
+    addToSpinButton("Integers", integers);
+    addToSpinButton("Floats", floats);
+    addToSpinButton("Strings", strings);
+    addToSpinButton("Selections", selections);
+    addToSpinButton("Flags", flags);
+    addToSpinButton("Columns", columns, 1, 10);
 
     flowBox.add(asyncButton);
     flowBox.add(button);
@@ -182,11 +182,11 @@ void MainWindow::OnCreate()
 Form MainWindow::createForm() const
 {
     Form form;
-    add<bool>(form, bools);
-    add<int64_t>(form, integers);
-    add<double>(form, floats);
-    add<String>(form, strings);
-    add<StringSelection>(form, selections);
-    add<StringMap>(form, flags);
+    addToForm<bool>(form, bools);
+    addToForm<int64_t>(form, integers);
+    addToForm<double>(form, floats);
+    addToForm<String>(form, strings);
+    addToForm<StringSelection>(form, selections);
+    addToForm<StringMap>(form, flags);
     return form;
 }
