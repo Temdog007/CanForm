@@ -26,7 +26,7 @@ constexpr const char *getIconName(MessageBoxType type) noexcept
     default:
         break;
     }
-    return "gtk-dialog-info";
+    return "dialog-information";
 }
 
 struct IBufferSetter
