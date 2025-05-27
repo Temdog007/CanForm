@@ -19,7 +19,6 @@ class MainWindow : public Window, public FileDialog::Handler
     FlowBox flowBox;
     SpinButton columns, bools, integers, floats, strings, selections, flags;
     Button button;
-    CheckButton asyncButton;
     Toolbar toolbar;
     ToolButton item;
 
@@ -59,7 +58,7 @@ int main(int argc, char **argv)
     return 0;
 }
 
-MainWindow::MainWindow() : button("Create"), asyncButton("Asynchrous Form"), item("☰") // U+2630
+MainWindow::MainWindow() : button("Create"), item("☰") // U+2630
 {
     set_title("CanForm GTKMM Test");
     set_default_size(800, 600);
@@ -79,7 +78,6 @@ MainWindow::MainWindow() : button("Create"), asyncButton("Asynchrous Form"), ite
     addToSpinButton("Flags", flags);
     addToSpinButton("Columns", columns, 1, 10);
 
-    flowBox.add(asyncButton);
     flowBox.add(button);
 
     button.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::OnCreate));
@@ -142,12 +140,6 @@ void MainWindow::OnTool()
             printForm(form, executeForm("Modal Form", form, 2, this), this);
             return false;
         });
-        menu.add("Non Modal Form", [this]() {
-            showAsyncForm(
-                makeForm(), "Non Modal Form",
-                [this](Form &form, DialogResult result) { printForm(form, result, this); }, 2, this);
-            return false;
-        });
         menu.add("Wait for 3 seconds", [this]() {
             showPopupUntil("Waiting...", std::chrono::seconds(3), 500, this);
             return false;
@@ -166,17 +158,8 @@ void MainWindow::OnTool()
 
 void MainWindow::OnCreate()
 {
-    if (asyncButton.get_active())
-    {
-        showAsyncForm(
-            createForm(), "Non Modal Form", [this](Form &form, DialogResult result) { printForm(form, result, this); },
-            columns.get_value(), this);
-    }
-    else
-    {
-        Form form = createForm();
-        printForm(form, executeForm("Modal Form", form, columns.get_value(), this), this);
-    }
+    Form form = createForm();
+    printForm(form, executeForm("Modal Form", form, columns.get_value(), this), this);
 }
 
 Form MainWindow::createForm() const

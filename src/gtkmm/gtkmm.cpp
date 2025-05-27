@@ -580,53 +580,6 @@ DialogResult executeForm(std::string_view title, Form &form, size_t columns, voi
     }
 }
 
-void AsyncForm::show(const std::shared_ptr<AsyncForm> &asyncForm, std::string_view title, size_t columns, void *parent)
-{
-    if (asyncForm == nullptr)
-    {
-        return;
-    }
-    Gtk::Dialog *dialog = nullptr;
-    Gtk::Window *window = (Gtk::Window *)parent;
-
-    if (window == nullptr)
-    {
-        dialog = Gtk::make_managed<Gtk::Dialog>(convert(title), false);
-    }
-    else
-    {
-        dialog = Gtk::make_managed<Gtk::Dialog>(convert(title), *window, false);
-    }
-
-    Gtk::Box *box = dialog->get_content_area();
-    FormVisitor visitor(columns, dialog);
-    auto scroll = makeScroll();
-    scroll->add(*visitor(asyncForm->form));
-    box->pack_start(*scroll, true, true);
-    dialog->add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
-    dialog->add_button(Gtk::Stock::OK, Gtk::RESPONSE_OK);
-    setDialogSize(*dialog);
-    dialog->set_resizable(true);
-    dialog->show_all_children();
-    dialog->signal_response().connect([dialog, asyncForm](int response) {
-        dialog->hide();
-        DialogResult result = DialogResult::Error;
-        switch (response)
-        {
-        case Gtk::RESPONSE_OK:
-            result = DialogResult::Ok;
-            break;
-        case Gtk::RESPONSE_CANCEL:
-            result = DialogResult::Cancel;
-            break;
-        default:
-            break;
-        }
-        return asyncForm->onSubmit(result);
-    });
-    dialog->run();
-}
-
 DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
 {
     Gtk::Window *window = (Gtk::Window *)parent;
