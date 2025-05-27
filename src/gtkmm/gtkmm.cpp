@@ -104,13 +104,13 @@ constexpr const char *getIconName(MessageBoxType type) noexcept
     switch (type)
     {
     case MessageBoxType::Warning:
-        return "dialog-warning";
+        return "messagebox_warning";
     case MessageBoxType::Error:
-        return "dialog-error";
+        return "messagebox_critical";
     default:
         break;
     }
-    return "dialog-info";
+    return "messagebox_info";
 }
 
 static void makeButtons(Gtk::Window *, Gtk::HBox *)
@@ -147,8 +147,6 @@ static Gtk::Window *createWindow(Gtk::WindowType type, std::string_view title, G
 {
     Gtk::Window *parent = (Gtk::Window *)ptr;
     Gtk::Window *window = new Gtk::Window(type);
-    window->set_urgency_hint(true);
-    window->set_keep_above(true);
     window->set_modal(true);
     window->set_type_hint(Gdk::WINDOW_TYPE_HINT_DIALOG);
     window->set_title(convert(title));
@@ -196,9 +194,15 @@ void showMessageBox(MessageBoxType type, std::string_view title, std::string_vie
     Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
     box->set_spacing(10);
 
-    auto icons = Gtk::IconTheme::get_default();
-    Gtk::Image *image = Gtk::make_managed<Gtk::Image>(icons->load_icon(getIconName(type), PixelSize));
-    box->pack_start(*image, Gtk::PACK_SHRINK);
+    try
+    {
+        auto icons = Gtk::IconTheme::get_default();
+        Gtk::Image *image = Gtk::make_managed<Gtk::Image>(icons->load_icon(getIconName(type), PixelSize));
+        box->pack_start(*image, Gtk::PACK_SHRINK);
+    }
+    catch (const std::exception &)
+    {
+    }
 
     Gtk::Label *label = Gtk::make_managed<Gtk::Label>(convert(message));
     box->pack_start(*label, Gtk::PACK_SHRINK);
@@ -212,9 +216,15 @@ void askQuestion(std::string_view title, std::string_view message, const std::sh
     Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
     box->set_spacing(10);
 
-    auto icons = Gtk::IconTheme::get_default();
-    Gtk::Image *image = Gtk::make_managed<Gtk::Image>(icons->load_icon("dialog-question", PixelSize));
-    box->pack_start(*image, Gtk::PACK_SHRINK);
+    try
+    {
+        auto icons = Gtk::IconTheme::get_default();
+        Gtk::Image *image = Gtk::make_managed<Gtk::Image>(icons->load_icon("dialog-question", PixelSize));
+        box->pack_start(*image, Gtk::PACK_SHRINK);
+    }
+    catch (const std::exception &)
+    {
+    }
 
     Gtk::Label *label = Gtk::make_managed<Gtk::Label>(convert(message));
     box->pack_start(*label, Gtk::PACK_SHRINK);
@@ -678,7 +688,6 @@ void FileDialog::show(const std::shared_ptr<FileDialog::Handler> &handler, void 
     }
     dialog->set_do_overwrite_confirmation(true);
     dialog->set_urgency_hint(true);
-    dialog->set_keep_above(true);
     dialog->set_modal(true);
     dialog->set_current_folder(convert(startDirectory));
     dialog->add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
@@ -698,13 +707,12 @@ void FileDialog::show(const std::shared_ptr<FileDialog::Handler> &handler, void 
     dialog->signal_response().connect([dialog, handler](int response) {
         switch (response)
         {
-        case Gtk::RESPONSE_OK: {
+        case Gtk::RESPONSE_OK:
             for (auto &file : dialog->get_files())
             {
                 handler->handle(file->get_path());
             }
-        }
-        break;
+            break;
         case Gtk::RESPONSE_CANCEL:
             handler->canceled();
             break;

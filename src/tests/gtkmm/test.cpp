@@ -102,18 +102,27 @@ MainWindow::MainWindow() : button("Create"), item("☰") // U+2630
 
     flowBox.add(button);
 
-    auto icons = Gtk::IconTheme::get_default();
-    std::ofstream file("icons.txt");
-    for (auto icon : icons->list_icons())
+    try
     {
-        file << icon.c_str() << std::endl;
+#if NDEBUG
+#else
+        auto icons = Gtk::IconTheme::get_default();
+        std::ofstream file("icons.txt");
+        for (auto icon : icons->list_icons())
+        {
+            file << icon.c_str() << std::endl;
+        }
+#endif
+        info.set(icons->load_icon("messagebox_info", 32));
+        flowBox.add(info);
+        warning.set(icons->load_icon("messagebox_warning", 32));
+        flowBox.add(error);
+        error.set(icons->load_icon("messagebox_critical", 32));
+        flowBox.add(warning);
     }
-    info.set(icons->load_icon("dialog-info", 32));
-    flowBox.add(info);
-    warning.set(icons->load_icon("dialog-warning", 32));
-    flowBox.add(error);
-    error.set(icons->load_icon("dialog-error", 32));
-    flowBox.add(warning);
+    catch (const std::exception &)
+    {
+    }
 
     button.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::OnCreate));
 
