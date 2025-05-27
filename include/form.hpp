@@ -233,7 +233,74 @@ struct Form
     }
 };
 
-extern DialogResult executeForm(std::string_view, Form &, size_t columns, void *parent = nullptr);
+class FormExecute
+{
+  protected:
+    Form form;
+
+  public:
+    FormExecute() = default;
+    FormExecute(const FormExecute &) = default;
+    FormExecute(FormExecute &&) noexcept = default;
+    template <typename... Args> FormExecute(std::in_place_t, Args &&...args) : form(std::forward<Args>(args)...)
+    {
+    }
+    virtual ~FormExecute()
+    {
+    }
+
+    FormExecute &operator=(const FormExecute &) = default;
+    FormExecute &operator=(FormExecute &&) noexcept = default;
+
+    virtual void ok() = 0;
+    virtual void cancel()
+    {
+    }
+
+    const Form &getForm() const noexcept
+    {
+        return form;
+    }
+
+    static void execute(std::string_view, const std::shared_ptr<FormExecute> &, size_t columns, void *parent = nullptr);
+};
+
+template <typename F> class FormExecuteLambda : public FormExecute
+{
+  private:
+    F func;
+
+  public:
+    template <typename... Args>
+    FormExecuteLambda(F &&f, Args &&...args)
+        : FormExecute(std::in_place, std::forward<Args>(args)...), func(std::move(f))
+    {
+    }
+    virtual ~FormExecuteLambda()
+    {
+    }
+
+    virtual void ok() override
+    {
+        if constexpr (std::is_invocable<F, const Form &>::value)
+        {
+            func(form);
+        }
+        else if constexpr (std::is_invocable<F, Form &>::value)
+        {
+            func(form);
+        }
+        else
+        {
+            func();
+        }
+    }
+};
+
+template <typename F, typename... Args> static inline FormExecuteLambda<F> executeForm(F &&f, Args &&...args)
+{
+    return FormExecuteLambda(std::move(f), std::forward<Args>(args)...);
+}
 
 extern char randomCharacter();
 

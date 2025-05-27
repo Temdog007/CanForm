@@ -47,79 +47,139 @@ static std::pair<int, int> getWindowSize(Gtk::Window &window)
     }
 }
 
-static std::pair<int, int> getMonitorSize(Gtk::Window &window)
+// static std::pair<int, int> getMonitorSize(Gtk::Window &window)
+// {
+//     auto screen = window.get_screen();
+//     if (!screen)
+//     {
+//         return getWindowSize(window);
+//     }
+//     auto w = screen->get_active_window();
+//     if (!w)
+//     {
+//         return getWindowSize(window);
+//     }
+//     int i = screen->get_monitor_at_window(w);
+//     Gdk::Rectangle r;
+//     screen->get_monitor_geometry(i, r);
+//     return std::make_pair(r.get_width(), r.get_height());
+// }
+
+static Gtk::ScrolledWindow *makeScroll()
 {
-    auto screen = window.get_screen();
-    if (!screen)
-    {
-        return getWindowSize(window);
-    }
-    auto w = screen->get_active_window();
-    if (!w)
-    {
-        return getWindowSize(window);
-    }
-    int i = screen->get_monitor_at_window(w);
-    Gdk::Rectangle r;
-    screen->get_monitor_geometry(i, r);
-    return std::make_pair(r.get_width(), r.get_height());
+    Gtk::ScrolledWindow *scroll = Gtk::make_managed<Gtk::ScrolledWindow>();
+    scroll->set_min_content_width(320);
+    scroll->set_min_content_height(240);
+    scroll->set_propagate_natural_width(true);
+    scroll->set_propagate_natural_height(true);
+    return scroll;
 }
 
-static void setDialogSize(Gtk::Window &window)
-{
-    auto [w, h] = getMonitorSize(window);
-    window.set_default_size(w / 2, h / 2);
-}
+constexpr int PixelSize = 32;
 
-constexpr Gtk::MessageType getType(MessageBoxType type) noexcept
+constexpr const char *getIconName(MessageBoxType type) noexcept
 {
     switch (type)
     {
     case MessageBoxType::Warning:
-        return Gtk::MESSAGE_WARNING;
+        return "dialog-warning";
     case MessageBoxType::Error:
-        return Gtk::MESSAGE_ERROR;
+        return "dialog-error";
     default:
-        return Gtk::MESSAGE_INFO;
+        break;
     }
+    return "dialog-info";
 }
 
-void showMessageBox(MessageBoxType type, std::string_view title, std::string_view message, void *parent)
+static void makeButtons(Gtk::Window *, Gtk::HBox *)
 {
-    Gtk::Window *window = (Gtk::Window *)parent;
-    const auto run = [message](Gtk::MessageDialog &dialog) {
-        dialog.set_secondary_text(convert(message));
-        dialog.run();
-    };
-    if (window == nullptr)
-    {
-        Gtk::MessageDialog dialog(convert(title), false, getType(type), Gtk::BUTTONS_OK);
-        run(dialog);
-    }
-    else
-    {
-        Gtk::MessageDialog dialog(*window, convert(title), false, getType(type), Gtk::BUTTONS_OK);
-        run(dialog);
-    }
 }
 
-bool askQuestion(std::string_view title, std::string_view message, void *parent)
+template <typename T, typename F, typename... Args>
+static void makeButtons(Gtk::Window *window, Gtk::HBox *box, T icon, F func, Args &&...args)
 {
-    Gtk::Window *window = (Gtk::Window *)parent;
-    const auto run = [message](Gtk::MessageDialog &dialog) {
-        dialog.set_secondary_text(convert(message));
-        return dialog.run() == Gtk::RESPONSE_YES;
-    };
-    if (window == nullptr)
+    Gtk::Button *button = Gtk::make_managed<Gtk::Button>(icon);
+    button->signal_clicked().connect([window, func = std::move(func)]() {
+        window->hide();
+        func();
+        delete window;
+    });
+    box->pack_start(*button, Gtk::PACK_SHRINK);
+    makeButtons(window, box, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+static Gtk::Window *createWindow(Gtk::WindowType type, std::string_view title, Gtk::Widget *content, void *ptr,
+                                 Args &&...args)
+{
+    Gtk::Window *parent = (Gtk::Window *)ptr;
+    Gtk::Window *window = new Gtk::Window(type);
+    if (parent != nullptr)
     {
-        Gtk::MessageDialog dialog(convert(title), true, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
-        return run(dialog);
+        window->set_transient_for(*parent);
+        window->set_modal(true);
     }
-    else
-    {
-        Gtk::MessageDialog dialog(*window, convert(title), true, Gtk::MESSAGE_QUESTION, Gtk::BUTTONS_YES_NO);
-        return run(dialog);
-    }
+    window->set_type_hint(Gdk::WINDOW_TYPE_HINT_DIALOG);
+
+    window->set_title(convert(title));
+
+    auto [w, h] = getWindowSize(*window);
+    window->set_default_size(w / 2, h / 2);
+
+    Gtk::VBox *vBox = Gtk::make_managed<Gtk::VBox>();
+    window->add(*vBox);
+
+    Gtk::ScrolledWindow *scroll = makeScroll();
+    scroll->add(*content);
+    vBox->pack_start(*scroll, Gtk::PACK_EXPAND_WIDGET);
+
+    Gtk::Separator *separator = Gtk::make_managed<Gtk::Separator>();
+    vBox->pack_start(*separator, Gtk::PACK_SHRINK);
+
+    Gtk::HBox *hBox = Gtk::make_managed<Gtk::HBox>();
+    makeButtons(window, hBox, std::forward<Args>(args)...);
+    vBox->pack_start(*hBox, Gtk::PACK_SHRINK);
+
+    window->show_all_children();
+    window->show();
+    return window;
+}
+
+template <typename... Args>
+static Gtk::Window *createWindow(std::string_view title, Gtk::Widget *content, void *ptr, Args &&...args)
+{
+    return createWindow(Gtk::WINDOW_TOPLEVEL, title, content, ptr, std::forward<Args>(args)...);
+}
+
+void showMessageBox(MessageBoxType type, std::string_view title, std::string_view message, void *ptr)
+{
+    Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
+
+    auto icons = Gtk::IconTheme::get_default();
+    Gtk::Image *image = Gtk::make_managed<Gtk::Image>(icons->load_icon(getIconName(type), PixelSize));
+    box->pack_start(*image, Gtk::PACK_SHRINK);
+
+    Gtk::Label *label = Gtk::make_managed<Gtk::Label>(convert(message));
+    box->pack_start(*label, Gtk::PACK_SHRINK);
+
+    createWindow(title, box, ptr, Gtk::Stock::OK, []() {});
+}
+
+void askQuestion(std::string_view title, std::string_view message, const std::shared_ptr<QuestionResponse> &response,
+                 void *ptr)
+{
+    Gtk::VBox *vBox = Gtk::make_managed<Gtk::VBox>();
+
+    auto icons = Gtk::IconTheme::get_default();
+    Gtk::Image *image = Gtk::make_managed<Gtk::Image>(icons->load_icon("dialog-question", PixelSize));
+    vBox->pack_start(*image, Gtk::PACK_SHRINK);
+
+    Gtk::Label *label = Gtk::make_managed<Gtk::Label>(convert(message));
+    vBox->pack_start(*label, Gtk::PACK_SHRINK);
+
+    createWindow(
+        title, vBox, ptr, Gtk::Stock::NO, [response]() { response->no(); }, Gtk::Stock::YES,
+        [response]() { response->yes(); });
 }
 
 void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &awaiter, size_t checkRate, void *ptr)
@@ -145,6 +205,7 @@ void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &aw
             if (awaiter->isDone())
             {
                 window->hide();
+                delete window;
                 return false;
             }
             return true;
@@ -225,7 +286,6 @@ class FormVisitor
   private:
     std::string_view name;
     size_t columns;
-    Gtk::Window *window;
 
     Gtk::Frame *makeFrame() const
     {
@@ -243,7 +303,7 @@ class FormVisitor
     }
 
   public:
-    constexpr FormVisitor(size_t c, Gtk::Window *w) noexcept : name(), columns(c), window(w)
+    constexpr FormVisitor(size_t c) noexcept : name(), columns(c)
     {
     }
 
@@ -533,58 +593,23 @@ class FormVisitor
     }
 };
 
-static Gtk::ScrolledWindow *makeScroll()
+void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExecute> &formExecute, size_t columns,
+                          void *ptr)
 {
-    Gtk::ScrolledWindow *scroll = Gtk::make_managed<Gtk::ScrolledWindow>();
-    scroll->set_min_content_width(320);
-    scroll->set_min_content_height(240);
-    scroll->set_propagate_natural_width(true);
-    scroll->set_propagate_natural_height(true);
-    return scroll;
+    FormVisitor visitor(columns);
+    createWindow(
+        title, visitor(formExecute->form), ptr, Gtk::Stock::OK, [formExecute]() { formExecute->ok(); },
+        Gtk::Stock::CANCEL, [formExecute]() { formExecute->cancel(); });
 }
 
-DialogResult executeForm(std::string_view title, Form &form, size_t columns, void *parent)
+void FileDialog::show(FileDialog::Handler &handler, void *parent) const
 {
-    Gtk::Window *window = (Gtk::Window *)parent;
-    const auto run = [&form, window, columns](Gtk::Dialog &dialog) {
-        Gtk::Box *box = dialog.get_content_area();
-        FormVisitor visitor(columns, &dialog);
-        auto scroll = makeScroll();
-        scroll->add(*visitor(form));
-        box->pack_start(*scroll, true, true);
-        dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
-        dialog.add_button(Gtk::Stock::OK, Gtk::RESPONSE_OK);
-        setDialogSize(dialog);
-        dialog.set_resizable(true);
-        dialog.show_all_children();
-        switch (dialog.run())
-        {
-        case Gtk::RESPONSE_OK:
-            return DialogResult::Ok;
-        case Gtk::RESPONSE_CANCEL:
-            return DialogResult::Cancel;
-        default:
-            break;
-        }
-        return DialogResult::Error;
-    };
-    if (window == nullptr)
-    {
-        Gtk::Dialog dialog(convert(title), true);
-        return run(dialog);
-    }
-    else
-    {
-        Gtk::Dialog dialog(convert(title), *window, true);
-        return run(dialog);
-    }
-}
-
-DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
-{
-    Gtk::Window *window = (Gtk::Window *)parent;
     const auto run = [this, &handler, parent](Gtk::FileChooserDialog &dialog) {
         dialog.set_current_folder(convert(startDirectory));
+        if (saving)
+        {
+            dialog.set_current_name(convert(filename));
+        }
         dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
         if (directories)
         {
@@ -592,7 +617,6 @@ DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
         }
         else
         {
-            dialog.set_current_name(convert(filename));
             dialog.set_select_multiple(multiple);
             dialog.add_button(saving ? Gtk::Stock::SAVE : Gtk::Stock::OPEN, Gtk::RESPONSE_OK);
         }
@@ -603,15 +627,15 @@ DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
             {
                 handler.handle(file->get_path());
             }
-            return DialogResult::Ok;
         }
         break;
         case Gtk::RESPONSE_CANCEL:
-            return DialogResult::Cancel;
+            handler.canceled();
+            break;
         default:
+            handler.error();
             break;
         }
-        return DialogResult::Error;
     };
     Gtk::FileChooserAction action;
     if (directories)
@@ -626,15 +650,16 @@ DialogResult FileDialog::show(FileDialog::Handler &handler, void *parent) const
     {
         action = Gtk::FILE_CHOOSER_ACTION_OPEN;
     }
+    Gtk::Window *window = (Gtk::Window *)parent;
     if (window == nullptr)
     {
         Gtk::FileChooserDialog dialog(convert(title), action);
-        return run(dialog);
+        run(dialog);
     }
     else
     {
         Gtk::FileChooserDialog dialog(*window, convert(title), action);
-        return run(dialog);
+        run(dialog);
     }
 }
 

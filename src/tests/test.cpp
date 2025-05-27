@@ -146,29 +146,17 @@ struct Printer
     }
 };
 
-void printForm(const Form &form, DialogResult result, void *parent)
+void printForm(const Form &form, void *parent)
 {
-    switch (result)
+    std::ostringstream os;
+    for (const auto &[name, data] : *form)
     {
-    case DialogResult::Ok: {
-        std::ostringstream os;
-        for (const auto &[name, data] : *form)
-        {
-            os << name << " → ";
-            std::visit(Printer(os), *data);
-            os << std::endl;
-        }
-        auto s = os.str();
-        showMessageBox(MessageBoxType::Information, "Form Data", s, parent);
+        os << name << " → ";
+        std::visit(Printer(os), *data);
+        os << std::endl;
     }
-    break;
-    case DialogResult::Cancel:
-        showMessageBox(MessageBoxType::Warning, "Cancel", "Form Canceled", parent);
-        break;
-    default:
-        showMessageBox(MessageBoxType::Error, "Error", "Form Failed", parent);
-        break;
-    }
+    auto s = os.str();
+    showMessageBox(MessageBoxType::Information, "Form Data", s, parent);
 }
 
 } // namespace CanForm

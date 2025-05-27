@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string_view>
 
 namespace CanForm
@@ -12,14 +13,44 @@ enum class MessageBoxType
 };
 
 extern void showMessageBox(MessageBoxType, std::string_view title, std::string_view message, void *parent = nullptr);
-extern bool askQuestion(std::string_view title, std::string_view question, void *parent = nullptr);
 
-enum class DialogResult
+struct QuestionResponse
 {
-    Ok,
-    Cancel,
-    Error
+    virtual ~QuestionResponse()
+    {
+    }
+    virtual void yes() = 0;
+    virtual void no()
+    {
+    }
 };
+
+template <typename F> class QuestionResponseLambda
+{
+  private:
+    F func;
+
+  public:
+    QuestionResponseLambda(F &&f) noexcept : func(std::move(f))
+    {
+    }
+    virtual ~QuestionResponseLambda()
+    {
+    }
+
+    virtual void yes() override
+    {
+        func();
+    }
+};
+
+template <typename F> static inline QuestionResponseLambda<F> respondToQuestion(F &&f) noexcept
+{
+    return QuestionResponseLambda(std::move(f));
+}
+
+extern void askQuestion(std::string_view title, std::string_view question, const std::shared_ptr<QuestionResponse> &,
+                        void *parent = nullptr);
 
 struct FileDialog
 {
@@ -42,8 +73,14 @@ struct FileDialog
         {
         }
         virtual bool handle(std::string_view) = 0;
+        virtual void canceled()
+        {
+        }
+        virtual void error()
+        {
+        }
     };
-    DialogResult show(Handler &, void *parent = nullptr) const;
+    void show(Handler &, void *parent = nullptr) const;
 };
 
 } // namespace CanForm
