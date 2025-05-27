@@ -58,9 +58,11 @@ body {
 
 .Warning{
 	color:yellow;
+	background-color: black;
 }
 .Error{
 	color: red;
+	background-color: black;
 }
 
 .yes {

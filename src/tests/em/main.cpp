@@ -40,15 +40,18 @@ bool showMenu(int, const EmscriptenMouseEvent *, void *)
     {
         auto &menu = menuList.menus.emplace_back();
         menu.title = "Modal Tests";
-        menu.add("Modal Form", []() {
+        menu.add("Show Modal Form", []() {
             Form form = makeForm();
             printForm(form, executeForm("Modal Form", form, 2));
             return false;
         });
-        menu.add("Non Modal Form", []() {
-            showAsyncForm(
-                makeForm(), "Non Modal Form", [](Form &form, DialogResult result) { printForm(form, result); }, 2);
-            return false;
+        menu.add("Warning", []() {
+            showMessageBox(MessageBoxType::Warning, "Warning Message", "This is a warning");
+            return true;
+        });
+        menu.add("Error", []() {
+            showMessageBox(MessageBoxType::Error, "Error Message", "This is an error");
+            return true;
         });
     }
     {

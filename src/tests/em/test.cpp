@@ -108,6 +108,7 @@ void showMessageBox(MessageBoxType type, std::string_view title, std::string_vie
 
             document.body.append(dialog);
             dialog.showModal();
+            dialog.classList.add(h1.innerText);
         },
         toString(type), title.data(), title.size(), message.data(), message.size());
 }
@@ -326,14 +327,6 @@ DialogResult executeForm(std::string_view, Form &, size_t, void *)
     return DialogResult::Error;
 }
 
-void AsyncForm::show(const std::shared_ptr<AsyncForm> &asyncForm, std::string_view title, size_t columns, void *parent)
-{
-    if (asyncForm == nullptr)
-    {
-        return;
-    }
-    executeForm(title, asyncForm->form, columns, parent);
-}
 } // namespace CanForm
 
 static bool executeItem(int, const EmscriptenMouseEvent *, void *userData)
