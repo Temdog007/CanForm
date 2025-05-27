@@ -113,11 +113,11 @@ MainWindow::MainWindow() : button("Create"), item("☰") // U+2630
             file << icon.c_str() << std::endl;
         }
 #endif
-        info.set(icons->load_icon("messagebox_info", 32));
+        info.set(icons->load_icon(getIconName(MessageBoxType::Information), 32));
         flowBox.add(info);
-        warning.set(icons->load_icon("messagebox_warning", 32));
+        warning.set(icons->load_icon(getIconName(MessageBoxType::Warning), 32));
         flowBox.add(error);
-        error.set(icons->load_icon("messagebox_critical", 32));
+        error.set(icons->load_icon(getIconName(MessageBoxType::Error), 32));
         flowBox.add(warning);
     }
     catch (const std::exception &)

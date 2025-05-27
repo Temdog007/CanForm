@@ -12,6 +12,20 @@ enum class MessageBoxType
     Error
 };
 
+constexpr const char *getIconName(MessageBoxType type) noexcept
+{
+    switch (type)
+    {
+    case MessageBoxType::Warning:
+        return "dialog-warning";
+    case MessageBoxType::Error:
+        return "dialog-error";
+    default:
+        break;
+    }
+    return "gtk-dialog-info";
+}
+
 extern void showMessageBox(MessageBoxType, std::string_view title, std::string_view message, void *parent = nullptr);
 
 struct QuestionResponse

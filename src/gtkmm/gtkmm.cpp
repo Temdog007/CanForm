@@ -99,20 +99,6 @@ static Gtk::ScrolledWindow *makeScroll(Gtk::Window *window)
 
 constexpr int PixelSize = 32;
 
-constexpr const char *getIconName(MessageBoxType type) noexcept
-{
-    switch (type)
-    {
-    case MessageBoxType::Warning:
-        return "messagebox_warning";
-    case MessageBoxType::Error:
-        return "messagebox_critical";
-    default:
-        break;
-    }
-    return "messagebox_info";
-}
-
 static void makeButtons(Gtk::Window *, Gtk::HBox *)
 {
 }
