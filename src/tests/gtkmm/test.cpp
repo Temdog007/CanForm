@@ -1,5 +1,6 @@
 #include <canform.hpp>
 #include <filesystem>
+#include <fstream>
 #include <gtkmm.h>
 #include <gtkmm/gtkmm.hpp>
 #include <tests/test.hpp>
@@ -18,6 +19,7 @@ class MainWindow : public Window, public FileDialog::Handler
     VBox box;
     FlowBox flowBox;
     SpinButton columns, bools, integers, floats, strings, selections, flags;
+    Gtk::Image info, error, warning;
     Button button;
     Toolbar toolbar;
     ToolButton item;
@@ -79,6 +81,19 @@ MainWindow::MainWindow() : button("Create"), item("☰") // U+2630
     addToSpinButton("Columns", columns, 1, 10);
 
     flowBox.add(button);
+
+    auto icons = Gtk::IconTheme::get_default();
+    std::ofstream file("icons.txt");
+    for (auto icon : icons->list_icons())
+    {
+        file << icon.c_str() << std::endl;
+    }
+    info.set(icons->load_icon("dialog-info", 32));
+    flowBox.add(info);
+    warning.set(icons->load_icon("dialog-warning", 32));
+    flowBox.add(error);
+    error.set(icons->load_icon("dialog-error", 32));
+    flowBox.add(warning);
 
     button.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::OnCreate));
 
