@@ -107,16 +107,16 @@ struct SyncButton : public Gtk::Button
             std::shared_ptr<TempFile> tempFile = std::make_shared<TempFile>();
             tempFile->write(buffer->get_text());
 
-            Gtk::Frame *frame = Gtk::manage(new Gtk::Frame(convert(tempFile->getPath().string())));
+            Gtk::Frame *frame = Gtk::make_managed<Gtk::Frame>(convert(tempFile->getPath().string()));
             parent->add(*frame);
 
-            Gtk::HBox *hBox = Gtk::manage(new Gtk::HBox());
+            Gtk::HBox *hBox = Gtk::make_managed<Gtk::HBox>();
 
-            Gtk::Button *button = Gtk::manage(new Gtk::Button("Open File"));
+            Gtk::Button *button = Gtk::make_managed<Gtk::Button>("Open File");
             button->signal_clicked().connect([tempFile]() { tempFile->open(); });
             hBox->add(*button);
 
-            button = Gtk::manage(new Gtk::Button("Open Directory"));
+            button = Gtk::make_managed<Gtk::Button>("Open Directory");
             button->signal_clicked().connect([]() { TempFile::openTempDirectory(); });
             hBox->add(*button);
 

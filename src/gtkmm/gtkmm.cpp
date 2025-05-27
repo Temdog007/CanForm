@@ -125,7 +125,7 @@ bool askQuestion(std::string_view title, std::string_view message, void *parent)
 void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &awaiter, size_t checkRate, void *ptr)
 {
     Gtk::Window *parent = (Gtk::Window *)ptr;
-    Gtk::Window *window = Gtk::manage(new Gtk::Window(Gtk::WINDOW_POPUP));
+    Gtk::Window *window = Gtk::make_managed<Gtk::Window>(Gtk::WINDOW_POPUP);
     if (parent != nullptr)
     {
         window->set_transient_for(*parent);
@@ -135,7 +135,7 @@ void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &aw
     window->set_modal(true);
     window->set_default_size(320, 240);
     window->set_position(Gtk::WIN_POS_CENTER_ON_PARENT);
-    Gtk::Label *label = Gtk::manage(new Gtk::Label(convert(message)));
+    Gtk::Label *label = Gtk::make_managed<Gtk::Label>(convert(message));
     window->add(*label);
     window->show_all_children();
     window->show();
@@ -191,10 +191,10 @@ static void showMenu(const Menus &menus, Gtk::Dialog &dialog)
     box->add(notebook);
     for (auto &menu : menus)
     {
-        Gtk::VBox *box = Gtk::manage(new Gtk::VBox());
+        Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
         for (auto &item : menu.items)
         {
-            Gtk::Button *button = Gtk::manage(new Gtk::Button(convert(item->label)));
+            Gtk::Button *button = Gtk::make_managed<Gtk::Button>(convert(item->label));
             button->signal_clicked().connect(MenuItemHandler(*item, dialog));
             box->add(*button);
         }
@@ -229,14 +229,14 @@ class FormVisitor
 
     Gtk::Frame *makeFrame() const
     {
-        return Gtk::manage(new Gtk::Frame(convert(name)));
+        return Gtk::make_managed<Gtk::Frame>(convert(name));
     }
 
     template <typename B> void addSyncFile(Gtk::Box &box, B buffer) const
     {
-        Gtk::HBox *hBox = Gtk::manage(new Gtk::HBox());
+        Gtk::HBox *hBox = Gtk::make_managed<Gtk::HBox>();
 
-        SyncButton *button = Gtk::manage(new SyncButton(convert(name), buffer));
+        SyncButton *button = Gtk::make_managed<SyncButton>(convert(name), buffer);
         hBox->add(*button);
 
         box.pack_start(*hBox, Gtk::PACK_SHRINK);
@@ -249,7 +249,7 @@ class FormVisitor
 
     Gtk::Widget *operator()(bool &b)
     {
-        Gtk::CheckButton *button = Gtk::manage(new Gtk::CheckButton(convert(name)));
+        Gtk::CheckButton *button = Gtk::make_managed<Gtk::CheckButton>(convert(name));
         button->set_active(b);
         button->signal_clicked().connect([&b, button]() { b = button->get_active(); });
         return button;
@@ -258,9 +258,9 @@ class FormVisitor
     Gtk::Widget *operator()(String &s)
     {
         auto frame = makeFrame();
-        Gtk::VBox *box = Gtk::manage(new Gtk::VBox());
+        Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
 
-        Gtk::Entry *entry = Gtk::manage(new Gtk::Entry());
+        Gtk::Entry *entry = Gtk::make_managed<Gtk::Entry>();
         auto buffer = entry->get_buffer();
         const auto updateText = [&s, buffer]() { s = convert(buffer->get_text()); };
 
@@ -279,9 +279,9 @@ class FormVisitor
     Gtk::Widget *operator()(ComplexString &s)
     {
         auto frame = makeFrame();
-        Gtk::VBox *box = Gtk::manage(new Gtk::VBox());
+        Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
 
-        Gtk::TextView *entry = Gtk::manage(new Gtk::TextView());
+        Gtk::TextView *entry = Gtk::make_managed<Gtk::TextView>();
         entry->set_pixels_above_lines(5);
         entry->set_pixels_below_lines(5);
         entry->set_bottom_margin(10);
@@ -294,19 +294,19 @@ class FormVisitor
 
         addSyncFile(*box, buffer);
 
-        Gtk::Expander *expander = Gtk::manage(new Gtk::Expander());
+        Gtk::Expander *expander = Gtk::make_managed<Gtk::Expander>();
         expander->set_label("Text Insertions");
         expander->set_label_fill(true);
         expander->set_resize_toplevel(true);
 
-        Gtk::VBox *box2 = Gtk::manage(new Gtk::VBox());
+        Gtk::VBox *box2 = Gtk::make_managed<Gtk::VBox>();
         for (auto &[label, set] : s.map)
         {
-            Gtk::Frame *frame = Gtk::manage(new Gtk::Frame(convert(label)));
-            Gtk::FlowBox *flow = Gtk::manage(new Gtk::FlowBox());
+            Gtk::Frame *frame = Gtk::make_managed<Gtk::Frame>(convert(label));
+            Gtk::FlowBox *flow = Gtk::make_managed<Gtk::FlowBox>();
             for (auto &s : set)
             {
-                Gtk::Button *button = Gtk::manage(new Gtk::Button(convert(s)));
+                Gtk::Button *button = Gtk::make_managed<Gtk::Button>(convert(s));
                 button->signal_clicked().connect([buffer, entry, &s]() {
                     buffer->insert_at_cursor(s.data(), s.data() + s.size());
                     entry->grab_focus();
@@ -327,7 +327,7 @@ class FormVisitor
     template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true> Gtk::Widget *operator()(T &value)
     {
         auto frame = makeFrame();
-        Gtk::SpinButton *button = Gtk::manage(new Gtk::SpinButton());
+        Gtk::SpinButton *button = Gtk::make_managed<Gtk::SpinButton>();
         button->set_value(value);
 
         if constexpr (std::is_integral_v<T>)
@@ -382,7 +382,7 @@ class FormVisitor
         std::shared_ptr<Pair> ptr = std::make_shared<Pair>();
         for (size_t i = 0; i < list.size(); ++i)
         {
-            Gtk::ToggleButton *button = Gtk::manage(new Gtk::ToggleButton(convert(list[i].first)));
+            Gtk::ToggleButton *button = Gtk::make_managed<Gtk::ToggleButton>(convert(list[i].first));
             button->signal_toggled().connect([&list, button, box, mode, ptr, i]() {
                 Pair &pair = *ptr;
                 if (!button->get_active())
@@ -424,28 +424,28 @@ class FormVisitor
     Gtk::Widget *operator()(StringList &list)
     {
         auto frame = makeFrame();
-        Gtk::VBox *vBox = Gtk::manage(new Gtk::VBox());
+        Gtk::VBox *vBox = Gtk::make_managed<Gtk::VBox>();
 
-        Gtk::HBox *hBox = Gtk::manage(new Gtk::HBox());
+        Gtk::HBox *hBox = Gtk::make_managed<Gtk::HBox>();
         vBox->add(*hBox);
 
         Gtk::RadioButtonGroup group;
 
         std::shared_ptr<RepositionMode> mode = std::make_shared<RepositionMode>();
 
-        Gtk::RadioButton *button = Gtk::manage(new Gtk::RadioButton(group, "Swap"));
+        Gtk::RadioButton *button = Gtk::make_managed<Gtk::RadioButton>(group, "Swap");
         button->signal_clicked().connect([mode]() { *mode = RepositionMode::Swap; });
         hBox->add(*button);
 
-        button = Gtk::manage(new Gtk::RadioButton(group, "Move Before"));
+        button = Gtk::make_managed<Gtk::RadioButton>(group, "Move Before");
         button->signal_clicked().connect([mode]() { *mode = RepositionMode::MoveBefore; });
         hBox->add(*button);
 
-        button = Gtk::manage(new Gtk::RadioButton(group, "Move After"));
+        button = Gtk::make_managed<Gtk::RadioButton>(group, "Move After");
         button->signal_clicked().connect([mode]() { *mode = RepositionMode::MoveAfter; });
         hBox->add(*button);
 
-        Gtk::VBox *box = Gtk::manage(new Gtk::VBox());
+        Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
         setStringList(box, mode, list);
         vBox->add(*box);
 
@@ -456,7 +456,7 @@ class FormVisitor
     Gtk::Widget *operator()(StringSelection &selection)
     {
         auto frame = makeFrame();
-        Gtk::ComboBoxText *box = Gtk::manage(new Gtk::ComboBoxText());
+        Gtk::ComboBoxText *box = Gtk::make_managed<Gtk::ComboBoxText>();
         for (auto &text : selection.set)
         {
             box->append(convert(text));
@@ -474,10 +474,10 @@ class FormVisitor
     Gtk::Widget *operator()(StringMap &map)
     {
         auto frame = makeFrame();
-        Gtk::FlowBox *box = Gtk::manage(new Gtk::FlowBox());
+        Gtk::FlowBox *box = Gtk::make_managed<Gtk::FlowBox>();
         for (auto &pair : map)
         {
-            Gtk::CheckButton *button = Gtk::manage(new Gtk::CheckButton(convert(pair.first)));
+            Gtk::CheckButton *button = Gtk::make_managed<Gtk::CheckButton>(convert(pair.first));
             button->set_active(pair.second);
             button->signal_clicked().connect([&pair, button]() { pair.second = button->get_active(); });
             box->add(*button);
@@ -489,7 +489,7 @@ class FormVisitor
     Gtk::Widget *operator()(MultiForm &multi)
     {
         auto frame = makeFrame();
-        Gtk::Notebook *notebook = Gtk::manage(new Gtk::Notebook());
+        Gtk::Notebook *notebook = Gtk::make_managed<Gtk::Notebook>();
         notebook->set_scrollable(true);
         frame->add(*notebook);
         size_t selected = 0;
@@ -517,7 +517,7 @@ class FormVisitor
     Gtk::Widget *operator()(Form &form)
     {
         const int rows = std::max(static_cast<size_t>(1), form.datas.size() / columns);
-        Gtk::Table *table = Gtk::manage(new Gtk::Table(rows, columns));
+        Gtk::Table *table = Gtk::make_managed<Gtk::Table>(rows, columns);
 
         size_t index = 0;
         const Gtk::AttachOptions options = Gtk::SHRINK;
@@ -535,7 +535,7 @@ class FormVisitor
 
 static Gtk::ScrolledWindow *makeScroll()
 {
-    Gtk::ScrolledWindow *scroll = Gtk::manage(new Gtk::ScrolledWindow());
+    Gtk::ScrolledWindow *scroll = Gtk::make_managed<Gtk::ScrolledWindow>();
     scroll->set_min_content_width(320);
     scroll->set_min_content_height(240);
     scroll->set_propagate_natural_width(true);
@@ -591,11 +591,11 @@ void AsyncForm::show(const std::shared_ptr<AsyncForm> &asyncForm, std::string_vi
 
     if (window == nullptr)
     {
-        dialog = Gtk::manage(new Gtk::Dialog(convert(title), false));
+        dialog = Gtk::make_managed<Gtk::Dialog>(convert(title), false);
     }
     else
     {
-        dialog = Gtk::manage(new Gtk::Dialog(convert(title), *window, false));
+        dialog = Gtk::make_managed<Gtk::Dialog>(convert(title), *window, false);
     }
 
     Gtk::Box *box = dialog->get_content_area();
