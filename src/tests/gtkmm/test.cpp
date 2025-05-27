@@ -169,7 +169,7 @@ void MainWindow::OnTool()
             auto &menu = menuList.menus.emplace_back();
             menu.title = "Secondary Menu";
             menu.add("Close", []() { return true; });
-            return makeNewMenu<true>("New Menu", std::move(menuList));
+            return makeNewMenu("New Menu", std::move(menuList));
         });
     }
     {
@@ -189,7 +189,7 @@ void MainWindow::OnTool()
         });
     }
 
-    menuList.show("Main Menu", this);
+    showMenu("Main Menu", std::make_shared<MenuList>(std::move(menuList)), this);
 }
 
 void MainWindow::OnCreate()

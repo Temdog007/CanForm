@@ -147,13 +147,10 @@ static Gtk::Window *createWindow(Gtk::WindowType type, std::string_view title, G
 {
     Gtk::Window *parent = (Gtk::Window *)ptr;
     Gtk::Window *window = new Gtk::Window(type);
-    if (parent != nullptr)
-    {
-        window->set_transient_for(*parent);
-        window->set_modal(true);
-    }
+    window->set_urgency_hint(true);
+    window->set_keep_above(true);
+    window->set_modal(true);
     window->set_type_hint(Gdk::WINDOW_TYPE_HINT_DIALOG);
-
     window->set_title(convert(title));
 
     Gtk::VBox *vBox = Gtk::make_managed<Gtk::VBox>();
@@ -170,8 +167,18 @@ static Gtk::Window *createWindow(Gtk::WindowType type, std::string_view title, G
     makeButtons(window, hBox, std::forward<Args>(args)...);
     vBox->pack_start(*hBox, Gtk::PACK_EXPAND_PADDING);
 
-    auto [w, h] = getSize(*vBox);
-    window->set_default_size(w, h);
+    std::pair<int, int> pair;
+    if (parent == nullptr)
+    {
+        pair = getSize(*vBox);
+    }
+    else
+    {
+        window->set_transient_for(*parent);
+        window->set_position(Gtk::WIN_POS_CENTER_ON_PARENT);
+        pair = getWindowSize(*parent);
+    }
+    window->set_default_size(pair.first * 5 / 6, pair.second * 5 / 6);
 
     window->show_all_children();
     window->show();
@@ -187,6 +194,7 @@ static Gtk::Window *createWindow(std::string_view title, Gtk::Widget *content, v
 void showMessageBox(MessageBoxType type, std::string_view title, std::string_view message, void *ptr)
 {
     Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
+    box->set_spacing(10);
 
     auto icons = Gtk::IconTheme::get_default();
     Gtk::Image *image = Gtk::make_managed<Gtk::Image>(icons->load_icon(getIconName(type), PixelSize));
@@ -201,33 +209,43 @@ void showMessageBox(MessageBoxType type, std::string_view title, std::string_vie
 void askQuestion(std::string_view title, std::string_view message, const std::shared_ptr<QuestionResponse> &response,
                  void *ptr)
 {
-    Gtk::VBox *vBox = Gtk::make_managed<Gtk::VBox>();
+    Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
+    box->set_spacing(10);
 
     auto icons = Gtk::IconTheme::get_default();
     Gtk::Image *image = Gtk::make_managed<Gtk::Image>(icons->load_icon("dialog-question", PixelSize));
-    vBox->pack_start(*image, Gtk::PACK_SHRINK);
+    box->pack_start(*image, Gtk::PACK_SHRINK);
 
     Gtk::Label *label = Gtk::make_managed<Gtk::Label>(convert(message));
-    vBox->pack_start(*label, Gtk::PACK_SHRINK);
+    box->pack_start(*label, Gtk::PACK_SHRINK);
 
     createWindow(
-        title, vBox, ptr, Gtk::Stock::NO, [response]() { response->no(); }, Gtk::Stock::YES,
+        title, box, ptr, Gtk::Stock::NO, [response]() { response->no(); }, Gtk::Stock::YES,
         [response]() { response->yes(); });
 }
 
 void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &awaiter, size_t checkRate, void *ptr)
 {
     Gtk::Window *parent = (Gtk::Window *)ptr;
-    Gtk::Window *window = Gtk::make_managed<Gtk::Window>(Gtk::WINDOW_POPUP);
-    if (parent != nullptr)
+    Gtk::Window *window = new Gtk::Window(Gtk::WINDOW_POPUP);
+
+    std::pair<int, int> pair;
+    if (parent == nullptr)
+    {
+        pair.first = 373;
+        pair.second = 280;
+    }
+    else
     {
         window->set_transient_for(*parent);
+        window->set_position(Gtk::WIN_POS_CENTER_ON_PARENT);
+        pair = getWindowSize(*parent);
     }
+    window->set_default_size(pair.first * 5 / 6, pair.second * 5 / 6);
+
     window->set_urgency_hint(true);
     window->set_keep_above(true);
     window->set_modal(true);
-    window->set_default_size(320, 240);
-    window->set_position(Gtk::WIN_POS_CENTER_ON_PARENT);
     Gtk::Label *label = Gtk::make_managed<Gtk::Label>(convert(message));
     window->add(*label);
     window->show_all_children();
@@ -246,29 +264,46 @@ void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &aw
         checkRate);
 }
 
-static void showMenu(const Menus &menus, Gtk::Dialog &dialog);
-
 struct MenuItemHandler
 {
+    std::shared_ptr<MenuList> menuList;
+    Gtk::Button *button;
     MenuItem &item;
-    Gtk::Dialog &dialog;
+    void *ptr;
 
-    constexpr MenuItemHandler(MenuItem &i, Gtk::Dialog &d) noexcept : item(i), dialog(d)
+    MenuItemHandler(const std::shared_ptr<MenuList> &m, Gtk::Button *b, MenuItem &i, void *p)
+        : menuList(m), button(b), item(i), ptr(p)
     {
+    }
+
+    void closeWindow()
+    {
+        Gtk::Widget *w = button->get_parent();
+        while (true)
+        {
+            Gtk::Widget *w2 = w->get_parent();
+            if (w2 == nullptr)
+            {
+                break;
+            }
+            w = w2;
+        }
+        w->hide();
+        delete w;
     }
 
     void operator()(bool b)
     {
         if (b)
         {
-            dialog.hide();
+            closeWindow();
         }
     }
 
-    void operator()(MenuItem::NewMenuPtr &&result)
+    void operator()(MenuItem::NewMenu &&result)
     {
-        dialog.set_title(convert(result->first));
-        showMenu(result->second.menus, dialog);
+        showMenu(result.first, result.second, ptr);
+        closeWindow();
     }
 
     void operator()()
@@ -277,41 +312,22 @@ struct MenuItemHandler
     }
 };
 
-static void showMenu(const Menus &menus, Gtk::Dialog &dialog)
+void showMenu(std::string_view title, const std::shared_ptr<MenuList> &menuList, void *ptr)
 {
-    Gtk::Notebook notebook;
-    Gtk::Box *box = dialog.get_content_area();
-    box->foreach ([box](Gtk::Widget &widget) { box->remove(widget); });
-    box->add(notebook);
-    for (auto &menu : menus)
+    Gtk::Notebook *notebook = Gtk::make_managed<Gtk::Notebook>();
+    for (auto &menu : menuList->menus)
     {
         Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
         for (auto &item : menu.items)
         {
             Gtk::Button *button = Gtk::make_managed<Gtk::Button>(convert(item->label));
-            button->signal_clicked().connect(MenuItemHandler(*item, dialog));
+            button->signal_clicked().connect(MenuItemHandler(menuList, button, *item, ptr));
             box->add(*button);
         }
-        notebook.append_page(*box, convert(menu.title));
+        notebook->append_page(*box, convert(menu.title));
     }
-    dialog.set_default_size(320, 240);
-    dialog.show_all_children();
-    dialog.run();
-}
 
-void MenuList::show(std::string_view title, void *parent)
-{
-    Gtk::Window *window = (Gtk::Window *)parent;
-    if (window == nullptr)
-    {
-        Gtk::Dialog dialog(convert(title), true);
-        showMenu(menus, dialog);
-    }
-    else
-    {
-        Gtk::Dialog dialog(convert(title), *window, true);
-        showMenu(menus, dialog);
-    }
+    createWindow(title, notebook, ptr);
 }
 
 class FormVisitor

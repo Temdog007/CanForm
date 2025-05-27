@@ -8,12 +8,12 @@
 namespace CanForm
 {
 struct MenuList;
+using MenuListPtr = std::shared_ptr<MenuList>;
 
 struct MenuItem
 {
-    using NewMenu = std::pair<String, MenuList>;
-    using NewMenuPtr = std::shared_ptr<NewMenu>;
-    using Result = std::variant<bool, NewMenuPtr>;
+    using NewMenu = std::pair<String, MenuListPtr>;
+    using Result = std::variant<bool, NewMenu>;
 
     String label;
     virtual ~MenuItem()
@@ -56,9 +56,9 @@ struct MenuList
     virtual ~MenuList()
     {
     }
-
-    void show(std::string_view, void *parent = nullptr);
 };
+
+extern void showMenu(std::string_view, const std::shared_ptr<MenuList> &, void *parent = nullptr);
 
 template <typename F> class MenuItemLambda : public MenuItem
 {
@@ -95,18 +95,9 @@ template <typename F> void Menu::add(String &&s, F &&f)
     items.emplace_back(std::move(ptr));
 }
 
-template <bool S, typename A, typename B>
-typename std::conditional<S, MenuItem::NewMenuPtr, MenuItem::NewMenu>::type makeNewMenu(A &&a, B &&b)
+template <typename A, typename B> typename MenuItem::NewMenu makeNewMenu(A &&a, B &&b)
 {
-    auto pair = std::make_pair(std::move(a), std::move(b));
-    if constexpr (S)
-    {
-        return std::make_shared<MenuItem::NewMenu>(std::move(pair));
-    }
-    else
-    {
-        return pair;
-    }
+    return std::make_pair(std::move(a), std::make_shared<MenuList>(std::move(b)));
 }
 
 } // namespace CanForm
