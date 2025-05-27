@@ -8,7 +8,7 @@
 using namespace CanForm;
 using namespace Gtk;
 
-class MainWindow : public Window, public FileDialog::Handler
+class MainWindow : public Window
 {
   private:
     void OnTool();
@@ -46,8 +46,28 @@ class MainWindow : public Window, public FileDialog::Handler
     virtual ~MainWindow()
     {
     }
+};
 
-    virtual bool handle(std::string_view) override;
+struct Handler : public FileDialog::Handler
+{
+    Gtk::Window *window;
+    constexpr Handler(Gtk::Window *w) noexcept : window(w)
+    {
+    }
+    virtual ~Handler()
+    {
+    }
+
+    virtual bool handle(std::string_view file) override
+    {
+        showMessageBox(MessageBoxType::Information, "Got File/Directory", file, window);
+        return true;
+    }
+
+    static std::shared_ptr<Handler> create(Gtk::Window *w)
+    {
+        return std::make_shared<Handler>(w);
+    }
 };
 
 int main(int argc, char **argv)
@@ -102,12 +122,6 @@ MainWindow::MainWindow() : button("Create"), item("☰") // U+2630
     show_all_children();
 }
 
-bool MainWindow::handle(std::string_view file)
-{
-    showMessageBox(MessageBoxType::Information, "Got File/Directory", file, this);
-    return true;
-}
-
 template <typename T> std::shared_ptr<T> make_shared(T &&t)
 {
     return std::make_shared<T>(std::move(t));
@@ -125,7 +139,7 @@ void MainWindow::OnTool()
             auto s = std::filesystem::current_path().string();
             dialog.startDirectory = s;
             dialog.multiple = true;
-            dialog.show(*this, this);
+            dialog.show(Handler::create(this), this);
             return true;
         });
         menu.add("Open Directory", [this]() {
@@ -135,7 +149,7 @@ void MainWindow::OnTool()
             dialog.startDirectory = s;
             dialog.multiple = true;
             dialog.directories = true;
-            dialog.show(*this, this);
+            dialog.show(Handler::create(this), this);
             return true;
         });
         menu.add("Save File", [this]() {
@@ -144,7 +158,7 @@ void MainWindow::OnTool()
             auto s = std::filesystem::current_path().string();
             dialog.startDirectory = s;
             dialog.saving = true;
-            dialog.show(*this, this);
+            dialog.show(Handler::create(this), this);
             return true;
         });
         menu.add("Exit", [this]() {

@@ -651,41 +651,8 @@ void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExec
         Gtk::Stock::CANCEL, [formExecute]() { formExecute->cancel(); });
 }
 
-void FileDialog::show(FileDialog::Handler &handler, void *parent) const
+void FileDialog::show(const std::shared_ptr<FileDialog::Handler> &handler, void *ptr) const
 {
-    const auto run = [this, &handler, parent](Gtk::FileChooserDialog &dialog) {
-        dialog.set_current_folder(convert(startDirectory));
-        if (saving)
-        {
-            dialog.set_current_name(convert(filename));
-        }
-        dialog.add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
-        if (directories)
-        {
-            dialog.add_button("Select", Gtk::RESPONSE_OK);
-        }
-        else
-        {
-            dialog.set_select_multiple(multiple);
-            dialog.add_button(saving ? Gtk::Stock::SAVE : Gtk::Stock::OPEN, Gtk::RESPONSE_OK);
-        }
-        switch (dialog.run())
-        {
-        case Gtk::RESPONSE_OK: {
-            for (auto &file : dialog.get_files())
-            {
-                handler.handle(file->get_path());
-            }
-        }
-        break;
-        case Gtk::RESPONSE_CANCEL:
-            handler.canceled();
-            break;
-        default:
-            handler.error();
-            break;
-        }
-    };
     Gtk::FileChooserAction action;
     if (directories)
     {
@@ -699,17 +666,55 @@ void FileDialog::show(FileDialog::Handler &handler, void *parent) const
     {
         action = Gtk::FILE_CHOOSER_ACTION_OPEN;
     }
-    Gtk::Window *window = (Gtk::Window *)parent;
-    if (window == nullptr)
+    Gtk::Window *parent = (Gtk::Window *)ptr;
+    Gtk::FileChooserDialog *dialog = nullptr;
+    if (parent == nullptr)
     {
-        Gtk::FileChooserDialog dialog(convert(title), action);
-        run(dialog);
+        dialog = new Gtk::FileChooserDialog(convert(title), action);
     }
     else
     {
-        Gtk::FileChooserDialog dialog(*window, convert(title), action);
-        run(dialog);
+        dialog = new Gtk::FileChooserDialog(*parent, convert(title), action);
     }
+    dialog->set_do_overwrite_confirmation(true);
+    dialog->set_urgency_hint(true);
+    dialog->set_keep_above(true);
+    dialog->set_modal(true);
+    dialog->set_current_folder(convert(startDirectory));
+    dialog->add_button(Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);
+    if (saving)
+    {
+        dialog->set_current_name(convert(filename));
+    }
+    if (directories)
+    {
+        dialog->add_button("Select", Gtk::RESPONSE_OK);
+    }
+    else
+    {
+        dialog->set_select_multiple(multiple);
+        dialog->add_button(saving ? Gtk::Stock::SAVE : Gtk::Stock::OPEN, Gtk::RESPONSE_OK);
+    }
+    dialog->signal_response().connect([dialog, handler](int response) {
+        switch (response)
+        {
+        case Gtk::RESPONSE_OK: {
+            for (auto &file : dialog->get_files())
+            {
+                handler->handle(file->get_path());
+            }
+        }
+        break;
+        case Gtk::RESPONSE_CANCEL:
+            handler->canceled();
+            break;
+        default:
+            break;
+        }
+        dialog->hide();
+        delete dialog;
+    });
+    dialog->present();
 }
 
 TempFile::TempFile(const Glib::ustring &ext) : filename(), extension(ext), timePoint()

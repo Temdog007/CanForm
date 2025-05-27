@@ -76,11 +76,8 @@ struct FileDialog
         virtual void canceled()
         {
         }
-        virtual void error()
-        {
-        }
     };
-    void show(Handler &, void *parent = nullptr) const;
+    void show(const std::shared_ptr<Handler> &, void *parent = nullptr) const;
 };
 
 } // namespace CanForm
