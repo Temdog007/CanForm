@@ -172,6 +172,22 @@ void MainWindow::OnTool()
             return makeNewMenu<true>("New Menu", std::move(menuList));
         });
     }
+    {
+        auto &menu = menuList.menus.emplace_back();
+        menu.title = "Modals";
+        menu.add("Information", [this]() {
+            showMessageBox(MessageBoxType::Information, "Error", "This is information", this);
+            return false;
+        });
+        menu.add("Warning", [this]() {
+            showMessageBox(MessageBoxType::Warning, "Warning", "This is a warning", this);
+            return false;
+        });
+        menu.add("Error", [this]() {
+            showMessageBox(MessageBoxType::Error, "Error", "This is an error", this);
+            return false;
+        });
+    }
 
     menuList.show("Main Menu", this);
 }

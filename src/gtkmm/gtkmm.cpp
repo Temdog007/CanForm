@@ -104,8 +104,19 @@ static void makeButtons(Gtk::Window *window, Gtk::HBox *box, T icon, F func, Arg
         func();
         delete window;
     });
-    box->pack_start(*button, Gtk::PACK_SHRINK);
+    box->pack_start(*button, Gtk::PACK_EXPAND_PADDING);
     makeButtons(window, box, std::forward<Args>(args)...);
+}
+
+std::pair<int, int> getSize(Gtk::Container &container)
+{
+    std::pair<int, int> pair(0, 0);
+    for (Gtk::Widget *child : container.get_children())
+    {
+        pair.first += child->get_allocated_width();
+        pair.second += child->get_allocated_height();
+    }
+    return pair;
 }
 
 template <typename... Args>
@@ -123,22 +134,24 @@ static Gtk::Window *createWindow(Gtk::WindowType type, std::string_view title, G
 
     window->set_title(convert(title));
 
-    auto [w, h] = getWindowSize(*window);
-    window->set_default_size(w / 2, h / 2);
-
     Gtk::VBox *vBox = Gtk::make_managed<Gtk::VBox>();
     window->add(*vBox);
 
     Gtk::ScrolledWindow *scroll = makeScroll();
     scroll->add(*content);
-    vBox->pack_start(*scroll, Gtk::PACK_EXPAND_WIDGET);
+    vBox->pack_start(*scroll, Gtk::PACK_EXPAND_PADDING);
 
     Gtk::Separator *separator = Gtk::make_managed<Gtk::Separator>();
     vBox->pack_start(*separator, Gtk::PACK_SHRINK);
 
     Gtk::HBox *hBox = Gtk::make_managed<Gtk::HBox>();
     makeButtons(window, hBox, std::forward<Args>(args)...);
-    vBox->pack_start(*hBox, Gtk::PACK_SHRINK);
+    vBox->pack_start(*hBox, Gtk::PACK_EXPAND_PADDING);
+
+    // auto [w, h] = getWindowSize(*window);
+    // window->set_default_size(w / 2, h / 2);
+    auto [w, h] = getSize(*vBox);
+    window->set_default_size(w, h);
 
     window->show_all_children();
     window->show();
