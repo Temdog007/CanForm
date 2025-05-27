@@ -47,29 +47,51 @@ static std::pair<int, int> getWindowSize(Gtk::Window &window)
     }
 }
 
-// static std::pair<int, int> getMonitorSize(Gtk::Window &window)
-// {
-//     auto screen = window.get_screen();
-//     if (!screen)
-//     {
-//         return getWindowSize(window);
-//     }
-//     auto w = screen->get_active_window();
-//     if (!w)
-//     {
-//         return getWindowSize(window);
-//     }
-//     int i = screen->get_monitor_at_window(w);
-//     Gdk::Rectangle r;
-//     screen->get_monitor_geometry(i, r);
-//     return std::make_pair(r.get_width(), r.get_height());
-// }
+static std::pair<int, int> getMonitorSize(Gtk::Window &window)
+{
+    auto screen = window.get_screen();
+    if (!screen)
+    {
+        return getWindowSize(window);
+    }
+    auto w = screen->get_active_window();
+    if (!w)
+    {
+        return getWindowSize(window);
+    }
+    int i = screen->get_monitor_at_window(w);
+    Gdk::Rectangle r;
+    screen->get_monitor_geometry(i, r);
+    return std::make_pair(r.get_width(), r.get_height());
+}
 
-static Gtk::ScrolledWindow *makeScroll()
+static Gtk::ScrolledWindow *makeScroll(Gtk::Window *window)
 {
     Gtk::ScrolledWindow *scroll = Gtk::make_managed<Gtk::ScrolledWindow>();
-    scroll->set_min_content_width(320);
-    scroll->set_min_content_height(240);
+    if (window == nullptr)
+    {
+        scroll->set_min_content_width(320);
+        scroll->set_min_content_height(240);
+    }
+    else
+    {
+        {
+            auto [w, h] = getMonitorSize(*window);
+            scroll->set_min_content_width(w / 2);
+            scroll->set_min_content_height(h / 2);
+        }
+        {
+            auto [w, h] = getWindowSize(*window);
+            if (w < 0)
+            {
+                scroll->set_max_content_width(w * 5 / 6);
+            }
+            if (h < 0)
+            {
+                scroll->set_max_content_height(h * 5 / 6);
+            }
+        }
+    }
     scroll->set_propagate_natural_width(true);
     scroll->set_propagate_natural_height(true);
     return scroll;
@@ -137,7 +159,7 @@ static Gtk::Window *createWindow(Gtk::WindowType type, std::string_view title, G
     Gtk::VBox *vBox = Gtk::make_managed<Gtk::VBox>();
     window->add(*vBox);
 
-    Gtk::ScrolledWindow *scroll = makeScroll();
+    Gtk::ScrolledWindow *scroll = makeScroll(window);
     scroll->add(*content);
     vBox->pack_start(*scroll, Gtk::PACK_EXPAND_PADDING);
 
@@ -148,8 +170,6 @@ static Gtk::Window *createWindow(Gtk::WindowType type, std::string_view title, G
     makeButtons(window, hBox, std::forward<Args>(args)...);
     vBox->pack_start(*hBox, Gtk::PACK_EXPAND_PADDING);
 
-    // auto [w, h] = getWindowSize(*window);
-    // window->set_default_size(w / 2, h / 2);
     auto [w, h] = getSize(*vBox);
     window->set_default_size(w, h);
 
