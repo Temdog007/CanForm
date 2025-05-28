@@ -1,6 +1,7 @@
 #include <array>
 #include <filesystem>
 #include <iostream>
+#include <range.hpp>
 #include <sstream>
 #include <tests/test.hpp>
 
@@ -16,14 +17,21 @@ StringList makeList(std::initializer_list<std::string_view> list)
     return s;
 }
 
+template <typename T> constexpr RangedValue makeNumber(T t) noexcept
+{
+    Range<T> r(t);
+    return RangedValue(std::move(r));
+}
+
 Form makeForm()
 {
     Form form;
     form["Flag"] = false;
-    form["Signed Integer"] = 0;
-    form["Unsigned Integer"] = 0u;
-    form["Float"] = 0.f;
-    form["String"] = String("Hello");
+    form["Signed Integer"] = makeNumber(0);
+    form["Unsigned Integer"] = makeNumber(0u);
+    form["Float"] = makeNumber(0.f);
+    form["1-10"] = *Range<uint8_t>::create(5, 1, 10);
+    form["String"] = "Hello";
 
     constexpr std::array<std::string_view, 5> Classes = {"Mammal", "Bird", "Reptile", "Amphibian", "Fish"};
     form["Single Selection"] = StringSelection(Classes);
@@ -52,9 +60,9 @@ Form makeForm()
     form["Expression"] = std::move(c);
 
     MultiForm multi;
-    multi.tabs["Extra1"] =
-        Form::create("Age", static_cast<uint8_t>(42), "Favorite Color", StringSelection({"Red", "Green", "Blue"}));
-    multi.tabs["Extra2"] = Form::create("Active", true, "Weight", 0.0, "Sports",
+    multi.tabs["Extra1"] = Form::create("Age", makeNumber(static_cast<uint8_t>(42)), "Favorite Color",
+                                        StringSelection({"Red", "Green", "Blue"}));
+    multi.tabs["Extra2"] = Form::create("Active", true, "Weight", makeNumber(0.0), "Sports",
                                         createStringMap("Basketball", "Football", "Golf", "Polo"));
     multi.selected = "Extra1";
     form["Extra"] = std::move(multi);
@@ -104,6 +112,11 @@ struct Printer
         return std::visit(*this, n);
     }
 
+    std::ostream &operator()(const RangedValue &n)
+    {
+        return std::visit(*this, n);
+    }
+
     std::ostream &operator()(const StringList &list)
     {
         for (auto &[name, _] : list)
@@ -138,6 +151,11 @@ struct Printer
     std::ostream &operator()(uint8_t t)
     {
         return operator()(static_cast<size_t>(t));
+    }
+
+    template <typename T> std::ostream &operator()(const Range<T> &r)
+    {
+        return operator()(*r);
     }
 
     template <typename T> std::ostream &operator()(const T &t)

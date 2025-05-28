@@ -10,12 +10,12 @@ extern std::pair<int, int> getWindowSize(Gtk::Window &);
 
 constexpr int PixelSize = 32;
 
-static void makeButtons(Gtk::Window *, Gtk::HBox *)
+static inline void makeButtons(Gtk::Window *, Gtk::HBox *)
 {
 }
 
 template <typename T, typename F, typename... Args>
-static void makeButtons(Gtk::Window *window, Gtk::HBox *box, T icon, F func, Args &&...args)
+static inline void makeButtons(Gtk::Window *window, Gtk::HBox *box, T icon, F func, Args &&...args)
 {
     Gtk::Button *button = Gtk::make_managed<Gtk::Button>(icon);
     button->signal_clicked().connect([window, func = std::move(func)]() {
@@ -28,8 +28,8 @@ static void makeButtons(Gtk::Window *window, Gtk::HBox *box, T icon, F func, Arg
 }
 
 template <typename... Args>
-static Gtk::Window *createWindow(Gtk::WindowType type, std::string_view title, Gtk::Widget *content, void *ptr,
-                                 Args &&...args)
+static inline Gtk::Window *createWindow(Gtk::WindowType type, std::string_view title, Gtk::Widget *content, void *ptr,
+                                        Args &&...args)
 {
     Gtk::Window *parent = (Gtk::Window *)ptr;
     Gtk::Window *window = new Gtk::Window(type);
@@ -70,7 +70,7 @@ static Gtk::Window *createWindow(Gtk::WindowType type, std::string_view title, G
 }
 
 template <typename... Args>
-static Gtk::Window *createWindow(std::string_view title, Gtk::Widget *content, void *ptr, Args &&...args)
+static inline Gtk::Window *createWindow(std::string_view title, Gtk::Widget *content, void *ptr, Args &&...args)
 {
     return createWindow(Gtk::WINDOW_TOPLEVEL, title, content, ptr, std::forward<Args>(args)...);
 }

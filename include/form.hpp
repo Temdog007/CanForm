@@ -117,7 +117,8 @@ struct MultiForm
 
 struct FormData
 {
-    using Data = std::variant<bool, Number, String, ComplexString, StringList, StringSelection, StringMap, MultiForm>;
+    using Data =
+        std::variant<bool, RangedValue, String, ComplexString, StringList, StringSelection, StringMap, MultiForm>;
     Data data;
 
     FormData() : data(false)

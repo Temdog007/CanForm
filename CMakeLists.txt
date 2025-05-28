@@ -32,7 +32,8 @@ if(EMSCRIPTEN)
     	"${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS} -sEXPORTED_RUNTIME_METHODS=ccall,stringToNewUTF8")
 
 	add_library(canform_em ${CANFORM_TYPE}
-		src/em/em.cpp)
+		src/em/em.cpp
+		src/em/form.cpp)
 
 	target_include_directories(canform_em PRIVATE
 		include)

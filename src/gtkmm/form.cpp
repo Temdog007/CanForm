@@ -67,8 +67,8 @@ class FormVisitor
         entry->set_pixels_above_lines(5);
         entry->set_pixels_below_lines(5);
         entry->set_bottom_margin(10);
-        auto buffer = entry->get_buffer();
 
+        auto buffer = entry->get_buffer();
         buffer->set_text(convert(s.string));
         buffer->signal_changed().connect([&s, buffer]() { s.string = convert(buffer->get_text()); });
 
@@ -106,21 +106,18 @@ class FormVisitor
         return frame;
     }
 
-    template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true> Gtk::Widget *operator()(T &value)
+    template <typename T> Gtk::Widget *operator()(Range<T> &value)
     {
         auto frame = makeFrame();
         Gtk::SpinButton *button = Gtk::make_managed<Gtk::SpinButton>();
-        button->set_value(value);
 
-        if constexpr (std::is_integral_v<T>)
+        const auto [min, max] = value.getMinMax();
+        button->set_range(min, max);
+        if constexpr (std::is_floating_point_v<T>)
         {
-            button->set_range(std::numeric_limits<T>::min(), std::numeric_limits<T>::max());
-        }
-        else
-        {
-            button->set_range(std::numeric_limits<T>::max() * -1.0, std::numeric_limits<T>::max());
             button->set_digits(6);
         }
+        button->set_value(*value);
 
         button->set_increments(1, 10);
 
@@ -130,7 +127,7 @@ class FormVisitor
         return frame;
     }
 
-    Gtk::Widget *operator()(Number &n)
+    Gtk::Widget *operator()(RangedValue &n)
     {
         return std::visit(*this, n);
     }

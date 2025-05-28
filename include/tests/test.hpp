@@ -35,7 +35,7 @@ template <typename T> inline void addForm(Form &form, String &&s, T &&t)
     if constexpr (std::is_arithmetic_v<T>)
     {
         t = random<T>();
-        form[std::move(s)] = std::move(t);
+        form[std::move(s)] = Range<T>(t);
     }
     else
     {

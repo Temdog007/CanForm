@@ -228,7 +228,7 @@ struct MenuItemHandler
 
     void operator()(MenuItem::NewMenu &&result)
     {
-        showMenu(result.first, result.second, ptr);
+        MenuList::show(result.first, result.second, ptr);
         closeWindow();
     }
 
@@ -238,7 +238,7 @@ struct MenuItemHandler
     }
 };
 
-void showMenu(std::string_view title, const std::shared_ptr<MenuList> &menuList, void *ptr)
+void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &menuList, void *ptr)
 {
     Gtk::Notebook *notebook = Gtk::make_managed<Gtk::Notebook>();
     for (auto &menu : menuList->menus)

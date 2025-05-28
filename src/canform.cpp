@@ -24,4 +24,8 @@ char randomCharacter()
     return c;
 }
 
+TimePoint now()
+{
+    return std::chrono::system_clock::now();
+}
 } // namespace CanForm

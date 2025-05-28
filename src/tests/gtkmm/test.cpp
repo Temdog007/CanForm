@@ -212,7 +212,7 @@ void MainWindow::OnTool()
         });
     }
 
-    showMenu("Main Menu", std::make_shared<MenuList>(std::move(menuList)), this);
+    MenuList::show("Main Menu", std::make_shared<MenuList>(std::move(menuList)), this);
 }
 
 void MainWindow::OnCreate()

@@ -2,10 +2,6 @@
 
 #include "types.hpp"
 
-#include <chrono>
-#include <memory>
-#include <string_view>
-
 namespace CanForm
 {
 struct Awaiter
@@ -43,11 +39,6 @@ struct DefaultAwaiter : public Awaiter
     }
 };
 
-static inline TimePoint now()
-{
-    return std::chrono::system_clock::now();
-}
-
 template <typename Rep, typename Period> class TimeAwaiter : public Awaiter
 {
   private:
@@ -57,12 +48,17 @@ template <typename Rep, typename Period> class TimeAwaiter : public Awaiter
     D duration;
 
   public:
-    TimeAwaiter(D d) : start(now()), duration(d)
+    TimeAwaiter(const D &d) : start(now()), duration(d)
     {
     }
 
     virtual ~TimeAwaiter()
     {
+    }
+
+    constexpr TimePoint getStart() const
+    {
+        return start;
     }
 
     virtual bool isDone() override
@@ -72,8 +68,8 @@ template <typename Rep, typename Period> class TimeAwaiter : public Awaiter
 };
 
 template <typename Rep, typename Period>
-inline void showPopupUntil(std::string_view message, std::chrono::duration<Rep, Period> duration, size_t checkRate,
-                           void *parent = nullptr)
+static inline void showPopupUntil(std::string_view message, const std::chrono::duration<Rep, Period> &duration,
+                                  size_t checkRate, void *parent = nullptr)
 {
     auto awaiter = std::make_shared<TimeAwaiter<Rep, Period>>(duration);
     showPopupUntil(message, awaiter, checkRate, parent);

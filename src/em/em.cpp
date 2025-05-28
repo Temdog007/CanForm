@@ -54,7 +54,7 @@ void MenuItemClick::operator()(bool b)
 void MenuItemClick::operator()(MenuItem::NewMenu &&p)
 {
     removeDialog();
-    showMenu(p.first, p.second);
+    MenuList::show(p.first, p.second);
 }
 
 void ResponseHandler::checkLater()
@@ -189,7 +189,7 @@ void MenuHandler::checkIfElementWasRemoved(void *userData)
     }
 }
 
-void showMenu(std::string_view title, const std::shared_ptr<MenuList> &menuList, void *)
+void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &menuList, void *)
 {
     MenuHandler *handler = new MenuHandler();
     handler->menuList = menuList;
@@ -334,10 +334,6 @@ void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &aw
         },
         a->id, message.data(), message.size());
     a->checkLater();
-}
-
-void FormExecute::execute(std::string_view, const std::shared_ptr<FormExecute> &, size_t, void *)
-{
 }
 
 void FileDialog::show(const std::shared_ptr<Handler> &, void *ptr) const

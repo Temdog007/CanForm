@@ -2,8 +2,8 @@
 
 #include "types.hpp"
 
-#include <memory>
-#include <string_view>
+#include <list>
+#include <tuple>
 
 namespace CanForm
 {
@@ -27,17 +27,20 @@ using MenuItems = std::pmr::vector<std::unique_ptr<MenuItem>>;
 
 struct Menu
 {
-    String title;
     MenuItems items;
+    String title;
 
     Menu() = default;
     Menu(const Menu &) = delete;
     Menu(Menu &&) noexcept = default;
 
-    template <typename T, typename... Args> void add(Args &&...args)
+    Menu &operator=(const Menu &) = delete;
+    Menu &operator=(Menu &&) noexcept = default;
+
+    template <typename T, typename... Args> MenuItem &add(Args &&...args)
     {
         auto ptr = std::make_unique<T>(std::forward<Args>(args)...);
-        items.emplace_back(std::move(ptr));
+        return *items.emplace_back(std::move(ptr));
     }
 
     template <typename F> void add(String &&, F &&);
@@ -56,9 +59,9 @@ struct MenuList
     virtual ~MenuList()
     {
     }
-};
 
-extern void showMenu(std::string_view, const std::shared_ptr<MenuList> &, void *parent = nullptr);
+    static void show(std::string_view, const std::shared_ptr<MenuList> &, void *parent = nullptr);
+};
 
 template <typename F> class MenuItemLambda : public MenuItem
 {
@@ -81,7 +84,7 @@ template <typename F> class MenuItemLambda : public MenuItem
     }
 };
 
-template <typename F> MenuItemLambda<F> makeItemMenu(String &&s, F &&f)
+template <typename F> static inline MenuItemLambda<F> makeItemMenu(String &&s, F &&f)
 {
     MenuItemLambda menuItem(std::move(f));
     menuItem.label = std::move(s);
@@ -95,7 +98,7 @@ template <typename F> void Menu::add(String &&s, F &&f)
     items.emplace_back(std::move(ptr));
 }
 
-template <typename A, typename B> typename MenuItem::NewMenu makeNewMenu(A &&a, B &&b)
+template <typename A, typename B> static inline typename MenuItem::NewMenu makeNewMenu(A &&a, B &&b)
 {
     return std::make_pair(std::move(a), std::make_shared<MenuList>(std::move(b)));
 }

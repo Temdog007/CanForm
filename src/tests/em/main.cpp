@@ -68,6 +68,6 @@ bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
         });
     }
 
-    showMenu("Main Menu", std::make_shared<MenuList>(std::move(menuList)));
+    MenuList::show("Main Menu", std::make_shared<MenuList>(std::move(menuList)));
     return true;
 }
