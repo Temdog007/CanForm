@@ -25,7 +25,7 @@ struct QuestionResponse
     }
 };
 
-template <typename F> class QuestionResponseLambda
+template <typename F> class QuestionResponseLambda : public QuestionResponse
 {
   private:
     F func;

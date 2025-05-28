@@ -3,8 +3,7 @@
 
 namespace CanForm
 {
-DialogResult FileDialog::show(Handler &, void *) const
+void FileDialog::show(const std::shared_ptr<Handler> &, void *) const
 {
-    return DialogResult::Error;
 }
 } // namespace CanForm

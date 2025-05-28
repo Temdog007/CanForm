@@ -5,61 +5,22 @@
 #include <tests/test.hpp>
 
 static bool executeItem(int, const EmscriptenMouseEvent *, void *);
+static void removeElement(const char *);
 
-EM_ASYNC_JS(void, waitForDialog, (int id), {
-    function sleep(ms)
-    {
-        return new Promise(function(resolve) { setTimeout(resolve, ms); });
-    }
-    while (true)
-    {
-        await sleep(1);
-        let dialog = document.getElementById('dialog_' + id.toString());
-        if (!dialog)
-        {
-            break;
-        }
-        if (!dialog.open)
-        {
-            let id = $0;
-            let dialog = document.getElementById('dialog_' + id.toString());
-            let rval = dialog.returncode == 'yes';
-            dialog.remove();
-            break;
-        }
-    }
-});
-
-EM_ASYNC_JS(void, blockUntilElementRemoved, (const char *ptr), {
-    function sleep(ms)
-    {
-        return new Promise(function(resolve) { setTimeout(resolve, ms); });
-    }
-    while (true)
-    {
-        await sleep(1000);
-        let id = UTF8ToString(ptr);
-        if (!document.getElementById(id))
-        {
-            break;
-        }
-    }
-});
-
-struct ItemClick
+struct MenuItemClick
 {
     int id;
     CanForm::MenuItem *item;
-    constexpr ItemClick(int i, CanForm::MenuItem *m) noexcept : id(i), item(m)
+    constexpr MenuItemClick(int i, CanForm::MenuItem *m) noexcept : id(i), item(m)
     {
     }
     void operator()(bool);
-    void operator()(CanForm::MenuItem::NewMenuPtr);
+    void operator()(CanForm::MenuItem::NewMenu &&);
     void execute()
     {
         std::visit(*this, item->onClick());
     }
-    void removeElement();
+    void removeDialog();
 };
 
 namespace CanForm
@@ -113,21 +74,75 @@ void showMessageBox(MessageBoxType type, std::string_view title, std::string_vie
         toString(type), title.data(), title.size(), message.data(), message.size());
 }
 
-bool askQuestion(std::string_view title, std::string_view question, void *)
+struct ResponseHandler
 {
-    const int id = rand();
+    std::shared_ptr<QuestionResponse> response;
+    int id;
+
+    void checkLater()
+    {
+        emscripten_set_timeout(&ResponseHandler::checkForAnswerToQuestion, 10, this);
+    }
+
+    static void checkForAnswerToQuestion(void *userData)
+    {
+        ResponseHandler *handler = (ResponseHandler *)userData;
+        const int response = EM_ASM_INT(
+            {
+                let id = $0;
+                let dialog = document.getElementById("dialog_" + id.toString());
+                if (!dialog)
+                {
+                    return 0;
+                }
+                if (dialog.open)
+                {
+                    return -1;
+                }
+                dialog.remove();
+                return dialog.returnvalue == "yes" ? 1 : 0;
+            },
+            handler->id);
+        switch (response)
+        {
+        case 0:
+            handler->response->no();
+            delete handler;
+            break;
+        case 1:
+            handler->response->yes();
+            delete handler;
+            break;
+        default:
+            handler->checkLater();
+            break;
+        }
+    }
+};
+
+void askQuestion(std::string_view title, std::string_view question, const std::shared_ptr<QuestionResponse> &response,
+                 void *)
+{
+    ResponseHandler *handler = new ResponseHandler();
+    handler->response = response;
+    handler->id = rand();
     EM_ASM(
         {
+            let title = $0;
+            let titleLength = $1;
+            let content = $2;
+            let contentLength = $3;
             let id = $4;
+
             let dialog = document.createElement("dialog");
             dialog.id = 'dialog_' + id.toString();
 
             let h1 = document.createElement("h1");
-            h1.innerText = UTF8ToString($0, $1);
+            h1.innerText = UTF8ToString(title, titleLength);
             dialog.append(h1);
 
             let p = document.createElement("p");
-            p.innerText = UTF8ToString($2, $3);
+            p.innerText = UTF8ToString(content, contentLength);
             dialog.append(p);
 
             let button = document.createElement("button");
@@ -159,14 +174,52 @@ bool askQuestion(std::string_view title, std::string_view question, void *)
             document.body.append(dialog);
             dialog.showModal();
         },
-        title.data(), title.size(), question.data(), question.size(), id);
-    waitForDialog(id);
-    return false;
+        title.data(), title.size(), question.data(), question.size(), handler->id);
+    handler->checkLater();
 }
 
-void MenuList::show(std::string_view title, void *)
+struct MenuHandler
 {
-    const int id = rand();
+    std::shared_ptr<MenuList> menuList;
+    std::vector<std::unique_ptr<MenuItemClick>> itemClicks;
+    int id;
+
+    void checkLater()
+    {
+        emscripten_set_timeout(&ResponseHandler::checkForAnswerToQuestion, 1000, this);
+    }
+
+    static void checkIfElementWasRemoved(void *userData)
+    {
+        MenuHandler *handler = (MenuHandler *)userData;
+        const int removed = EM_ASM_INT(
+            {
+                let id = $0;
+                let dialog = document.getElementById("dialog_" + id.toString());
+                if (!dialog)
+                {
+                    return true;
+                }
+                if (dialog.open)
+                {
+                    return false;
+                }
+                dialog.remove();
+                return true;
+            },
+            handler->id);
+        if (removed)
+        {
+            delete handler;
+        }
+    }
+};
+
+void showMenu(std::string_view title, const std::shared_ptr<MenuList> &menuList, void *)
+{
+    MenuHandler *handler = new MenuHandler();
+    handler->menuList = menuList;
+    handler->id = rand();
     EM_ASM(
         {
             let id = $0;
@@ -197,8 +250,8 @@ void MenuList::show(std::string_view title, void *)
             document.body.append(dialog);
             dialog.showModal();
         },
-        id, title.data(), title.size());
-    for (auto &menu : menus)
+        handler->id, title.data(), title.size());
+    for (auto &menu : menuList->menus)
     {
         EM_ASM(
             {
@@ -231,7 +284,7 @@ void MenuList::show(std::string_view title, void *)
                 };
                 tabs.append(tabButton);
             },
-            id, menu.title.c_str());
+            handler->id, menu.title.c_str());
         for (auto &item : menu.items)
         {
             char *buttonQuery = (char *)EM_ASM_PTR(
@@ -253,15 +306,13 @@ void MenuList::show(std::string_view title, void *)
 
                     return stringToNewUTF8('#' + button.id);
                 },
-                id, menu.title.c_str(), item->label.c_str(), rand());
-            emscripten_set_click_callback(buttonQuery, new ItemClick(id, item.get()), false, executeItem);
+                handler->id, menu.title.c_str(), item->label.c_str(), rand());
+            auto &ptr = handler->itemClicks.emplace_back(std::make_unique<MenuItemClick>(handler->id, item.get()));
+            emscripten_set_click_callback(buttonQuery, ptr.get(), false, executeItem);
             free(buttonQuery);
         }
     }
-
-    char buffer[256];
-    std::snprintf(buffer, sizeof(buffer), "dialog_%d", id);
-    blockUntilElementRemoved(buffer);
+    handler->checkLater();
 }
 
 struct AwaiterHandler
@@ -316,15 +367,10 @@ void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &aw
         },
         id, message.data(), message.size());
     emscripten_set_timeout(checkAwaiter, 1, new AwaiterHandler(awaiter, id));
-
-    char buffer[256];
-    std::snprintf(buffer, sizeof(buffer), "dialog_%d", id);
-    blockUntilElementRemoved(buffer);
 }
 
-DialogResult executeForm(std::string_view, Form &, size_t, void *)
+void FormExecute::execute(std::string_view, const std::shared_ptr<FormExecute> &, size_t, void *)
 {
-    return DialogResult::Error;
 }
 
 } // namespace CanForm
@@ -332,7 +378,7 @@ DialogResult executeForm(std::string_view, Form &, size_t, void *)
 static bool executeItem(int, const EmscriptenMouseEvent *, void *userData)
 {
     using namespace CanForm;
-    ItemClick *itemClick = (ItemClick *)userData;
+    MenuItemClick *itemClick = (MenuItemClick *)userData;
     if (itemClick == nullptr)
     {
         return true;
@@ -341,10 +387,8 @@ static bool executeItem(int, const EmscriptenMouseEvent *, void *userData)
     return true;
 }
 
-void ItemClick::removeElement()
+static void removeElement(const char *id)
 {
-    char buffer[256];
-    std::snprintf(buffer, sizeof(buffer), "dialog_%d", id);
     EM_ASM(
         {
             let id = UTF8ToString($0);
@@ -354,19 +398,26 @@ void ItemClick::removeElement()
                 e.remove();
             }
         },
-        buffer);
+        id);
 }
 
-void ItemClick::operator()(bool b)
+void MenuItemClick::removeDialog()
+{
+    char buffer[256];
+    std::snprintf(buffer, sizeof(buffer), "dialog_%d", id);
+    removeElement(buffer);
+}
+
+void MenuItemClick::operator()(bool b)
 {
     if (b)
     {
-        removeElement();
+        removeDialog();
     }
 }
 
-void ItemClick::operator()(CanForm::MenuItem::NewMenuPtr p)
+void MenuItemClick::operator()(CanForm::MenuItem::NewMenu &&p)
 {
-    removeElement();
-    p->second.show(p->first, nullptr);
+    removeDialog();
+    CanForm::showMenu(p.first, p.second);
 }

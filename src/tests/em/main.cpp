@@ -6,16 +6,10 @@
 
 using namespace CanForm;
 
-void run();
-bool showMenu(int, const EmscriptenMouseEvent *, void *);
+bool OnMenuButton(int, const EmscriptenMouseEvent *, void *);
 
 int main()
 {
-    if (!emscripten_has_asyncify())
-    {
-        fprintf(stderr, "Asyncify is not enabled\n");
-        return -1;
-    }
     srand(time(nullptr));
 
     EM_ASM({
@@ -24,34 +18,38 @@ int main()
         button.id = 'menuButton';
         document.body.append(button);
     });
-    emscripten_set_click_callback("#menuButton", nullptr, false, showMenu);
+    emscripten_set_click_callback("#menuButton", nullptr, false, OnMenuButton);
 
-    emscripten_set_main_loop(run, -1, false);
     return 0;
 }
 
-void run()
+template <typename T> std::shared_ptr<T> make_shared(T &&t)
 {
+    return std::make_shared<T>(std::move(t));
 }
 
-bool showMenu(int, const EmscriptenMouseEvent *, void *)
+bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
 {
     MenuList menuList;
     {
         auto &menu = menuList.menus.emplace_back();
         menu.title = "Modal Tests";
         menu.add("Show Modal Form", []() {
-            Form form = makeForm();
-            printForm(form, executeForm("Modal Form", form, 2));
+            auto formExecute = make_shared(executeForm([](const Form &form) { printForm(form); }, makeForm()));
+            FormExecute::execute("Modal Form", formExecute, 2);
+            return false;
+        });
+        menu.add("Information", []() {
+            showMessageBox(MessageBoxType::Information, "Information Message", "This is information");
             return false;
         });
         menu.add("Warning", []() {
             showMessageBox(MessageBoxType::Warning, "Warning Message", "This is a warning");
-            return true;
+            return false;
         });
         menu.add("Error", []() {
             showMessageBox(MessageBoxType::Error, "Error Message", "This is an error");
-            return true;
+            return false;
         });
     }
     {
@@ -66,10 +64,10 @@ bool showMenu(int, const EmscriptenMouseEvent *, void *)
             auto &menu = menuList.menus.emplace_back();
             menu.title = "Secondary Menu";
             menu.add("Close", []() { return true; });
-            return makeNewMenu<true>("New Menu", std::move(menuList));
+            return makeNewMenu("New Menu", std::move(menuList));
         });
     }
 
-    menuList.show("Main Menu");
+    showMenu("Main Menu", std::make_shared<MenuList>(std::move(menuList)));
     return true;
 }
