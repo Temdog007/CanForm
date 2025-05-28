@@ -42,8 +42,7 @@ if(EMSCRIPTEN)
 	if(CANFORM_BUILD_TEST)
 		add_executable(canform_em_test
 			src/tests/test.cpp
-			src/tests/em/main.cpp
-			src/tests/em/test.cpp)
+			src/tests/em/main.cpp)
 
 		target_include_directories(canform_em_test PRIVATE
 			include)
