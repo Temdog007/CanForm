@@ -52,7 +52,7 @@ bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
         menu.title = "Modal Tests";
         menu.add("Show Modal Form", []() {
             auto formExecute = make_shared(executeForm([](const Form &form) { printForm(form); }, makeForm()));
-            FormExecute::execute("Modal Form", formExecute, 2);
+            FormExecute::execute("Modal Form", formExecute, 3);
             return false;
         });
         menu.add("Information", []() {

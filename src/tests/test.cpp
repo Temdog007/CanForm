@@ -26,7 +26,7 @@ template <typename T> constexpr RangedValue makeNumber(T t) noexcept
 Form makeForm()
 {
     Form form;
-    form["Flag"] = false;
+    form["Flag"] = rand() % 2 == 0;
     form["Signed Integer"] = makeNumber(0);
     form["Unsigned Integer"] = makeNumber(0u);
     form["Float"] = makeNumber(0.f);
@@ -34,7 +34,13 @@ Form makeForm()
     form["String"] = "Hello";
 
     constexpr std::array<std::string_view, 5> Classes = {"Mammal", "Bird", "Reptile", "Amphibian", "Fish"};
-    form["Single Selection"] = StringSelection(Classes);
+    StringSelection selection;
+    selection.index = rand() % Classes.size();
+    for (auto cls : Classes)
+    {
+        selection.set.emplace(cls);
+    }
+    form["Single Selection"] = std::move(selection);
 
     constexpr std::array<std::string_view, 4> Actions = {"Climb", "Swim", "Fly", "Dig"};
     StringMap map;

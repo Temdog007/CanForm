@@ -91,7 +91,7 @@ class FormVisitor
             id, columns, title.data(), title.size());
     }
 
-    void operator()(bool &b)
+    int operator()(bool &b)
     {
         const int id2 = makeDiv();
         EM_ASM(
@@ -103,19 +103,48 @@ class FormVisitor
 
                 let input = document.createElement('input');
                 input.type = 'checkbox';
-                if (value)
-                {
-                    input.setAttribute('checked', true);
-                }
-                else
-                {
-                    input.removeAttribute('checked');
-                }
+                input.checked = value ? true : false;
                 div.append(input);
             },
             id2, b);
+        return id2;
     }
-    void operator()(String &s)
+
+    int operator()(StringMap &map)
+    {
+        const int id2 = makeDiv();
+        int index = 0;
+        for (auto &[name, flag] : map)
+        {
+            EM_ASM(
+                {
+                    let id = $0;
+                    let name = UTF8ToString($1);
+                    let flag = $2;
+                    let index = $3;
+
+                    let div = document.getElementById('div_' + id.toString());
+
+                    let newID = 'checkbox_' + id.toString() + index.toString();
+                    let label = document.createElement("label");
+                    label.innerText = name;
+                    label.setAttribute('for', newID);
+                    div.append(label);
+
+                    let input = document.createElement("input");
+                    input.id = newID;
+                    input.type = "checkbox";
+                    input.checked = flag;
+                    div.append(input);
+
+                    div.append(document.createElement("br"));
+                },
+                id2, name.c_str(), flag, index++);
+        }
+        return id2;
+    }
+
+    int operator()(String &s)
     {
         const int id2 = makeDiv();
         EM_ASM(
@@ -131,29 +160,94 @@ class FormVisitor
                 div.append(input);
             },
             id2, s.c_str());
+        return id2;
     }
-    void operator()(ComplexString &)
+
+    int operator()(ComplexString &s)
     {
+        const int id2 = operator()(s.string);
+        return id2;
     }
-    template <typename T> void operator()(Range<T> &)
+
+    template <typename T> int operator()(Range<T> &range)
     {
+        auto [min, max] = range.getMinMax();
+        const int id2 = makeDiv();
+        EM_ASM(
+            {
+                let id = $0;
+                let value = $1;
+                let min = $2;
+                let max = $3;
+
+                let div = document.getElementById('div_' + id.toString());
+
+                let input = document.createElement('input');
+                input.type = 'number';
+                input.value = value;
+                input.min = min.toString();
+                input.max = max.toString();
+                div.append(input);
+            },
+            id2, *range, (double)min, (double)max);
+        return id2;
     }
-    void operator()(RangedValue &n)
+
+    int operator()(RangedValue &n)
     {
-        std::visit(*this, n);
+        return std::visit(*this, n);
     }
-    void operator()(StringList &)
+
+    int operator()(StringList &)
     {
+        return 0;
     }
-    void operator()(StringSelection &)
+
+    int operator()(StringSelection &selection)
     {
+        const int id2 = makeDiv();
+        EM_ASM(
+            {
+                let id = $0;
+
+                let div = document.getElementById('div_' + id.toString());
+
+                let select = document.createElement("select");
+                select.id = 'select_' + id.toString();
+                div.append(select);
+            },
+            id2);
+        int i = selection.index;
+        for (auto &item : selection.set)
+        {
+            EM_ASM(
+                {
+                    let id = $0;
+                    let value = UTF8ToString($1);
+                    let selected = $2;
+
+                    let select = document.getElementById('select_' + id.toString());
+
+                    let option = document.createElement('option');
+                    option.value = value;
+                    option.innerText = value;
+                    select.append(option);
+                    if (selected)
+                    {
+                        option.selected = true;
+                    }
+                },
+                id2, item.c_str(), i == 0);
+            --i;
+        }
+        return id2;
     }
-    void operator()(StringMap &)
+
+    int operator()(MultiForm &)
     {
+        return 0;
     }
-    void operator()(MultiForm &)
-    {
-    }
+
     void operator()(Form &form)
     {
         for (auto &[n, data] : form.datas)

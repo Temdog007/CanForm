@@ -26,6 +26,10 @@ struct StringSelection
     StringSelection(const StringSelection &) = default;
     StringSelection(StringSelection &&) noexcept = default;
 
+    template <typename... Args> StringSelection(int i, Args &&...args) : set(std::forward<Args>(args)...), index(i)
+    {
+    }
+
     template <typename T, size_t N> StringSelection(const std::array<T, N> &array) : StringSelection()
     {
         for (auto item : array)
