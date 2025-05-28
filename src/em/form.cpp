@@ -18,9 +18,11 @@ class FormVisitor
                 let id = $0;
                 let i = $1;
 
-                let dialog = document.getElementById('dialog_' + id.toString());
+                let dialog = document.getElementById('form_' + id.toString());
 
                 let div = document.createElement("div");
+                div.style.border = '1px solid';
+                div.style.padding = '1vh 1vw';
                 div.id = 'div_' + i.toString();
                 dialog.append(div);
 
@@ -42,6 +44,7 @@ class FormVisitor
                 let columns = $1;
 
                 let dialog = document.createElement("dialog");
+                document.body.append(dialog);
                 dialog.id = 'dialog_' + id.toString();
 
                 let h1 = document.createElement("h1");
@@ -50,6 +53,17 @@ class FormVisitor
 
                 let div = document.createElement("div");
                 div.id = 'form_' + id.toString();
+                div.style.display = 'grid';
+                function repeat(c)
+                {
+                    let s = '';
+                    for (let i = 0; i < c; ++i)
+                    {
+                        s += 'auto ';
+                    }
+                    return s;
+                };
+                div.style.gridTemplateColumns = repeat(columns);
                 dialog.append(div);
 
                 let button = document.createElement("button");
@@ -72,7 +86,7 @@ class FormVisitor
                 };
                 dialog.append(button);
 
-                document.body.append(dialog);
+                dialog.showModal();
             },
             id, columns, title.data(), title.size());
     }
@@ -85,24 +99,38 @@ class FormVisitor
                 let id = $0;
                 let value = $1;
 
-                let div = document.createElement('div_' + id.toString());
+                let div = document.getElementById('div_' + id.toString());
 
-                let flag = document.createElement('input');
-                flag.type = 'checkbox';
+                let input = document.createElement('input');
+                input.type = 'checkbox';
                 if (value)
                 {
-                    flag.setAttribute('checked', true);
+                    input.setAttribute('checked', true);
                 }
                 else
                 {
-                    flag.removeAttribute('checked');
+                    input.removeAttribute('checked');
                 }
-                div.append(flag);
+                div.append(input);
             },
             id2, b);
     }
-    void operator()(String &)
+    void operator()(String &s)
     {
+        const int id2 = makeDiv();
+        EM_ASM(
+            {
+                let id = $0;
+                let value = UTF8ToString($1);
+
+                let div = document.getElementById('div_' + id.toString());
+
+                let input = document.createElement('input');
+                input.type = 'text';
+                input.value = value;
+                div.append(input);
+            },
+            id2, s.c_str());
     }
     void operator()(ComplexString &)
     {
@@ -180,6 +208,7 @@ void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExec
                           void *)
 {
     FormVisitor *visitor = new FormVisitor(title, formExecute, columns);
+    visitor->operator()(formExecute->form);
     visitor->checkLater();
 }
 } // namespace CanForm
