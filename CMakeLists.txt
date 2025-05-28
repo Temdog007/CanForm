@@ -27,7 +27,6 @@ add_library(canform ${CANFORM_TYPE}
 target_include_directories(canform PRIVATE include)
 
 if(EMSCRIPTEN)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS} -sALLOW_MEMORY_GROWTH=1")
     set(CMAKE_EXE_LINKER_FLAGS
     	"${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS} -sEXPORTED_RUNTIME_METHODS=ccall,stringToNewUTF8")
 

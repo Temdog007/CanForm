@@ -1,30 +1,185 @@
 #include <em/em.hpp>
+#include <form.hpp>
 
 namespace CanForm
 {
 class FormVisitor
 {
   private:
+    std::shared_ptr<FormExecute> formExecute;
     std::string_view name;
-    size_t columns;
+    int id;
 
-  public:
-    constexpr FormVisitor(size_t c) noexcept : name(), columns(c)
+    int makeDiv()
     {
+        const int i = rand();
+        EM_ASM(
+            {
+                let id = $0;
+                let i = $1;
+
+                let dialog = document.getElementById('dialog_' + id.toString());
+
+                let div = document.createElement("div");
+                div.id = 'div_' + i.toString();
+                dialog.append(div);
+
+                let h2 = document.createElement("h2");
+                h2.innerText = UTF8ToString($2, $3);
+                div.append(h2);
+            },
+            id, i, name.data(), name.size());
+        return i;
     }
 
-    void operator()(bool &)
+  public:
+    FormVisitor(std::string_view title, const std::shared_ptr<FormExecute> &f, size_t columns)
+        : formExecute(f), name(), id(rand())
     {
+        EM_ASM(
+            {
+                let id = $0;
+                let columns = $1;
+
+                let dialog = document.createElement("dialog");
+                dialog.id = 'dialog_' + id.toString();
+
+                let h1 = document.createElement("h1");
+                h1.innerText = UTF8ToString($2, $3);
+                dialog.append(h1);
+
+                let div = document.createElement("div");
+                div.id = 'form_' + id.toString();
+                dialog.append(div);
+
+                let button = document.createElement("button");
+                button.innerText = '✖';
+                button.id = "closeButton";
+                button.onclick = function()
+                {
+                    dialog.remove();
+                };
+                dialog.append(button);
+
+                let hr = document.createElement("hr");
+                dialog.append(hr);
+
+                button = document.createElement("button");
+                button.innerText = 'Ok';
+                button.onclick = function()
+                {
+                    dialog.close("ok");
+                };
+                dialog.append(button);
+
+                document.body.append(dialog);
+            },
+            id, columns, title.data(), title.size());
+    }
+
+    void operator()(bool &b)
+    {
+        const int id2 = makeDiv();
+        EM_ASM(
+            {
+                let id = $0;
+                let value = $1;
+
+                let div = document.createElement('div_' + id.toString());
+
+                let flag = document.createElement('input');
+                flag.type = 'checkbox';
+                if (value)
+                {
+                    flag.setAttribute('checked', true);
+                }
+                else
+                {
+                    flag.removeAttribute('checked');
+                }
+                div.append(flag);
+            },
+            id2, b);
     }
     void operator()(String &)
     {
     }
-    void operator()(Number &)
+    void operator()(ComplexString &)
     {
+    }
+    template <typename T> void operator()(Range<T> &)
+    {
+    }
+    void operator()(RangedValue &n)
+    {
+        std::visit(*this, n);
+    }
+    void operator()(StringList &)
+    {
+    }
+    void operator()(StringSelection &)
+    {
+    }
+    void operator()(StringMap &)
+    {
+    }
+    void operator()(MultiForm &)
+    {
+    }
+    void operator()(Form &form)
+    {
+        for (auto &[n, data] : form.datas)
+        {
+            name = n;
+            std::visit(*this, *data);
+        }
+    }
+
+    void checkLater()
+    {
+        emscripten_set_timeout(&FormVisitor::checkForResponse, 10, this);
+    }
+
+    static void checkForResponse(void *userData)
+    {
+        FormVisitor *handler = (FormVisitor *)userData;
+        const int response = EM_ASM_INT(
+            {
+                let id = $0;
+                let dialog = document.getElementById("dialog_" + id.toString());
+                if (!dialog)
+                {
+                    return 0;
+                }
+                if (dialog.open)
+                {
+                    return -1;
+                }
+                dialog.remove();
+                return dialog.returnValue == "ok" ? 1 : 0;
+            },
+            handler->id);
+        switch (response)
+        {
+        case 0:
+            handler->formExecute->cancel();
+            delete handler;
+            break;
+        case 1:
+            handler->formExecute->ok();
+            delete handler;
+            break;
+        default:
+            handler->checkLater();
+            break;
+        }
     }
 };
 
-void FormExecute::execute(std::string_view, const std::shared_ptr<FormExecute> &, size_t, void *)
+void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExecute> &formExecute, size_t columns,
+                          void *)
 {
+    FormVisitor *visitor = new FormVisitor(title, formExecute, columns);
+    visitor->checkLater();
 }
 } // namespace CanForm

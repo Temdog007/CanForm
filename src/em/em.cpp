@@ -78,7 +78,7 @@ void ResponseHandler::checkForAnswerToQuestion(void *userData)
                 return -1;
             }
             dialog.remove();
-            return dialog.returnvalue == "yes" ? 1 : 0;
+            return dialog.returnValue == "yes" ? 1 : 0;
         },
         handler->id);
     switch (response)
@@ -122,15 +122,10 @@ void askQuestion(std::string_view title, std::string_view question, const std::s
             p.innerText = UTF8ToString(content, contentLength);
             dialog.append(p);
 
-            let button = document.createElement("button");
-            button.innerText = 'Yes';
-            button.onclick = function()
-            {
-                dialog.close();
-            };
-            dialog.append(button);
+            let hr = document.createElement("hr");
+            dialog.append(hr);
 
-            button = document.createElement("button");
+            let button = document.createElement("button");
             button.classList.add("yes");
             button.innerText = 'Yes';
             button.onclick = function()
@@ -225,6 +220,7 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
             dialog.showModal();
         },
         handler->id, title.data(), title.size());
+    bool first = true;
     for (auto &menu : menuList->menus)
     {
         EM_ASM(
@@ -257,8 +253,14 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
                     tabContent.classList.add("active");
                 };
                 tabs.append(tabButton);
+
+                let first = $2;
+                if (first)
+                {
+                    tabButton.click();
+                }
             },
-            handler->id, menu.title.c_str());
+            handler->id, menu.title.c_str(), first);
         for (auto &item : menu.items)
         {
             char *buttonQuery = (char *)EM_ASM_PTR(
@@ -285,6 +287,7 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
             emscripten_set_click_callback(buttonQuery, &itemClick, false, executeItem);
             free(buttonQuery);
         }
+        first = false;
     }
     handler->checkLater();
 }

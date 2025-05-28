@@ -28,6 +28,22 @@ template <typename T> std::shared_ptr<T> make_shared(T &&t)
     return std::make_shared<T>(std::move(t));
 }
 
+struct SimpleResponse : public QuestionResponse
+{
+    virtual ~SimpleResponse()
+    {
+    }
+
+    virtual void yes() override
+    {
+        showMessageBox(MessageBoxType::Information, "Yes", "You selected yes");
+    }
+    virtual void no() override
+    {
+        showMessageBox(MessageBoxType::Information, "No", "You selected no");
+    }
+};
+
 bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
 {
     MenuList menuList;
@@ -49,6 +65,10 @@ bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
         });
         menu.add("Error", []() {
             showMessageBox(MessageBoxType::Error, "Error Message", "This is an error");
+            return false;
+        });
+        menu.add("Question", []() {
+            askQuestion("Question", "Yes or No?", std::make_shared<SimpleResponse>());
             return false;
         });
     }
