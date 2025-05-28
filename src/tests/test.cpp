@@ -66,8 +66,9 @@ Form makeForm()
     form["Expression"] = std::move(c);
 
     MultiForm multi;
-    multi.tabs["Extra1"] = Form::create("Age", makeNumber(static_cast<uint8_t>(42)), "Favorite Color",
-                                        StringSelection({"Red", "Green", "Blue"}));
+    StringSet set({"Red", "Green", "Blue"});
+    multi.tabs["Extra1"] =
+        Form::create("Age", makeNumber(static_cast<uint8_t>(42)), "Favorite Color", StringSelection(0, std::move(set)));
     multi.tabs["Extra2"] = Form::create("Active", true, "Weight", makeNumber(0.0), "Sports",
                                         createStringMap("Basketball", "Football", "Golf", "Polo"));
     multi.selected = "Extra1";

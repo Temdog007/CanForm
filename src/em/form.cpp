@@ -198,9 +198,27 @@ class FormVisitor
         return std::visit(*this, n);
     }
 
-    int operator()(StringList &)
+    int operator()(StringList &list)
     {
-        return 0;
+        const int id2 = makeDiv();
+        for (auto &[name, _] : list)
+        {
+            EM_ASM(
+                {
+                    let id = $0;
+                    let name = UTF8ToString($1);
+
+                    let div = document.getElementById('div_' + id.toString());
+
+                    let button = document.createElement("button");
+                    button.innerText = name;
+                    div.append(button);
+
+                    div.append(document.createElement("br"));
+                },
+                id2, name.c_str());
+        }
+        return id2;
     }
 
     int operator()(StringSelection &selection)

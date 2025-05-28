@@ -30,22 +30,6 @@ struct StringSelection
     {
     }
 
-    template <typename T, size_t N> StringSelection(const std::array<T, N> &array) : StringSelection()
-    {
-        for (auto item : array)
-        {
-            set.emplace(item);
-        }
-    }
-
-    template <typename T> StringSelection(std::initializer_list<T> list) : StringSelection()
-    {
-        for (auto item : list)
-        {
-            set.emplace(item);
-        }
-    }
-
     auto getIterator() const noexcept
     {
         int i = index;
