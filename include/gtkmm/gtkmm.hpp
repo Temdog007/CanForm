@@ -4,9 +4,8 @@
 #include <cstring>
 #include <filesystem>
 #include <glibmm/ustring.h>
-#include <gtkmm/drawingarea.h>
+#include <gtkmm.h>
 #include <memory>
-#include <unordered_set>
 
 namespace CanForm
 {

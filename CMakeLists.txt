@@ -56,7 +56,9 @@ else()
 	pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)
 
 	add_library(canform_gtkmm ${CANFORM_TYPE}
-		src/gtkmm/gtkmm.cpp)
+		src/gtkmm/gtkmm.cpp
+		src/gtkmm/form.cpp
+		src/gtkmm/tempFile.cpp)
 
 	target_include_directories(canform_gtkmm PRIVATE
 		include

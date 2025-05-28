@@ -297,10 +297,6 @@ void AwaiterHandler::checkLater()
 void AwaiterHandler::checkIfDone(void *userData)
 {
     AwaiterHandler *a = (AwaiterHandler *)userData;
-    if (a == nullptr)
-    {
-        return;
-    }
     if (a->awaiter->isDone())
     {
         EM_ASM(
