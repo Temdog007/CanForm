@@ -7,12 +7,14 @@
 
 namespace CanForm
 {
-StringList makeList(std::initializer_list<std::string_view> list)
+SortableList makeList(std::initializer_list<std::string_view> list)
 {
-    StringList s;
-    for (auto item : list)
+    SortableList s;
+    for (auto name : list)
     {
-        s.emplace_back(item, nullptr);
+        auto &item = s.emplace_back();
+        item.name = name;
+        item.index = s.size() - 1;
     }
     return s;
 }
@@ -124,11 +126,18 @@ struct Printer
         return std::visit(*this, n);
     }
 
-    std::ostream &operator()(const StringList &list)
+    std::ostream &operator()(const SortableList &list)
     {
-        for (auto &[name, _] : list)
+        for (size_t i = 0; i < list.size(); ++i)
         {
-            os << name << std::endl;
+            for (auto &item : list)
+            {
+                if (item.index == i)
+                {
+                    os << item.name << std::endl;
+                    break;
+                }
+            }
         }
         return os;
     }

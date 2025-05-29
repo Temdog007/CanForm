@@ -22,8 +22,6 @@ using StringSet = std::pmr::set<String>;
 
 using StringMap = std::pmr::map<String, bool>;
 
-using StringList = std::pmr::vector<std::pair<String, void *>>;
-
 using TimePoint = std::chrono::system_clock::time_point;
 extern TimePoint now();
 

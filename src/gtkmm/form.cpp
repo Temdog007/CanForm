@@ -132,101 +132,13 @@ class FormVisitor
         return std::visit(*this, n);
     }
 
-    enum class RepositionMode
-    {
-        Swap,
-        MoveBefore,
-        MoveAfter,
-    };
-
-    template <typename T> static void reposition(T &list, size_t oldPosition, size_t newPosition)
-    {
-        auto iter = list.begin() + oldPosition;
-        auto item = std::move(*iter);
-        list.erase(iter);
-        if (newPosition < list.size())
-        {
-            list.emplace(list.begin() + newPosition, std::move(item));
-        }
-        else
-        {
-            list.emplace_back(std::move(item));
-        }
-    }
-
-    static void setStringList(Gtk::VBox *box, std::shared_ptr<RepositionMode> mode, StringList &list)
-    {
-        box->foreach ([box](Gtk::Widget &widget) { box->remove(widget); });
-        using Pair = std::optional<size_t>;
-        std::shared_ptr<Pair> ptr = std::make_shared<Pair>();
-        for (size_t i = 0; i < list.size(); ++i)
-        {
-            Gtk::ToggleButton *button = Gtk::make_managed<Gtk::ToggleButton>(convert(list[i].first));
-            button->signal_toggled().connect([&list, button, box, mode, ptr, i]() {
-                Pair &pair = *ptr;
-                if (!button->get_active())
-                {
-                    if (pair == i)
-                    {
-                        pair.reset();
-                        return;
-                    }
-                }
-                if (!pair)
-                {
-                    pair.emplace(i);
-                    return;
-                }
-                if (*pair == i)
-                {
-                    return;
-                }
-                switch (*mode)
-                {
-                case RepositionMode::MoveBefore:
-                    reposition(list, *pair, i);
-                    break;
-                case RepositionMode::MoveAfter:
-                    reposition(list, *pair, i + 1);
-                    break;
-                default:
-                    std::swap(list[*pair], list[i]);
-                    break;
-                }
-                setStringList(box, mode, list);
-            });
-            box->add(*button);
-        }
-        box->show_all_children();
-    }
-
-    Gtk::Widget *operator()(StringList &list)
+    Gtk::Widget *operator()(SortableList &)
     {
         auto frame = makeFrame();
         Gtk::VBox *vBox = Gtk::make_managed<Gtk::VBox>();
 
         Gtk::HBox *hBox = Gtk::make_managed<Gtk::HBox>();
         vBox->add(*hBox);
-
-        Gtk::RadioButtonGroup group;
-
-        std::shared_ptr<RepositionMode> mode = std::make_shared<RepositionMode>();
-
-        Gtk::RadioButton *button = Gtk::make_managed<Gtk::RadioButton>(group, "Swap");
-        button->signal_clicked().connect([mode]() { *mode = RepositionMode::Swap; });
-        hBox->add(*button);
-
-        button = Gtk::make_managed<Gtk::RadioButton>(group, "Move Before");
-        button->signal_clicked().connect([mode]() { *mode = RepositionMode::MoveBefore; });
-        hBox->add(*button);
-
-        button = Gtk::make_managed<Gtk::RadioButton>(group, "Move After");
-        button->signal_clicked().connect([mode]() { *mode = RepositionMode::MoveAfter; });
-        hBox->add(*button);
-
-        Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
-        setStringList(box, mode, list);
-        vBox->add(*box);
 
         frame->add(*vBox);
         return frame;

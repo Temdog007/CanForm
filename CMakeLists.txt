@@ -49,9 +49,9 @@ if(EMSCRIPTEN)
 			canform_em)
 
 		target_link_options(canform_em_test PRIVATE
-			"-sEXPORTED_RUNTIME_METHODS=ccall,stringToNewUTF8")
+			"-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,stringToNewUTF8")
 		target_link_options(canform_em_test PRIVATE
-			"-sEXPORTED_FUNCTIONS=_main,_updateBoolean")
+			"-sEXPORTED_FUNCTIONS=_main,_updateBoolean,_updateString,_updateSortableList")
 	endif()
 else()
 	find_package(PkgConfig REQUIRED)

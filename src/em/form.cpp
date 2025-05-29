@@ -209,7 +209,7 @@ struct FormVisitor
         return std::visit(*this, n);
     }
 
-    int operator()(StringList &list)
+    int operator()(SortableList &list)
     {
         const int id = makeDiv();
         EM_ASM(
@@ -221,44 +221,30 @@ struct FormVisitor
                 div.append(ul);
             },
             id);
-        int i = 0;
-        for (auto &[name, _] : list)
+        for (auto &item : list)
         {
             EM_ASM(
                 {
                     let id = $0;
                     let name = UTF8ToString($1);
                     let index = $2;
+                    let data = $3;
 
                     let ul = document.getElementById('ul_' + id.toString());
-
-                    function isBefore(e1, e2)
-                    {
-                        if (e2.parentNode == e1.parentNode)
-                        {
-                            for (let cur = e1.previousSibling; cur && cur.nodeType != 9; cur = cur.previousSibling)
-                            {
-                                if (cur == e2)
-                                {
-                                    return true;
-                                }
-                            }
-                        }
-                        return false;
-                    }
-
                     let li = document.createElement("li");
+
                     li.innerText = name;
                     li.setAttribute("index", index);
+                    li.setAttribute("userData", data);
                     li.draggable = true;
                     ul.append(li);
                 },
-                id, name.c_str(), i);
-            ++i;
+                id, item.name.c_str(), item.index, item.data);
         }
         EM_ASM(
             {
                 let id = $0;
+                let list = $1;
                 let ul = document.getElementById('ul_' + id.toString());
 
                 let dragTarget = null;
@@ -295,6 +281,13 @@ struct FormVisitor
                         {
                             ul.append(dragTarget);
                         }
+                        let i = 0;
+                        let func = Module.cwrap('updateSortableList', null, [ 'number', 'number', 'number', 'number' ]);
+                        for (let o of ul.children)
+                        {
+                            func(list, stringToNewUTF8(o.innerText), i, parseInt(o.getAttribute("userData")));
+                            ++i;
+                        }
                     });
                 function getDragAfterElement(container, y)
                 {
@@ -318,7 +311,7 @@ struct FormVisitor
                     return closest.element;
                 }
             },
-            id);
+            id, &list);
         return id;
     }
 
@@ -576,4 +569,10 @@ void updateString(CanForm::String &oldValue, char *newValue)
 {
     oldValue.assign(newValue);
     free(newValue);
+}
+
+void updateSortableList(CanForm::SortableList &list, char *name, int index, void *data)
+{
+    list[index].name.assign(name);
+    list[index].data = data;
 }

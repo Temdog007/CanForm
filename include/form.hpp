@@ -94,6 +94,19 @@ template <typename... Args> StringMap createStringMap(Args &&...args)
     return createStringMap(map, std::forward<Args>(args)...);
 }
 
+struct SortableItem
+{
+    String name;
+    size_t index;
+    void *data;
+
+    SortableItem() : name(), index(0), data(nullptr)
+    {
+    }
+};
+
+using SortableList = std::pmr::vector<SortableItem>;
+
 struct FormData;
 struct Form;
 
@@ -106,7 +119,7 @@ struct MultiForm
 struct FormData
 {
     using Data =
-        std::variant<bool, RangedValue, String, ComplexString, StringList, StringSelection, StringMap, MultiForm>;
+        std::variant<bool, RangedValue, String, ComplexString, SortableList, StringSelection, StringMap, MultiForm>;
     Data data;
 
     FormData() : data(false)
