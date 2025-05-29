@@ -4,38 +4,28 @@
 
 namespace CanForm
 {
-class DragList : public Gtk::VBox
+class DragList : public Gtk::TreeView
 {
-  public:
-    struct Button : public Gtk::Button
+  private:
+    struct Column : public Gtk::TreeModel::ColumnRecord
     {
-        void *userData;
-        bool hasDrag;
-
-        template <typename... Args>
-        Button(void *d, Args &&...args) : Gtk::Button(std::forward<Args>(args)...), userData(d), hasDrag(false)
-        {
-        }
-
-        virtual ~Button()
+        Gtk::TreeModelColumn<Glib::ustring> name;
+        Gtk::TreeModelColumn<void *> userData;
+        Column();
+        virtual ~Column()
         {
         }
     };
 
-  private:
-    std::vector<Gtk::TargetEntry> listTargets;
-    Gtk::VBox *box;
-    Gtk::Label *dragLabel;
-    Button *dragTarget;
-
-    void reposition(Gtk::Button *dragOver);
+    Column column;
+    Glib::RefPtr<Gtk::ListStore> treeModel;
 
   public:
-    DragList();
+    DragList(const Glib::ustring &);
     virtual ~DragList()
     {
     }
 
-    Button *addButton(const Glib::ustring &, void *userData = nullptr, bool add = true);
+    void add(const Glib::ustring &, void *userData = nullptr);
 };
 } // namespace CanForm

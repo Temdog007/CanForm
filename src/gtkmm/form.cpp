@@ -135,16 +135,12 @@ class FormVisitor
 
     Gtk::Widget *operator()(SortableList &list)
     {
-        auto frame = makeFrame();
-        DragList *dragList = Gtk::make_managed<DragList>();
-
+        DragList *dragList = Gtk::make_managed<DragList>(convert(name));
         for (auto &item : list)
         {
-            dragList->addButton(convert(item.name), item.data);
+            dragList->add(convert(item.name), item.data);
         }
-
-        frame->add(*dragList);
-        return frame;
+        return dragList;
     }
 
     Gtk::Widget *operator()(StringSelection &selection)
