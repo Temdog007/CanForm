@@ -70,3 +70,9 @@ extern bool executeItem(int, const EmscriptenMouseEvent *, void *);
 extern void removeElement(const char *);
 
 } // namespace CanForm
+
+extern "C"
+{
+    void EMSCRIPTEN_KEEPALIVE updateBoolean(bool &, bool);
+    void EMSCRIPTEN_KEEPALIVE updateString(CanForm::String &, char *);
+}

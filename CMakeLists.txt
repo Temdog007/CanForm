@@ -27,9 +27,6 @@ add_library(canform ${CANFORM_TYPE}
 target_include_directories(canform PRIVATE include)
 
 if(EMSCRIPTEN)
-    set(CMAKE_EXE_LINKER_FLAGS
-    	"${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS} -sEXPORTED_RUNTIME_METHODS=ccall,stringToNewUTF8")
-
 	add_library(canform_em ${CANFORM_TYPE}
 		src/em/em.cpp
 		src/em/form.cpp)
@@ -50,6 +47,11 @@ if(EMSCRIPTEN)
 		target_link_libraries(canform_em_test PRIVATE
 			canform
 			canform_em)
+
+		target_link_options(canform_em_test PRIVATE
+			"-sEXPORTED_RUNTIME_METHODS=ccall,stringToNewUTF8")
+		target_link_options(canform_em_test PRIVATE
+			"-sEXPORTED_FUNCTIONS=_main,_updateBoolean")
 	endif()
 else()
 	find_package(PkgConfig REQUIRED)

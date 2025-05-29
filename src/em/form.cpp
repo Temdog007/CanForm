@@ -42,15 +42,21 @@ struct FormVisitor
             {
                 let id = $0;
                 let value = $1;
+                let addr = $2;
 
                 let div = document.getElementById('div_' + id.toString());
 
                 let input = document.createElement('input');
+                input.id = 'input_' + id.toString();
                 input.type = 'checkbox';
                 input.checked = value ? true : false;
+                input.onchange = function()
+                {
+                    Module.ccall('updateBoolean', null, [ 'number', 'boolean' ], [ addr, input.checked ]);
+                };
                 div.append(input);
             },
-            id, b);
+            id, b, &b);
         return id;
     }
 
@@ -95,15 +101,32 @@ struct FormVisitor
             {
                 let id = $0;
                 let value = UTF8ToString($1);
+                let addr = $2;
 
                 let div = document.getElementById('div_' + id.toString());
 
                 let input = document.createElement('input');
                 input.type = 'text';
                 input.value = value;
+                input.onchange = function()
+                {
+                    Module.ccall('updateString', null, [ 'number', 'number' ], [ addr, stringToNewUTF8(input.value) ]);
+                };
+                input.onkeypress = function()
+                {
+                    this.onchange();
+                };
+                input.onpaste = function()
+                {
+                    this.onchange();
+                };
+                input.oninput = function()
+                {
+                    this.onchange();
+                };
                 div.append(input);
             },
-            id, s.c_str());
+            id, s.c_str(), &s);
         return id;
     }
 
@@ -402,4 +425,16 @@ void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExec
     visitor->dialogId = id;
     visitor->checkLater();
 }
+
 } // namespace CanForm
+
+void updateBoolean(bool &oldValue, bool newValue)
+{
+    oldValue = newValue;
+}
+
+void updateString(CanForm::String &oldValue, char *newValue)
+{
+    oldValue.assign(newValue);
+    free(newValue);
+}
