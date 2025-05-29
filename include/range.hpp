@@ -1,11 +1,17 @@
 #pragma once
 
+#include <algorithm>
 #include <limits>
 #include <optional>
 
 namespace CanForm
 {
-template <typename T> class Range
+struct IRange
+{
+    virtual void setFromDouble(double) = 0;
+};
+
+template <typename T> class Range : public IRange
 {
     static_assert(std::is_arithmetic_v<T> && !std::is_same_v<T, bool>);
 
@@ -14,7 +20,10 @@ template <typename T> class Range
     T min;
     T max;
 
-    constexpr Range(T v, T mi, T ma) noexcept : value(v), min(mi), max(ma)
+    template <typename U> friend class Range;
+
+    constexpr Range(T v, T mi, T ma) noexcept
+        : value(std::clamp(v, mi, ma)), min(std::min(mi, ma)), max(std::max(mi, ma))
     {
     }
 
@@ -42,6 +51,21 @@ template <typename T> class Range
     {
         setValue(t);
         return *this;
+    }
+
+    template <typename U, std::enable_if_t<std::is_arithmetic_v<U> && !std::is_same_v<U, bool>, bool> = true>
+    Range &operator=(U u) noexcept
+    {
+        Range<U> r(u);
+        min = static_cast<T>(r.min);
+        max = static_cast<T>(r.max);
+        value = std::clamp(static_cast<T>(u), min, max);
+        return *this;
+    }
+
+    virtual void setFromDouble(double d) override
+    {
+        *this = d;
     }
 
     constexpr T getValue() const noexcept

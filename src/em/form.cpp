@@ -190,6 +190,7 @@ struct FormVisitor
                 let value = $1;
                 let min = $2;
                 let max = $3;
+                let r = $4;
 
                 let div = document.getElementById('div_' + id.toString());
 
@@ -198,9 +199,25 @@ struct FormVisitor
                 input.value = value;
                 input.min = min.toString();
                 input.max = max.toString();
+                input.onchange = function()
+                {
+                    Module.ccall('updateRange', null, [ 'number', 'number' ], [ r, parseFloat(input.value) ]);
+                };
+                input.onkeypress = function()
+                {
+                    this.onchange();
+                };
+                input.onpaste = function()
+                {
+                    this.onchange();
+                };
+                input.oninput = function()
+                {
+                    this.onchange();
+                };
                 div.append(input);
             },
-            id, *range, (double)min, (double)max);
+            id, *range, (double)min, (double)max, &range);
         return id;
     }
 
@@ -560,19 +577,27 @@ void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExec
 
 } // namespace CanForm
 
+using namespace CanForm;
+
 void updateBoolean(bool &oldValue, bool newValue)
 {
     oldValue = newValue;
 }
 
-void updateString(CanForm::String &oldValue, char *newValue)
+void updateString(String &oldValue, char *newValue)
 {
     oldValue.assign(newValue);
     free(newValue);
 }
 
-void updateSortableList(CanForm::SortableList &list, char *name, int index, void *data)
+void updateSortableList(SortableList &list, char *name, int index, void *data)
 {
     list[index].name.assign(name);
     list[index].data = data;
+    free(name);
+}
+
+void updateRange(IRange &range, double d)
+{
+    range.setFromDouble(d);
 }
