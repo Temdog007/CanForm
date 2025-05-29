@@ -201,7 +201,8 @@ struct FormVisitor
                 input.max = max.toString();
                 input.onchange = function()
                 {
-                    Module.ccall('updateRange', null, [ 'number', 'number' ], [ r, parseFloat(input.value) ]);
+                    input.value =
+                        Module.ccall('updateRange', 'number', [ 'number', 'number' ], [ r, parseFloat(input.value) ]);
                 };
                 input.onkeypress = function()
                 {
@@ -608,9 +609,9 @@ void updateSortableList(SortableList &list, char *name, int index, void *data)
     free(name);
 }
 
-void updateRange(IRange &range, double d)
+double updateRange(IRange &range, double d)
 {
-    range.setFromDouble(d);
+    return range.setFromDouble(d);
 }
 
 void updateMultiForm(CanForm::MultiForm &multi, char *string)

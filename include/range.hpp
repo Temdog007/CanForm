@@ -8,7 +8,7 @@ namespace CanForm
 {
 struct IRange
 {
-    virtual void setFromDouble(double) = 0;
+    virtual double setFromDouble(double) = 0;
 };
 
 template <typename T> class Range : public IRange
@@ -56,16 +56,14 @@ template <typename T> class Range : public IRange
     template <typename U, std::enable_if_t<std::is_arithmetic_v<U> && !std::is_same_v<U, bool>, bool> = true>
     Range &operator=(U u) noexcept
     {
-        Range<U> r(u);
-        min = static_cast<T>(r.min);
-        max = static_cast<T>(r.max);
         value = std::clamp(static_cast<T>(u), min, max);
         return *this;
     }
 
-    virtual void setFromDouble(double d) override
+    virtual double setFromDouble(double d) override
     {
         *this = d;
+        return value;
     }
 
     constexpr T getValue() const noexcept
