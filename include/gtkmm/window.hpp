@@ -1,8 +1,9 @@
+#pragma once
+
 #include <gtkmm.h>
 
 namespace CanForm
 {
-
 extern Gtk::ScrolledWindow *makeScroll(Gtk::Window *);
 extern std::pair<int, int> getSize(Gtk::Container &);
 extern std::pair<int, int> getMonitorSize(Gtk::Window &);

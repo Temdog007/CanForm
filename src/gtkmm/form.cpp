@@ -1,3 +1,4 @@
+#include <gtkmm/dragList.hpp>
 #include <gtkmm/gtkmm.hpp>
 #include <gtkmm/window.hpp>
 
@@ -132,15 +133,17 @@ class FormVisitor
         return std::visit(*this, n);
     }
 
-    Gtk::Widget *operator()(SortableList &)
+    Gtk::Widget *operator()(SortableList &list)
     {
         auto frame = makeFrame();
-        Gtk::VBox *vBox = Gtk::make_managed<Gtk::VBox>();
+        DragList *dragList = Gtk::make_managed<DragList>();
 
-        Gtk::HBox *hBox = Gtk::make_managed<Gtk::HBox>();
-        vBox->add(*hBox);
+        for (auto &item : list)
+        {
+            dragList->addButton(convert(item.name), item.data);
+        }
 
-        frame->add(*vBox);
+        frame->add(*dragList);
         return frame;
     }
 
