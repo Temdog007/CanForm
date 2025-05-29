@@ -79,6 +79,10 @@ body {
 	transition: rotate(-2deg);
 }
 
+.draggable:hover{
+	cursor: move;
+}
+
 .over {
 	border: 2px dashed;
 }

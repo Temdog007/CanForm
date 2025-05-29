@@ -249,6 +249,7 @@ struct FormVisitor
 
                     let ul = document.getElementById('ul_' + id.toString());
                     let li = document.createElement("li");
+                    li.classList.add("draggable");
 
                     li.innerText = name;
                     li.setAttribute("index", index);
@@ -383,6 +384,7 @@ struct FormVisitor
         EM_ASM(
             {
                 let id = $0;
+                let addr = $1;
 
                 let div = document.getElementById('div_' + id);
 
@@ -394,12 +396,21 @@ struct FormVisitor
                     {
                         child.classList.remove("active");
                     }
-                    let t = document.getElementById(select.value);
-                    t.classList.add("active");
+                    let outer = document.getElementById(select.value);
+                    outer.classList.add("active");
+                    for (let option of select.children)
+                    {
+                        if (option.selected)
+                        {
+                            Module.ccall('updateMultiForm', null, [ 'number', 'number' ],
+                                         [ addr, stringToNewUTF8(option.innerText) ]);
+                            break;
+                        }
+                    }
                 };
                 div.append(select);
             },
-            id);
+            id, &multi);
         for (auto &[n, form] : multi.tabs)
         {
             name = n;
@@ -600,4 +611,10 @@ void updateSortableList(SortableList &list, char *name, int index, void *data)
 void updateRange(IRange &range, double d)
 {
     range.setFromDouble(d);
+}
+
+void updateMultiForm(CanForm::MultiForm &multi, char *string)
+{
+    multi.selected.assign(string);
+    free(string);
 }

@@ -24,7 +24,6 @@ class DragList : public Gtk::VBox
 
   private:
     std::vector<Gtk::TargetEntry> listTargets;
-    Gtk::VBox tempBox;
     Gtk::VBox *box;
     Gtk::Label *dragLabel;
     Button *dragTarget;
