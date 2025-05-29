@@ -72,6 +72,7 @@ struct FormVisitor
                     let name = UTF8ToString($1);
                     let flag = $2;
                     let index = $3;
+                    let addr = $4;
 
                     let div = document.getElementById('div_' + id.toString());
 
@@ -85,11 +86,15 @@ struct FormVisitor
                     input.id = newID;
                     input.type = "checkbox";
                     input.checked = flag;
+                    input.onchange = function()
+                    {
+                        Module.ccall('updateBoolean', null, [ 'number', 'boolean' ], [ addr, input.checked ]);
+                    };
                     div.append(input);
 
                     div.append(document.createElement("br"));
                 },
-                id, name.c_str(), flag, index++);
+                id, name.c_str(), flag, index++, &flag);
         }
         return id;
     }
@@ -233,14 +238,19 @@ struct FormVisitor
         EM_ASM(
             {
                 let id = $0;
+                let addr = $1;
 
                 let div = document.getElementById('div_' + id.toString());
 
                 let select = document.createElement("select");
                 select.id = 'select_' + id.toString();
+                select.onchange = function()
+                {
+                    setValue(addr, parseInt(select.selectedIndex), 'i32');
+                };
                 div.append(select);
             },
-            id);
+            id, &selection.index);
         int i = selection.index;
         for (auto &item : selection.set)
         {
