@@ -212,23 +212,113 @@ struct FormVisitor
     int operator()(StringList &list)
     {
         const int id = makeDiv();
+        EM_ASM(
+            {
+                let id = $0;
+                let div = document.getElementById('div_' + id.toString());
+                let ul = document.createElement("ul");
+                ul.id = 'ul_' + id.toString();
+                div.append(ul);
+            },
+            id);
+        int i = 0;
         for (auto &[name, _] : list)
         {
             EM_ASM(
                 {
                     let id = $0;
                     let name = UTF8ToString($1);
+                    let index = $2;
 
-                    let div = document.getElementById('div_' + id.toString());
+                    let ul = document.getElementById('ul_' + id.toString());
 
-                    let button = document.createElement("button");
-                    button.innerText = name;
-                    div.append(button);
+                    function isBefore(e1, e2)
+                    {
+                        if (e2.parentNode == e1.parentNode)
+                        {
+                            for (let cur = e1.previousSibling; cur && cur.nodeType != 9; cur = cur.previousSibling)
+                            {
+                                if (cur == e2)
+                                {
+                                    return true;
+                                }
+                            }
+                        }
+                        return false;
+                    }
 
-                    div.append(document.createElement("br"));
+                    let li = document.createElement("li");
+                    li.innerText = name;
+                    li.setAttribute("index", index);
+                    li.draggable = true;
+                    ul.append(li);
                 },
-                id, name.c_str());
+                id, name.c_str(), i);
+            ++i;
         }
+        EM_ASM(
+            {
+                let id = $0;
+                let ul = document.getElementById('ul_' + id.toString());
+
+                let dragTarget = null;
+                function clearOver()
+                {
+                    for (let o of ul.children)
+                    {
+                        o.classList.remove('over');
+                    }
+                };
+                ul.addEventListener(
+                    'dragstart', function(e) {
+                        dragTarget = e.target;
+                        e.target.classList.add('dragging');
+                    });
+                ul.addEventListener(
+                    'dragend', function(e) {
+                        e.target.classList.remove('dragging');
+                        clearOver();
+                        dragTarget = null;
+                    });
+                ul.addEventListener(
+                    'dragover', function(e) {
+                        e.preventDefault();
+                        const target = getDragAfterElement(ul, e.clientY);
+                        clearOver();
+
+                        if (target)
+                        {
+                            target.classList.add('over');
+                            ul.insertBefore(dragTarget, target);
+                        }
+                        else
+                        {
+                            ul.append(dragTarget);
+                        }
+                    });
+                function getDragAfterElement(container, y)
+                {
+                    let closest = {};
+                    closest.offset = Number.NEGATIVE_INFINITY;
+                    closest.element = null;
+                    for (let o of container.children)
+                    {
+                        if (o.classList.contains("dragging"))
+                        {
+                            continue;
+                        }
+                        const box = o.getBoundingClientRect();
+                        const offset = y - box.top - box.height / 2;
+                        if (offset < 0 && offset > closest.offset)
+                        {
+                            closest.offset = offset;
+                            closest.element = o;
+                        }
+                    }
+                    return closest.element;
+                }
+            },
+            id);
         return id;
     }
 

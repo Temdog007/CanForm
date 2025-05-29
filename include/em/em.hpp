@@ -75,4 +75,5 @@ extern "C"
 {
     void EMSCRIPTEN_KEEPALIVE updateBoolean(bool &, bool);
     void EMSCRIPTEN_KEEPALIVE updateString(CanForm::String &, char *);
+    void EMSCRIPTEN_KEEPALIVE updateOrder(CanForm::StringList &, int *);
 }

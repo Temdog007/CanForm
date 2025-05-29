@@ -73,3 +73,12 @@ body {
 	color: red;
 	float:left;
 }
+
+.dragging{
+	opacity: 0.7;
+	transition: rotate(-2deg);
+}
+
+.over {
+	border: 2px dashed;
+}
