@@ -241,11 +241,11 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
                 tabButton.innerText = title;
                 tabButton.onclick = function()
                 {
-                    for (let child of document.getElementsByClassName("tabContent"))
+                    for (let child of dialog.getElementsByClassName("tabContent"))
                     {
                         child.classList.remove("active");
                     }
-                    for (let child of document.getElementsByClassName("tabButton"))
+                    for (let child of dialog.getElementsByClassName("tabButton"))
                     {
                         child.classList.remove("active");
                     }
