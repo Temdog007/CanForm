@@ -107,6 +107,7 @@ struct FormVisitor
 
                 let input = document.createElement('input');
                 input.type = 'text';
+                input.id = 'input_' + id.toString();
                 input.value = value;
                 input.onchange = function()
                 {
@@ -133,6 +134,44 @@ struct FormVisitor
     int operator()(ComplexString &s)
     {
         const int id = operator()(s.string);
+        for (auto &[name, set] : s.map)
+        {
+            EM_ASM(
+                {
+                    let id = $0;
+                    let value = UTF8ToString($1);
+
+                    let div = document.getElementById('div_' + id);
+
+                    let h3 = document.createElement("h3");
+                    h3.innerText = value;
+                    div.append(h3);
+                },
+                id, name.c_str());
+            for (auto &s : set)
+            {
+                EM_ASM(
+                    {
+                        let id = $0;
+                        let value = UTF8ToString($1);
+
+                        let div = document.getElementById('div_' + id);
+
+                        let button = document.createElement("button");
+                        button.innerText = value;
+                        button.onclick = function()
+                        {
+                            let i = document.getElementById('input_' + id);
+                            i.value += value;
+                            i.focus();
+                            let e = new Event('change');
+                            i.dispatchEvent(e);
+                        };
+                        div.append(button);
+                    },
+                    id, s.c_str());
+            }
+        }
         return id;
     }
 
