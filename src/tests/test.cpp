@@ -14,7 +14,7 @@ SortableList makeList(std::initializer_list<std::string_view> list)
     {
         auto &item = s.emplace_back();
         item.name = name;
-        item.index = s.size() - 1;
+        item.data = reinterpret_cast<void *>(static_cast<size_t>(rand()));
     }
     return s;
 }
@@ -128,16 +128,9 @@ struct Printer
 
     std::ostream &operator()(const SortableList &list)
     {
-        for (size_t i = 0; i < list.size(); ++i)
+        for (auto &item : list)
         {
-            for (auto &item : list)
-            {
-                if (item.index == i)
-                {
-                    os << item.name << std::endl;
-                    break;
-                }
-            }
+            os << item.name << std::endl;
         }
         return os;
     }

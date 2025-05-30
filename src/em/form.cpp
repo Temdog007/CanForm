@@ -245,20 +245,18 @@ struct FormVisitor
                 {
                     let id = $0;
                     let name = UTF8ToString($1);
-                    let index = $2;
-                    let data = $3;
+                    let data = $2;
 
                     let ul = document.getElementById('ul_' + id.toString());
                     let li = document.createElement("li");
                     li.classList.add("draggable");
 
                     li.innerText = name;
-                    li.setAttribute("index", index);
                     li.setAttribute("userData", data);
                     li.draggable = true;
                     ul.append(li);
                 },
-                id, item.name.c_str(), item.index, item.data);
+                id, item.name.c_str(), item.data);
         }
         EM_ASM(
             {

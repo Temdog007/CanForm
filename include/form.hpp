@@ -97,10 +97,9 @@ template <typename... Args> StringMap createStringMap(Args &&...args)
 struct SortableItem
 {
     String name;
-    size_t index;
     void *data;
 
-    SortableItem() : name(), index(0), data(nullptr)
+    SortableItem() : name(), data(nullptr)
     {
     }
 };
