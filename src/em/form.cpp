@@ -110,27 +110,28 @@ struct FormVisitor
 
                 let div = document.getElementById('div_' + id.toString());
 
-                let input = document.createElement('input');
-                input.type = 'text';
-                input.id = 'input_' + id.toString();
-                input.value = value;
-                input.onchange = function()
+                let textarea = document.createElement('textarea');
+                textarea.type = 'text';
+                textarea.id = 'input_' + id.toString();
+                textarea.value = value;
+                textarea.onchange = function()
                 {
-                    Module.ccall('updateString', null, [ 'number', 'number' ], [ addr, stringToNewUTF8(input.value) ]);
+                    Module.ccall('updateString', null, [ 'number', 'number' ],
+                                 [ addr, stringToNewUTF8(textarea.value) ]);
                 };
-                input.onkeypress = function()
-                {
-                    this.onchange();
-                };
-                input.onpaste = function()
+                textarea.onkeypress = function()
                 {
                     this.onchange();
                 };
-                input.oninput = function()
+                textarea.onpaste = function()
                 {
                     this.onchange();
                 };
-                div.append(input);
+                textarea.oninput = function()
+                {
+                    this.onchange();
+                };
+                div.append(textarea);
             },
             id, s.c_str(), &s);
         return id;
@@ -554,9 +555,14 @@ void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExec
 
             dialog.append(document.createElement("hr"));
 
+            let div = document.createElement("div");
+            div.style.overflow = 'auto';
+            div.style.maxHeight = '75vh';
+            dialog.append(div);
+
             let content = document.getElementById("form_" + id.toString());
             content.remove();
-            dialog.append(content);
+            div.append(content);
 
             let button = document.createElement("button");
             button.innerText = '✖';

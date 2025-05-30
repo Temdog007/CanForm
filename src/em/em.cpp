@@ -16,9 +16,14 @@ void showMessageBox(MessageBoxType type, std::string_view title, std::string_vie
             h2.innerText = UTF8ToString($1, $2);
             dialog.append(h2);
 
+            let div = document.createElement("div");
+            div.style.overflow = 'auto';
+            div.style.maxHeight = '75vh';
+            dialog.append(div);
+
             let p = document.createElement("p");
             p.innerText = UTF8ToString($3, $4);
-            dialog.append(p);
+            div.append(p);
 
             let button = document.createElement("button");
             button.innerText = '✖';
