@@ -3,11 +3,15 @@
 Create forms that appear as dialog windows to edit data
 
 Supports
-| Data Type 	 | Widget     |
+| Data Type 	    | Widget     |
 | -------------- | ---------- |
-| Boolean   	 | Checkbox   |
-| String    	 | Textbox    |
+| Boolean   	   | Checkbox   |
+| String    	   | Textbox    |
+| Number         | Textbox that only allow numbers within a range |
+| List of Strings | List of Buttons that can be re-organized |
 | Set of Strings | Combox Box |
+| Map of String to Boolean | List of Checkboxes |
+| Variant       | Forms separated by Labels |
 
 ## Backends
 - [x] Implemented with GTK for desktops
