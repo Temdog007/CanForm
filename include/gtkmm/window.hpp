@@ -43,21 +43,21 @@ static inline Gtk::Window *createWindow(Gtk::WindowType type, std::string_view t
 
     if (contents.first)
     {
-        vBox->pack_start(*contents.first, Gtk::PACK_EXPAND_PADDING);
+        vBox->pack_start(*contents.first, Gtk::PACK_SHRINK, 10);
         Gtk::Separator *separator = Gtk::make_managed<Gtk::Separator>();
         vBox->pack_start(*separator, Gtk::PACK_SHRINK);
     }
 
     Gtk::ScrolledWindow *scroll = makeScroll(window);
     scroll->add(*contents.second);
-    vBox->pack_start(*scroll, Gtk::PACK_EXPAND_PADDING);
+    vBox->pack_start(*scroll, Gtk::PACK_EXPAND_PADDING, 10);
 
     Gtk::Separator *separator = Gtk::make_managed<Gtk::Separator>();
     vBox->pack_start(*separator, Gtk::PACK_SHRINK);
 
     Gtk::HBox *hBox = Gtk::make_managed<Gtk::HBox>();
     makeButtons(window, hBox, std::forward<Args>(args)...);
-    vBox->pack_start(*hBox, Gtk::PACK_EXPAND_PADDING);
+    vBox->pack_start(*hBox, Gtk::PACK_SHRINK, 10);
 
     std::pair<int, int> pair;
     if (parent == nullptr)
