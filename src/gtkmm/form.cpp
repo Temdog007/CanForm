@@ -140,6 +140,10 @@ class FormVisitor
         {
             dragList->add(convert(item.name), item.data);
         }
+        dragList->signal_row_reorder().connect([&list](const Glib::ustring &string, size_t index, void *userData) {
+            list[index].name = convert(string);
+            list[index].data = userData;
+        });
         return dragList;
     }
 

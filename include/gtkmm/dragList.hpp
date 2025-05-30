@@ -20,6 +20,9 @@ class DragList : public Gtk::TreeView
     Column column;
     Glib::RefPtr<Gtk::ListStore> treeModel;
 
+  protected:
+    virtual void on_drag_end(const Glib::RefPtr<Gdk::DragContext> &) override;
+
   public:
     DragList(const Glib::ustring &);
     virtual ~DragList()
@@ -27,5 +30,11 @@ class DragList : public Gtk::TreeView
     }
 
     void add(const Glib::ustring &, void *userData = nullptr);
+
+    using row_reorder = sigc::signal<void(const Glib::ustring &, size_t, void *)>;
+    row_reorder signal_row_reorder();
+
+  protected:
+    row_reorder m_row_reorder;
 };
 } // namespace CanForm
