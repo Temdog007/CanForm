@@ -38,18 +38,25 @@ class FormVisitor
         return button;
     }
 
+    Gtk::TextView *makeTextView()
+    {
+        Gtk::TextView *entry = Gtk::make_managed<Gtk::TextView>();
+        entry->set_pixels_above_lines(5);
+        entry->set_pixels_below_lines(5);
+        entry->set_bottom_margin(10);
+        return entry;
+    }
+
     Gtk::Widget *operator()(String &s)
     {
         auto frame = makeFrame();
         Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
 
-        Gtk::Entry *entry = Gtk::make_managed<Gtk::Entry>();
-        auto buffer = entry->get_buffer();
-        const auto updateText = [&s, buffer]() { s = convert(buffer->get_text()); };
+        Gtk::TextView *entry = makeTextView();
 
+        auto buffer = entry->get_buffer();
         buffer->set_text(convert(s));
-        buffer->signal_inserted_text().connect([updateText](guint, const char *, guint) { updateText(); });
-        buffer->signal_deleted_text().connect([updateText](guint, guint) { updateText(); });
+        buffer->signal_changed().connect([&s, buffer]() { s = convert(buffer->get_text()); });
 
         box->pack_start(*entry, Gtk::PACK_EXPAND_PADDING, 10);
 
@@ -64,10 +71,7 @@ class FormVisitor
         auto frame = makeFrame();
         Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
 
-        Gtk::TextView *entry = Gtk::make_managed<Gtk::TextView>();
-        entry->set_pixels_above_lines(5);
-        entry->set_pixels_below_lines(5);
-        entry->set_bottom_margin(10);
+        Gtk::TextView *entry = makeTextView();
 
         auto buffer = entry->get_buffer();
         buffer->set_text(convert(s.string));
