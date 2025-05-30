@@ -13,7 +13,6 @@ extern Glib::ustring convert(const std::string &s);
 extern Glib::ustring convert(std::string_view);
 extern std::string convert(const Glib::ustring &);
 extern std::string_view toView(const Glib::ustring &);
-extern bool openURL(std::string);
 
 constexpr const char *getIconName(MessageBoxType type) noexcept
 {

@@ -80,4 +80,5 @@ struct FileDialog
     void show(const std::shared_ptr<Handler> &, void *parent = nullptr) const;
 };
 
+extern bool openURL(std::string);
 } // namespace CanForm
