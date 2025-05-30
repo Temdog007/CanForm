@@ -620,8 +620,20 @@ double updateRange(IRange &range, double d)
     return range.setFromDouble(d);
 }
 
-void updateMultiForm(CanForm::MultiForm &multi, char *string)
+void updateMultiForm(MultiForm &multi, char *string)
 {
     multi.selected.assign(string);
     free(string);
+}
+
+bool updateHandler(FileDialog::Handler &handler, char *string)
+{
+    bool result = handler.handle(string);
+    free(string);
+    return result;
+}
+
+void cancelHandler(FileDialog::Handler &handler)
+{
+    handler.canceled();
 }

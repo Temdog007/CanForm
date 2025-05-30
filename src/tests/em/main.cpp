@@ -2,6 +2,7 @@
 #include <em/em.hpp>
 #include <emscripten.h>
 #include <emscripten/html5.h>
+#include <filesystem>
 #include <tests/test.hpp>
 
 using namespace CanForm;
@@ -28,19 +29,24 @@ template <typename T> std::shared_ptr<T> make_shared(T &&t)
     return std::make_shared<T>(std::move(t));
 }
 
-struct SimpleResponse : public QuestionResponse
+class Handler : public FileDialog::Handler
 {
-    virtual ~SimpleResponse()
+  private:
+    Handler() = default;
+
+  public:
+    virtual ~Handler()
     {
+    }
+    virtual bool handle(std::string_view file) override
+    {
+        showMessageBox(MessageBoxType::Information, "Got File/Directory", file);
+        return true;
     }
 
-    virtual void yes() override
+    static std::shared_ptr<Handler> create()
     {
-        showMessageBox(MessageBoxType::Information, "Yes", "You selected yes");
-    }
-    virtual void no() override
-    {
-        showMessageBox(MessageBoxType::Information, "No", "You selected no");
+        return std::shared_ptr<Handler>(new Handler());
     }
 };
 
@@ -48,13 +54,61 @@ bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
 {
     MenuList menuList;
     {
+        auto handler = Handler::create();
         auto &menu = menuList.menus.emplace_back();
-        menu.title = "Modal Tests";
-        menu.add("Show Modal Form", []() {
+        menu.title = "File";
+        menu.add("Open File", [handler]() {
+            FileDialog dialog;
+            dialog.message = "Select file(s)";
+            auto s = std::filesystem::current_path().string();
+            dialog.startDirectory = s;
+            dialog.multiple = true;
+            dialog.show(handler);
+            return true;
+        });
+        menu.add("Open Directory", [handler]() {
+            FileDialog dialog;
+            dialog.message = "Select directory(s)";
+            auto s = std::filesystem::current_path().string();
+            dialog.startDirectory = s;
+            dialog.multiple = true;
+            dialog.directories = true;
+            dialog.show(handler);
+            return true;
+        });
+        menu.add("Save File", [handler]() {
+            FileDialog dialog;
+            dialog.message = "Select file to save";
+            auto s = std::filesystem::current_path().string();
+            dialog.startDirectory = s;
+            dialog.saving = true;
+            dialog.show(handler);
+            return true;
+        });
+    }
+    {
+        auto &menu = menuList.menus.emplace_back();
+        menu.title = "Tests";
+        menu.add("Show Example Form", []() {
             auto formExecute = make_shared(executeForm([](const Form &form) { printForm(form); }, makeForm()));
             FormExecute::execute("Modal Form", formExecute, 3);
             return false;
         });
+        menu.add("Wait for 3 seconds", []() {
+            showPopupUntil("Waiting...", std::chrono::seconds(3), 500);
+            return false;
+        });
+        menu.add("Replace Menu", []() {
+            MenuList menuList;
+            auto &menu = menuList.menus.emplace_back();
+            menu.title = "Secondary Menu";
+            menu.add("Close", []() { return true; });
+            return makeNewMenu("New Menu", std::move(menuList));
+        });
+    }
+    {
+        auto &menu = menuList.menus.emplace_back();
+        menu.title = "Modals";
         menu.add("Information", []() {
             showMessageBox(MessageBoxType::Information, "Information Message", "This is information");
             return false;
@@ -70,21 +124,6 @@ bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
         menu.add("Question", []() {
             askQuestion("Question", "Yes or No?", std::make_shared<SimpleResponse>());
             return false;
-        });
-    }
-    {
-        auto &menu = menuList.menus.emplace_back();
-        menu.title = "Other Tests";
-        menu.add("Wait for 3 seconds", []() {
-            showPopupUntil("Waiting...", std::chrono::seconds(3), 500);
-            return false;
-        });
-        menu.add("Replace Menu", []() {
-            MenuList menuList;
-            auto &menu = menuList.menus.emplace_back();
-            menu.title = "Secondary Menu";
-            menu.add("Close", []() { return true; });
-            return makeNewMenu("New Menu", std::move(menuList));
         });
     }
 

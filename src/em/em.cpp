@@ -1,4 +1,5 @@
 #include <em/em.hpp>
+#include <filesystem>
 
 namespace CanForm
 {
@@ -344,9 +345,185 @@ void showPopupUntil(std::string_view message, const std::shared_ptr<Awaiter> &aw
     a->checkLater();
 }
 
-void FileDialog::show(const std::shared_ptr<Handler> &, void *ptr) const
+template <typename T> struct Keeper
 {
-    showMessageBox(MessageBoxType::Error, "No File Dialog", "File Dialogs are not supported on this platform", ptr);
+    std::shared_ptr<T> ptr;
+    String string;
+
+    void checkLater()
+    {
+        emscripten_set_timeout(&Keeper::checkIfElementWasRemoved, 10, this);
+    }
+
+    static void checkIfElementWasRemoved(void *userData)
+    {
+        Keeper *keeper = (Keeper *)userData;
+        const bool found = EM_ASM_INT(
+            {
+                let id = UTF8ToString($0);
+                let e = document.getElementById(id);
+                return e ? true : false;
+            },
+            keeper->string.c_str());
+        if (found)
+        {
+            keeper->checkLater();
+        }
+        else
+        {
+            delete keeper;
+        }
+    }
+};
+
+template <typename T> Keeper<T> *createKeeper(const std::shared_ptr<T> &ptr, const String &string)
+{
+    Keeper<T> *keeper = new Keeper<T>();
+    keeper->ptr = ptr;
+    keeper->string = string;
+    keeper->checkLater();
+    return keeper;
+}
+
+void FileDialog::show(const std::shared_ptr<Handler> &handler, void *) const
+{
+    const int id = rand();
+    std::pmr::map<String, int> ids;
+    const auto getId = [id, &ids](const auto &key) -> int {
+        auto iter = ids.find(key);
+        if (iter == ids.end())
+        {
+            return id;
+        }
+        else
+        {
+            return iter->second;
+        }
+    };
+    ids.emplace(startDirectory, id);
+    EM_ASM(
+        {
+            let id = $0;
+
+            let dialog = document.createElement("dialog");
+            dialog.id = 'dialog_' + id.toString();
+
+            let h1 = document.createElement("h1");
+            h1.innerText = UTF8ToString($1, $2);
+            dialog.append(h1);
+
+            dialog.append(document.createElement("hr"));
+
+            let h2 = document.createElement("h2");
+            h2.innerText = UTF8ToString($3, $4);
+            dialog.append(h2);
+
+            let saving = $5;
+            let input = document.createElement("input");
+            if (saving)
+            {
+                input.type = "text";
+                input.value = UTF8ToString($6, $7);
+                dialog.append(input);
+            }
+
+            let ul = document.createElement("ul");
+            ul.style.overflow = 'auto';
+            ul.style.maxHeight = '50vh';
+            ul.classList.add("directory");
+            ul.id = 'ul_' + id.toString();
+            dialog.append(ul);
+
+            dialog.append(document.createElement("hr"));
+
+            let addr = $8;
+
+            let button = document.createElement("button");
+            button.innerText = '✖';
+            button.id = "closeButton";
+            button.onclick = function()
+            {
+                Module.ccall('cancelHandler', null, ['number'], [addr]);
+                dialog.remove();
+            };
+            dialog.append(button);
+
+            button = document.createElement("button");
+            button.innerText = "OK";
+            button.onclick = function()
+            {
+                let func = Module.cwrap('updateHandler', 'number', [ 'number', 'number' ]);
+                for (let item of ul.getElementsByClassName("active"))
+                {
+                    let value = item.getAttribute("path");
+                    if (saving && input.value.length > 0)
+                    {
+                        value += '/' + input.value;
+                    }
+                    if (!func(addr, stringToNewUTF8(value)))
+                    {
+                        break;
+                    }
+                }
+                dialog.remove();
+            };
+            dialog.append(button);
+
+            document.body.append(dialog);
+            dialog.showModal();
+        },
+        id, title.data(), title.size(), message.data(), message.size(), saving, filename.data(), filename.size(),
+        handler.get());
+    const std::filesystem::path path(startDirectory);
+    for (const auto &entry : std::filesystem::recursive_directory_iterator(path))
+    {
+        const auto path = entry.path();
+
+        const int id = rand();
+        ids.emplace(path.string(), id);
+
+        const int parent = getId(path.parent_path().c_str());
+        const auto filename = path.filename();
+
+        EM_ASM(
+            {
+                let id = $0;
+                let parent = $1;
+                let path = UTF8ToString($2);
+                let name = UTF8ToString($3);
+                let directory = $4;
+                let highlight = $5;
+
+                let ul = document.getElementById("ul_" + parent.toString());
+
+                let li = document.createElement("li");
+                li.innerText = name;
+                li.setAttribute("path", path);
+                li.classList.add("clickable");
+                if (highlight)
+                {
+                    li.onclick = function()
+                    {
+                        li.classList.toggle("active");
+                    };
+                }
+                ul.append(li);
+
+                if (directory)
+                {
+                    li.classList.add("directoryEntry");
+                    let child = document.createElement("ul");
+                    child.id = 'ul_' + id;
+                    child.classList.add("directory");
+                    ul.append(child);
+                }
+            },
+            id, parent, path.c_str(), filename.c_str(), entry.is_directory(),
+            saving || directories == entry.is_directory());
+    }
+    char buffer[256];
+    std::snprintf(buffer, sizeof(buffer), "dialog_%d", id);
+    createKeeper(handler, buffer);
 }
 
 bool executeItem(int, const EmscriptenMouseEvent *, void *userData)

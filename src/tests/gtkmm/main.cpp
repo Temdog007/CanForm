@@ -48,12 +48,15 @@ class MainWindow : public Window
     }
 };
 
-struct Handler : public FileDialog::Handler
+class Handler : public FileDialog::Handler
 {
+  private:
     Gtk::Window *window;
     constexpr Handler(Gtk::Window *w) noexcept : window(w)
     {
     }
+
+  public:
     virtual ~Handler()
     {
     }
@@ -144,7 +147,7 @@ void MainWindow::OnTool()
         menu.title = "File";
         menu.add("Open File", [this]() {
             FileDialog dialog;
-            dialog.message = "Select directory(s)";
+            dialog.message = "Select file(s)";
             auto s = std::filesystem::current_path().string();
             dialog.startDirectory = s;
             dialog.multiple = true;
@@ -153,7 +156,7 @@ void MainWindow::OnTool()
         });
         menu.add("Open Directory", [this]() {
             FileDialog dialog;
-            dialog.message = "Select file(s)";
+            dialog.message = "Select directory(s)";
             auto s = std::filesystem::current_path().string();
             dialog.startDirectory = s;
             dialog.multiple = true;
@@ -163,7 +166,7 @@ void MainWindow::OnTool()
         });
         menu.add("Save File", [this]() {
             FileDialog dialog;
-            dialog.message = "Select file(s)";
+            dialog.message = "Select file to save";
             auto s = std::filesystem::current_path().string();
             dialog.startDirectory = s;
             dialog.saving = true;
@@ -208,6 +211,10 @@ void MainWindow::OnTool()
         });
         menu.add("Error", [this]() {
             showMessageBox(MessageBoxType::Error, "Error", "This is an error", this);
+            return false;
+        });
+        menu.add("Question", []() {
+            askQuestion("Question", "Yes or No?", std::make_shared<SimpleResponse>());
             return false;
         });
     }

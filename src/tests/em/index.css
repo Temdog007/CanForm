@@ -89,6 +89,18 @@ body {
 	user-select: none; /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
 }
 
+.clickable {
+	cursor: pointer;
+}
+
 .over {
 	border: 2px dashed;
+}
+
+.directoryEntry::before {
+	content : '📁';
+}
+
+ul.directory .active {
+	background-color: blue;
 }

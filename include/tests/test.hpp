@@ -84,4 +84,20 @@ template <> inline void addForm<StringMap>(Form &form, String &&s, StringMap &&m
     }
     form[std::move(s)] = std::move(map);
 }
+
+struct SimpleResponse : public QuestionResponse
+{
+    virtual ~SimpleResponse()
+    {
+    }
+
+    virtual void yes() override
+    {
+        showMessageBox(MessageBoxType::Information, "Yes", "You selected yes");
+    }
+    virtual void no() override
+    {
+        showMessageBox(MessageBoxType::Information, "No", "You selected no");
+    }
+};
 } // namespace CanForm
