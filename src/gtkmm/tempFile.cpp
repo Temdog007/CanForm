@@ -2,6 +2,10 @@
 #include <gtkmm.h>
 #include <gtkmm/gtkmm.hpp>
 
+#if __WIN32
+#include <Windows.h>
+#endif
+
 namespace CanForm
 {
 TempFile::TempFile(const Glib::ustring &ext) : filename(), extension(ext), timePoint()
