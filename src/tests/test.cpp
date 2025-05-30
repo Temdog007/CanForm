@@ -28,7 +28,7 @@ template <typename T> constexpr RangedValue makeNumber(T t) noexcept
 Form makeForm()
 {
     Form form;
-    form["Flag"] = rand() % 2 == 0;
+    form["Boolean"] = rand() % 2 == 0;
     form["Signed Integer"] = makeNumber(0);
     form["Unsigned Integer"] = makeNumber(0u);
     form["Float"] = makeNumber(0.f);
@@ -42,7 +42,7 @@ Form makeForm()
     {
         selection.set.emplace(cls);
     }
-    form["Single Selection"] = std::move(selection);
+    form["Set of Strings"] = std::move(selection);
 
     constexpr std::array<std::string_view, 4> Actions = {"Climb", "Swim", "Fly", "Dig"};
     StringMap map;
@@ -50,9 +50,9 @@ Form makeForm()
     {
         map.emplace(a, rand() % 2 == 0);
     }
-    form["Multiple Selections"] = std::move(map);
+    form["Map of String to Boolean"] = std::move(map);
 
-    form["Ordering"] = makeList({"First", "Second", "Third", "Fourth", "Fifth"});
+    form["List of Strings"] = makeList({"First", "Second", "Third", "Fourth", "Fifth"});
 
     ComplexString c;
     c.string = "2 + 2";
@@ -69,12 +69,12 @@ Form makeForm()
 
     MultiForm multi;
     StringSet set({"Red", "Green", "Blue"});
-    multi.tabs["Extra1"] =
+    multi.tabs["1st Type"] =
         Form::create("Age", makeNumber(static_cast<uint8_t>(42)), "Favorite Color", StringSelection(0, std::move(set)));
-    multi.tabs["Extra2"] = Form::create("Active", true, "Weight", makeNumber(0.0), "Sports",
-                                        createStringMap("Basketball", "Football", "Golf", "Polo"));
+    multi.tabs["2nd Type"] = Form::create("Active", true, "Weight", makeNumber(0.0), "Sports",
+                                          createStringMap("Basketball", "Football", "Golf", "Polo"));
     multi.selected = "Extra1";
-    form["Extra"] = std::move(multi);
+    form["Variant"] = std::move(multi);
     return form;
 }
 

@@ -409,6 +409,8 @@ struct FormVisitor
                     }
                 };
                 div.append(select);
+                setTimeout(
+                    function() { select.onchange(); }, 10);
             },
             id, &multi);
         for (auto &[n, form] : multi.tabs)

@@ -65,28 +65,30 @@ std::pair<int, int> getMonitorSize(Gtk::Window &window)
 Gtk::ScrolledWindow *makeScroll(Gtk::Window *window)
 {
     Gtk::ScrolledWindow *scroll = Gtk::make_managed<Gtk::ScrolledWindow>();
+    const auto setFromMonitor = [scroll, window]() {
+        auto [w, h] = getMonitorSize(*window);
+        scroll->set_min_content_width(std::max(w / 2, 320));
+        scroll->set_min_content_height(std::max(h / 2, 240));
+        scroll->set_max_content_width(w * 5 / 6);
+        scroll->set_max_content_height(h * 5 / 6);
+    };
     if (window == nullptr)
     {
-        scroll->set_min_content_width(320);
-        scroll->set_min_content_height(240);
+        setFromMonitor();
     }
     else
     {
+        auto [w, h] = getWindowSize(*window);
+        if (w < 320 || h < 240)
         {
-            auto [w, h] = getMonitorSize(*window);
+            setFromMonitor();
+        }
+        else
+        {
             scroll->set_min_content_width(w / 2);
             scroll->set_min_content_height(h / 2);
-        }
-        {
-            auto [w, h] = getWindowSize(*window);
-            if (w < 0)
-            {
-                scroll->set_max_content_width(w * 5 / 6);
-            }
-            if (h < 0)
-            {
-                scroll->set_max_content_height(h * 5 / 6);
-            }
+            scroll->set_max_content_width(w * 5 / 6);
+            scroll->set_max_content_height(h * 5 / 6);
         }
     }
     scroll->set_propagate_natural_width(true);

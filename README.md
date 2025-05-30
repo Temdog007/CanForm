@@ -18,3 +18,11 @@ Supports
 - [x] Implemented with Emscripten for web browsers
 - [ ] Implemented for Android
 - [ ] Implemented for iOS
+
+## Screenshots
+
+### GTK
+![Image of CanForm in GTK](images/canform_gtk.png)
+
+### Web Browsers
+![Image of CanForm in a Web Browser](images/canform_em.png)
