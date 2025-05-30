@@ -99,6 +99,31 @@ bool TempFile::changed() const
     return timePoint != std::filesystem::last_write_time(getPath(), err);
 }
 
+bool openURL(std::string url)
+{
+#if __WIN32
+    HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    if (hr == RPC_E_CHANGED_MODE)
+    {
+        hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+    }
+    if (hr != S_FALSE && FAILED(hr))
+    {
+        return false;
+    }
+    HINSTANCE rc = ShellExecute(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    CoUninitialize();
+    return rc <= (HINSTANCE)32;
+#else
+    std::vector<std::string> argv;
+    argv.emplace_back("xdg-open");
+    argv.emplace_back(std::move(url));
+    Glib::spawn_async("", argv,
+                      Glib::SPAWN_SEARCH_PATH | Glib::SPAWN_STDOUT_TO_DEV_NULL | Glib::SPAWN_STDERR_TO_DEV_NULL);
+#endif
+    return true;
+}
+
 bool TempFile::openFile(std::string_view filePath)
 {
     try
@@ -111,27 +136,7 @@ bool TempFile::openFile(std::string_view filePath)
         }
         auto pathString = path.string();
         pathString.insert(0, "file://");
-#if __WIN32
-        HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-        if (hr == RPC_E_CHANGED_MODE)
-        {
-            hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
-        }
-        if (hr != S_FALSE && FAILED(hr))
-        {
-            return false;
-        }
-        HINSTANCE rc = ShellExecute(nullptr, "open", pathString.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-        CoUninitialize();
-        return rc <= (HINSTANCE)32;
-#else
-        std::vector<std::string> argv;
-        argv.emplace_back("xdg-open");
-        argv.emplace_back(std::move(pathString));
-        Glib::spawn_async("", argv,
-                          Glib::SPAWN_SEARCH_PATH | Glib::SPAWN_STDOUT_TO_DEV_NULL | Glib::SPAWN_STDERR_TO_DEV_NULL);
-#endif
-        return true;
+        return openURL(std::move(pathString));
     }
     catch (const std::exception &e)
     {

@@ -373,4 +373,15 @@ void removeElement(const char *id)
         },
         id);
 }
+
+bool openURL(std::string url)
+{
+    EM_ASM(
+        {
+            let url = UTF8ToString($0);
+            window.open(url, "_blank");
+        },
+        url.c_str());
+    return true;
+}
 } // namespace CanForm
