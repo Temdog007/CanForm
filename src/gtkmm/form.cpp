@@ -232,7 +232,7 @@ void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExec
 {
     FormVisitor visitor(columns);
     createWindow(
-        title, visitor(formExecute->form), ptr, Gtk::Stock::OK, [formExecute]() { formExecute->ok(); },
-        Gtk::Stock::CANCEL, [formExecute]() { formExecute->cancel(); });
+        title, std::make_pair(nullptr, visitor(formExecute->form)), ptr, Gtk::Stock::OK,
+        [formExecute]() { formExecute->ok(); }, Gtk::Stock::CANCEL, [formExecute]() { formExecute->cancel(); });
 }
 } // namespace CanForm

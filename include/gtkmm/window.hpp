@@ -29,8 +29,8 @@ static inline void makeButtons(Gtk::Window *window, Gtk::HBox *box, T icon, F fu
 }
 
 template <typename... Args>
-static inline Gtk::Window *createWindow(Gtk::WindowType type, std::string_view title, Gtk::Widget *content, void *ptr,
-                                        Args &&...args)
+static inline Gtk::Window *createWindow(Gtk::WindowType type, std::string_view title,
+                                        std::pair<Gtk::Widget *, Gtk::Widget *> contents, void *ptr, Args &&...args)
 {
     Gtk::Window *parent = (Gtk::Window *)ptr;
     Gtk::Window *window = new Gtk::Window(type);
@@ -41,8 +41,15 @@ static inline Gtk::Window *createWindow(Gtk::WindowType type, std::string_view t
     Gtk::VBox *vBox = Gtk::make_managed<Gtk::VBox>();
     window->add(*vBox);
 
+    if (contents.first)
+    {
+        vBox->pack_start(*contents.first, Gtk::PACK_EXPAND_PADDING);
+        Gtk::Separator *separator = Gtk::make_managed<Gtk::Separator>();
+        vBox->pack_start(*separator, Gtk::PACK_SHRINK);
+    }
+
     Gtk::ScrolledWindow *scroll = makeScroll(window);
-    scroll->add(*content);
+    scroll->add(*contents.second);
     vBox->pack_start(*scroll, Gtk::PACK_EXPAND_PADDING);
 
     Gtk::Separator *separator = Gtk::make_managed<Gtk::Separator>();
@@ -71,9 +78,10 @@ static inline Gtk::Window *createWindow(Gtk::WindowType type, std::string_view t
 }
 
 template <typename... Args>
-static inline Gtk::Window *createWindow(std::string_view title, Gtk::Widget *content, void *ptr, Args &&...args)
+static inline Gtk::Window *createWindow(std::string_view title, std::pair<Gtk::Widget *, Gtk::Widget *> contents,
+                                        void *ptr, Args &&...args)
 {
-    return createWindow(Gtk::WINDOW_TOPLEVEL, title, content, ptr, std::forward<Args>(args)...);
+    return createWindow(Gtk::WINDOW_TOPLEVEL, title, contents, ptr, std::forward<Args>(args)...);
 }
 
 } // namespace CanForm

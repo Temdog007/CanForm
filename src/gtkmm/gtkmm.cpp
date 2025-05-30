@@ -110,20 +110,19 @@ void showMessageBox(MessageBoxType type, std::string_view title, std::string_vie
     Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
     box->set_spacing(10);
 
+    std::pair<Gtk::Widget *, Gtk::Widget *> contents(nullptr, nullptr);
     try
     {
         auto icons = Gtk::IconTheme::get_default();
-        Gtk::Image *image = Gtk::make_managed<Gtk::Image>(icons->load_icon(getIconName(type), PixelSize));
-        box->pack_start(*image, Gtk::PACK_SHRINK);
+        contents.first = Gtk::make_managed<Gtk::Image>(icons->load_icon(getIconName(type), PixelSize));
     }
     catch (const std::exception &)
     {
     }
 
-    Gtk::Label *label = Gtk::make_managed<Gtk::Label>(convert(message));
-    box->pack_start(*label, Gtk::PACK_SHRINK);
+    contents.second = Gtk::make_managed<Gtk::Label>(convert(message));
 
-    createWindow(title, box, ptr, Gtk::Stock::OK, []() {});
+    createWindow(title, contents, ptr, Gtk::Stock::OK, []() {});
 }
 
 void askQuestion(std::string_view title, std::string_view message, const std::shared_ptr<QuestionResponse> &response,
@@ -132,21 +131,20 @@ void askQuestion(std::string_view title, std::string_view message, const std::sh
     Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
     box->set_spacing(10);
 
+    std::pair<Gtk::Widget *, Gtk::Widget *> contents(nullptr, nullptr);
     try
     {
         auto icons = Gtk::IconTheme::get_default();
-        Gtk::Image *image = Gtk::make_managed<Gtk::Image>(icons->load_icon("dialog-question", PixelSize));
-        box->pack_start(*image, Gtk::PACK_SHRINK);
+        contents.first = Gtk::make_managed<Gtk::Image>(icons->load_icon("dialog-question", PixelSize));
     }
     catch (const std::exception &)
     {
     }
 
-    Gtk::Label *label = Gtk::make_managed<Gtk::Label>(convert(message));
-    box->pack_start(*label, Gtk::PACK_SHRINK);
+    contents.second = Gtk::make_managed<Gtk::Label>(convert(message));
 
     createWindow(
-        title, box, ptr, Gtk::Stock::NO, [response]() { response->no(); }, Gtk::Stock::YES,
+        title, contents, ptr, Gtk::Stock::NO, [response]() { response->no(); }, Gtk::Stock::YES,
         [response]() { response->yes(); });
 }
 
@@ -253,7 +251,7 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
         notebook->append_page(*box, convert(menu.title));
     }
 
-    createWindow(title, notebook, ptr);
+    createWindow(title, std::make_pair(nullptr, notebook), ptr);
 }
 
 void FileDialog::show(const std::shared_ptr<FileDialog::Handler> &handler, void *ptr) const
