@@ -69,7 +69,7 @@ class Handler : public FileDialog::Handler
 
     static std::shared_ptr<Handler> create(Gtk::Window *w)
     {
-        return std::make_shared<Handler>(w);
+        return std::shared_ptr<Handler>(new Handler(w));
     }
 };
 

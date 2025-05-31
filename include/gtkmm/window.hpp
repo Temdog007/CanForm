@@ -84,4 +84,25 @@ static inline Gtk::Window *createWindow(std::string_view title, std::pair<Gtk::W
     return createWindow(Gtk::WINDOW_TOPLEVEL, title, contents, ptr, std::forward<Args>(args)...);
 }
 
+template <typename F>
+static inline void showMessageBox(MessageBoxType type, std::string_view title, std::string_view message, void *ptr,
+                                  F &&func)
+{
+    Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
+    box->set_spacing(10);
+
+    std::pair<Gtk::Widget *, Gtk::Widget *> contents(nullptr, nullptr);
+    try
+    {
+        auto icons = Gtk::IconTheme::get_default();
+        contents.first = Gtk::make_managed<Gtk::Image>(icons->load_icon(getIconName(type), PixelSize));
+    }
+    catch (const std::exception &)
+    {
+    }
+
+    contents.second = Gtk::make_managed<Gtk::Label>(convert(message));
+
+    createWindow(title, contents, ptr, Gtk::Stock::OK, func);
+}
 } // namespace CanForm

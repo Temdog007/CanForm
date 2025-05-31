@@ -109,22 +109,7 @@ std::pair<int, int> getSize(Gtk::Container &container)
 
 void showMessageBox(MessageBoxType type, std::string_view title, std::string_view message, void *ptr)
 {
-    Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
-    box->set_spacing(10);
-
-    std::pair<Gtk::Widget *, Gtk::Widget *> contents(nullptr, nullptr);
-    try
-    {
-        auto icons = Gtk::IconTheme::get_default();
-        contents.first = Gtk::make_managed<Gtk::Image>(icons->load_icon(getIconName(type), PixelSize));
-    }
-    catch (const std::exception &)
-    {
-    }
-
-    contents.second = Gtk::make_managed<Gtk::Label>(convert(message));
-
-    createWindow(title, contents, ptr, Gtk::Stock::OK, []() {});
+    showMessageBox(type, title, message, ptr, []() {});
 }
 
 void askQuestion(std::string_view title, std::string_view message, const std::shared_ptr<QuestionResponse> &response,
