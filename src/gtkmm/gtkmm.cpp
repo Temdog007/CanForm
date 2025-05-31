@@ -109,7 +109,7 @@ std::pair<int, int> getSize(Gtk::Container &container)
 
 void showMessageBox(MessageBoxType type, std::string_view title, std::string_view message, void *ptr)
 {
-    showMessageBox(type, title, message, ptr, []() {});
+    showMessageBox(type, convert(title), convert(message), ptr, []() {});
 }
 
 void askQuestion(std::string_view title, std::string_view message, const std::shared_ptr<QuestionResponse> &response,
@@ -131,7 +131,7 @@ void askQuestion(std::string_view title, std::string_view message, const std::sh
     contents.second = Gtk::make_managed<Gtk::Label>(convert(message));
 
     createWindow(
-        title, contents, ptr, Gtk::Stock::NO, [response]() { response->no(); }, Gtk::Stock::YES,
+        convert(title), contents, ptr, Gtk::Stock::NO, [response]() { response->no(); }, Gtk::Stock::YES,
         [response]() { response->yes(); });
 }
 
@@ -238,7 +238,7 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
         notebook->append_page(*box, convert(menu.title));
     }
 
-    createWindow(title, std::make_pair(nullptr, notebook), ptr);
+    createWindow(convert(title), std::make_pair(nullptr, notebook), ptr);
 }
 
 void FileDialog::show(const std::shared_ptr<FileDialog::Handler> &handler, void *ptr) const

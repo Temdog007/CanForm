@@ -14,20 +14,6 @@ extern Glib::ustring convert(std::string_view);
 extern std::string convert(const Glib::ustring &);
 extern std::string_view toView(const Glib::ustring &);
 
-constexpr const char *getIconName(MessageBoxType type) noexcept
-{
-    switch (type)
-    {
-    case MessageBoxType::Warning:
-        return "dialog-warning";
-    case MessageBoxType::Error:
-        return "dialog-error";
-    default:
-        break;
-    }
-    return "dialog-information";
-}
-
 struct IBufferSetter
 {
     virtual ~IBufferSetter()

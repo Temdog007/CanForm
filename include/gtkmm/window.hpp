@@ -1,9 +1,24 @@
 #pragma once
 
+#include <canform.hpp>
 #include <gtkmm.h>
 
 namespace CanForm
 {
+constexpr const char *getIconName(MessageBoxType type) noexcept
+{
+    switch (type)
+    {
+    case MessageBoxType::Warning:
+        return "dialog-warning";
+    case MessageBoxType::Error:
+        return "dialog-error";
+    default:
+        break;
+    }
+    return "dialog-information";
+}
+
 extern Gtk::ScrolledWindow *makeScroll(Gtk::Window *);
 extern std::pair<int, int> getSize(Gtk::Container &);
 extern std::pair<int, int> getMonitorSize(Gtk::Window &);
@@ -29,14 +44,14 @@ static inline void makeButtons(Gtk::Window *window, Gtk::HBox *box, T icon, F fu
 }
 
 template <typename... Args>
-static inline Gtk::Window *createWindow(Gtk::WindowType type, std::string_view title,
+static inline Gtk::Window *createWindow(Gtk::WindowType type, const Glib::ustring &title,
                                         std::pair<Gtk::Widget *, Gtk::Widget *> contents, void *ptr, Args &&...args)
 {
     Gtk::Window *parent = (Gtk::Window *)ptr;
     Gtk::Window *window = new Gtk::Window(type);
     window->set_modal(true);
     window->set_type_hint(Gdk::WINDOW_TYPE_HINT_DIALOG);
-    window->set_title(convert(title));
+    window->set_title(title);
 
     Gtk::VBox *vBox = Gtk::make_managed<Gtk::VBox>();
     window->add(*vBox);
@@ -78,14 +93,14 @@ static inline Gtk::Window *createWindow(Gtk::WindowType type, std::string_view t
 }
 
 template <typename... Args>
-static inline Gtk::Window *createWindow(std::string_view title, std::pair<Gtk::Widget *, Gtk::Widget *> contents,
+static inline Gtk::Window *createWindow(const Glib::ustring &title, std::pair<Gtk::Widget *, Gtk::Widget *> contents,
                                         void *ptr, Args &&...args)
 {
     return createWindow(Gtk::WINDOW_TOPLEVEL, title, contents, ptr, std::forward<Args>(args)...);
 }
 
 template <typename F>
-static inline Gtk::Window *showMessageBox(MessageBoxType type, std::string_view title, std::string_view message,
+static inline Gtk::Window *showMessageBox(MessageBoxType type, const Glib::ustring &title, const Glib::ustring &message,
                                           void *ptr, F &&func)
 {
     Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
@@ -101,7 +116,7 @@ static inline Gtk::Window *showMessageBox(MessageBoxType type, std::string_view 
     {
     }
 
-    contents.second = Gtk::make_managed<Gtk::Label>(convert(message));
+    contents.second = Gtk::make_managed<Gtk::Label>(message);
 
     return createWindow(title, contents, ptr, Gtk::Stock::OK, func);
 }
