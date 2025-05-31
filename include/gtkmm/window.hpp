@@ -85,8 +85,8 @@ static inline Gtk::Window *createWindow(std::string_view title, std::pair<Gtk::W
 }
 
 template <typename F>
-static inline void showMessageBox(MessageBoxType type, std::string_view title, std::string_view message, void *ptr,
-                                  F &&func)
+static inline Gtk::Window *showMessageBox(MessageBoxType type, std::string_view title, std::string_view message,
+                                          void *ptr, F &&func)
 {
     Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
     box->set_spacing(10);
@@ -103,6 +103,6 @@ static inline void showMessageBox(MessageBoxType type, std::string_view title, s
 
     contents.second = Gtk::make_managed<Gtk::Label>(convert(message));
 
-    createWindow(title, contents, ptr, Gtk::Stock::OK, func);
+    return createWindow(title, contents, ptr, Gtk::Stock::OK, func);
 }
 } // namespace CanForm

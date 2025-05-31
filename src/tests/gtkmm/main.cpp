@@ -3,6 +3,7 @@
 #include <fstream>
 #include <gtkmm.h>
 #include <gtkmm/gtkmm.hpp>
+#include <gtkmm/window.hpp>
 #include <tests/test.hpp>
 
 using namespace CanForm;
@@ -23,6 +24,7 @@ class MainWindow : public Window
     Button button;
     Toolbar toolbar;
     ToolButton item;
+    Gtk::Window *blockWindow;
 
     void addToSpinButton(Glib::ustring name, SpinButton &button, int min = 0, int max = 10)
     {
@@ -83,7 +85,7 @@ int main(int argc, char **argv)
     return 0;
 }
 
-MainWindow::MainWindow() : button("Create"), item("☰") // U+2630
+MainWindow::MainWindow() : button("Create"), item("☰") /*U+2630*/, blockWindow(nullptr)
 {
     set_title("CanForm GTKMM Test");
     set_default_size(800, 600);
@@ -215,6 +217,14 @@ void MainWindow::OnTool()
         });
         menu.add("Question", []() {
             askQuestion("Question", "Yes or No?", std::make_shared<SimpleResponse>());
+            return false;
+        });
+        menu.add("Blocking", [this]() {
+            puts("Blocking");
+            blockWindow = showMessageBox(MessageBoxType::Warning, "Warning", "This message box will block execution",
+                                         this, [this]() { blockWindow->hide(); });
+            Main::run(*blockWindow);
+            puts("Done Blocking");
             return false;
         });
     }
