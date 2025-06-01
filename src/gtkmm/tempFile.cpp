@@ -113,7 +113,7 @@ bool openURL(std::string url)
     }
     HINSTANCE rc = ShellExecute(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
     CoUninitialize();
-    return rc <= (HINSTANCE)32;
+    return rc > (HINSTANCE)32;
 #else
     std::vector<std::string> argv;
     argv.emplace_back("xdg-open");
