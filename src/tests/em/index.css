@@ -45,10 +45,18 @@ body {
 	border: 1px solid #ccc;
 	border-top: none;
 	animation: fadeEffect 1s;
+	overflow: auto;
+	max-width: 75vw;
+	max-height: 75vh;
 }
+
 .tabContent.active {
 	display: grid;
 	grid-template-columns: 1fr;
+}
+
+.tabContent button {
+	padding: 1vh 1vw;
 }
 
 @keyframes fadeEffect {
