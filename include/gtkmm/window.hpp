@@ -19,7 +19,8 @@ constexpr const char *getIconName(MessageBoxType type) noexcept
     return "dialog-information";
 }
 
-extern Gtk::ScrolledWindow *makeScroll(Gtk::Window *);
+extern Gtk::ScrolledWindow *makeScroll(Gtk::Window *w = nullptr);
+extern Gtk::Notebook *makeNotebook();
 extern std::pair<int, int> getSize(Gtk::Container &);
 extern std::pair<int, int> getMonitorSize(Gtk::Window &);
 extern std::pair<int, int> getWindowSize(Gtk::Window &);
@@ -64,9 +65,18 @@ static inline Gtk::Window *createWindow(Gtk::WindowType type, const Glib::ustrin
         vBox->pack_start(*separator, Gtk::PACK_SHRINK);
     }
 
-    Gtk::ScrolledWindow *scroll = makeScroll(window);
-    scroll->add(*contents.second);
-    vBox->pack_start(*scroll, contents.first == nullptr ? Gtk::PACK_EXPAND_WIDGET : Gtk::PACK_EXPAND_PADDING, 10);
+    if (dynamic_cast<Gtk::ScrolledWindow *>(contents.second) == nullptr ||
+        dynamic_cast<Gtk::Notebook *>(contents.second) == nullptr)
+    {
+        Gtk::ScrolledWindow *scroll = makeScroll(window);
+        scroll->add(*contents.second);
+        vBox->pack_start(*scroll, contents.first == nullptr ? Gtk::PACK_EXPAND_WIDGET : Gtk::PACK_EXPAND_PADDING, 10);
+    }
+    else
+    {
+        vBox->pack_start(*contents.second,
+                         contents.first == nullptr ? Gtk::PACK_EXPAND_WIDGET : Gtk::PACK_EXPAND_PADDING, 10);
+    }
 
     Gtk::Separator *separator = Gtk::make_managed<Gtk::Separator>();
     vBox->pack_start(*separator, Gtk::PACK_SHRINK);

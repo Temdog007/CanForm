@@ -199,6 +199,18 @@ void MainWindow::OnTool()
             menu.add("Close", []() { return true; });
             return makeNewMenu("New Menu", std::move(menuList));
         });
+        menu.add("Long Menu", [this]() {
+            MenuList menuList;
+            auto &menu = menuList.menus.emplace_back();
+            menu.title = "Long Menu";
+            for (size_t i = 0; i < 100; ++i)
+            {
+                char buffer[1024];
+                std::snprintf(buffer, sizeof(buffer), "#%zu", i + 1);
+                menu.add(buffer, []() { return true; });
+            }
+            return makeNewMenu("Long Menu", std::move(menuList));
+        });
     }
     {
         auto &menu = menuList.menus.emplace_back();

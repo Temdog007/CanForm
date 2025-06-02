@@ -82,11 +82,21 @@ Gtk::ScrolledWindow *makeScroll(Gtk::Window *window)
 {
     Gtk::ScrolledWindow *scroll = Gtk::make_managed<Gtk::ScrolledWindow>();
     const auto setFromMonitor = [scroll, window]() {
-        auto [w, h] = getMonitorSize(*window);
-        scroll->set_min_content_width(std::max(w / 2, 320));
-        scroll->set_min_content_height(std::max(h / 2, 240));
-        scroll->set_max_content_width(w * 5 / 6);
-        scroll->set_max_content_height(h * 5 / 6);
+        if (window == nullptr)
+        {
+            scroll->set_min_content_width(320);
+            scroll->set_min_content_height(240);
+            scroll->set_max_content_width(640);
+            scroll->set_max_content_height(480);
+        }
+        else
+        {
+            auto [w, h] = getMonitorSize(*window);
+            scroll->set_min_content_width(std::max(w / 2, 320));
+            scroll->set_min_content_height(std::max(h / 2, 240));
+            scroll->set_max_content_width(w * 5 / 6);
+            scroll->set_max_content_height(h * 5 / 6);
+        }
     };
     if (window == nullptr)
     {
@@ -146,6 +156,15 @@ Gtk::ScrolledWindow *makeScroll(Gtk::Window *window)
         return false;
     });
     return scroll;
+}
+
+Gtk::Notebook *makeNotebook()
+{
+    Gtk::Notebook *notebook = Gtk::make_managed<Gtk::Notebook>();
+    notebook->set_scrollable(true);
+    notebook->set_show_tabs(true);
+    notebook->set_show_border(true);
+    return notebook;
 }
 
 std::pair<int, int> getSize(Gtk::Container &container)
@@ -277,9 +296,10 @@ struct MenuItemHandler
 
 void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &menuList, void *ptr)
 {
-    Gtk::Notebook *notebook = Gtk::make_managed<Gtk::Notebook>();
+    Gtk::Notebook *notebook = makeNotebook();
     for (auto &menu : menuList->menus)
     {
+        auto scroll = makeScroll((Gtk::Window *)ptr);
         Gtk::ButtonBox *box = Gtk::make_managed<Gtk::ButtonBox>(Gtk::Orientation::ORIENTATION_VERTICAL);
         box->set_layout(Gtk::ButtonBoxStyle::BUTTONBOX_CENTER);
         box->set_spacing(10);
@@ -289,7 +309,8 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
             button->signal_clicked().connect(MenuItemHandler(menuList, button, *item, ptr));
             box->add(*button);
         }
-        notebook->append_page(*box, convert(menu.title));
+        scroll->add(*box);
+        notebook->append_page(*scroll, convert(menu.title));
     }
 
     createWindow(convert(title), std::make_pair(nullptr, notebook), ptr);

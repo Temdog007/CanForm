@@ -187,9 +187,10 @@ class FormVisitor
     Gtk::Widget *operator()(MultiForm &multi)
     {
         auto frame = makeFrame();
-        Gtk::Notebook *notebook = Gtk::make_managed<Gtk::Notebook>();
-        notebook->set_scrollable(true);
-        frame->add(*notebook);
+        auto notebook = makeNotebook();
+        auto scroll = makeScroll();
+        scroll->add(*notebook);
+        frame->add(*scroll);
         size_t selected = 0;
         size_t current = 0;
         for (auto &[n, form] : multi.tabs)
