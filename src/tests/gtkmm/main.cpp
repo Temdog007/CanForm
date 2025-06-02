@@ -215,8 +215,8 @@ void MainWindow::OnTool()
             showMessageBox(MessageBoxType::Error, "Error", "This is an error", this);
             return false;
         });
-        menu.add("Question", []() {
-            askQuestion("Question", "Yes or No?", std::make_shared<SimpleResponse>());
+        menu.add("Question", [this]() {
+            askQuestion("Question", "Yes or No?", std::make_shared<SimpleResponse>(this), this);
             return false;
         });
         menu.add("Blocking", [this]() {

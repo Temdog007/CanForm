@@ -87,17 +87,21 @@ template <> inline void addForm<StringMap>(Form &form, String &&s, StringMap &&m
 
 struct SimpleResponse : public QuestionResponse
 {
+    void *parent;
+    constexpr SimpleResponse(void *p = nullptr) : parent(p)
+    {
+    }
     virtual ~SimpleResponse()
     {
     }
 
     virtual void yes() override
     {
-        showMessageBox(MessageBoxType::Information, "Yes", "You selected yes");
+        showMessageBox(MessageBoxType::Information, "Yes", "You selected yes", parent);
     }
     virtual void no() override
     {
-        showMessageBox(MessageBoxType::Information, "No", "You selected no");
+        showMessageBox(MessageBoxType::Information, "No", "You selected no", parent);
     }
 };
 } // namespace CanForm

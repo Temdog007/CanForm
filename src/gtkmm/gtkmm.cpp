@@ -29,6 +29,22 @@ std::string_view toView(const Glib::ustring &s)
     return std::string(s.data(), s.size());
 }
 
+Gtk::Window *getWindow(Gtk::Widget *widget)
+{
+    if (auto window = dynamic_cast<Gtk::Window *>(widget))
+    {
+        return window;
+    }
+    else if (widget == nullptr)
+    {
+        return nullptr;
+    }
+    else
+    {
+        return getWindow(widget->get_parent());
+    }
+}
+
 std::pair<int, int> getWindowSize(Gtk::Window &window)
 {
     auto w = window.get_transient_for();
@@ -93,6 +109,42 @@ Gtk::ScrolledWindow *makeScroll(Gtk::Window *window)
     }
     scroll->set_propagate_natural_width(true);
     scroll->set_propagate_natural_height(true);
+    Glib::signal_idle().connect([scroll]() {
+        int width = 4000;
+        int height = 4000;
+        scroll->foreach ([&width, &height](Gtk::Widget &widget) {
+            Gtk::Requisition minimum;
+            Gtk::Requisition natural;
+            widget.get_preferred_size(minimum, natural);
+            width = std::min({width, minimum.width, natural.width});
+            height = std::min({height, minimum.height, natural.height});
+        });
+        width = std::max(width, 100);
+        height = std::max(height, 100);
+        scroll->set_min_content_width(width);
+        scroll->set_min_content_height(height);
+        Gtk::Window *window = getWindow(scroll);
+        if (window)
+        {
+            auto [w, h] = getMonitorSize(*window);
+            width = std::min(w * 5 / 6, width) + 100;
+            height = std::min(h * 5 / 6, height) + 100;
+
+            window->resize(width, height);
+            auto parent = window->get_transient_for();
+            if (parent)
+            {
+                int x, y, w, h;
+                parent->get_position(x, y);
+                parent->get_size(w, h);
+
+                width = std::min(width, w);
+                height = std::min(height, h);
+                window->move(x + (w - width) / 2, y + (h - height) / 2);
+            }
+        }
+        return false;
+    });
     return scroll;
 }
 

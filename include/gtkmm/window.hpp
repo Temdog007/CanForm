@@ -94,7 +94,7 @@ static inline Gtk::Window *createWindow(Gtk::WindowType type, const Glib::ustrin
         window->set_position(Gtk::WIN_POS_CENTER_ON_PARENT);
         pair = getWindowSize(*parent);
     }
-    window->set_default_size(pair.first * 5 / 6, pair.second * 5 / 6);
+    window->set_default_size(1, 1);
 
     window->show_all_children();
     window->show();
