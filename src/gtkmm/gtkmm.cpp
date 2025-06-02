@@ -228,7 +228,9 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
     Gtk::Notebook *notebook = Gtk::make_managed<Gtk::Notebook>();
     for (auto &menu : menuList->menus)
     {
-        Gtk::VBox *box = Gtk::make_managed<Gtk::VBox>();
+        Gtk::ButtonBox *box = Gtk::make_managed<Gtk::ButtonBox>(Gtk::Orientation::ORIENTATION_VERTICAL);
+        box->set_layout(Gtk::ButtonBoxStyle::BUTTONBOX_CENTER);
+        box->set_spacing(10);
         for (auto &item : menu.items)
         {
             Gtk::Button *button = Gtk::make_managed<Gtk::Button>(convert(item->label));

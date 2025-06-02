@@ -26,12 +26,13 @@ extern std::pair<int, int> getWindowSize(Gtk::Window &);
 
 constexpr int PixelSize = 32;
 
-static inline void makeButtons(Gtk::Window *, Gtk::HBox *)
+static inline size_t makeButtons(Gtk::Window *, Gtk::HBox *, size_t count)
 {
+    return count;
 }
 
 template <typename T, typename F, typename... Args>
-static inline void makeButtons(Gtk::Window *window, Gtk::HBox *box, T icon, F func, Args &&...args)
+static inline size_t makeButtons(Gtk::Window *window, Gtk::HBox *box, size_t count, T icon, F func, Args &&...args)
 {
     Gtk::Button *button = Gtk::make_managed<Gtk::Button>(icon);
     button->signal_clicked().connect([window, func = std::move(func)]() {
@@ -40,7 +41,7 @@ static inline void makeButtons(Gtk::Window *window, Gtk::HBox *box, T icon, F fu
         delete window;
     });
     box->pack_start(*button, Gtk::PACK_EXPAND_PADDING);
-    makeButtons(window, box, std::forward<Args>(args)...);
+    return makeButtons(window, box, count + 1, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
@@ -65,14 +66,22 @@ static inline Gtk::Window *createWindow(Gtk::WindowType type, const Glib::ustrin
 
     Gtk::ScrolledWindow *scroll = makeScroll(window);
     scroll->add(*contents.second);
-    vBox->pack_start(*scroll, Gtk::PACK_EXPAND_PADDING, 10);
+    vBox->pack_start(*scroll, contents.first == nullptr ? Gtk::PACK_EXPAND_WIDGET : Gtk::PACK_EXPAND_PADDING, 10);
 
     Gtk::Separator *separator = Gtk::make_managed<Gtk::Separator>();
     vBox->pack_start(*separator, Gtk::PACK_SHRINK);
 
-    Gtk::HBox *hBox = Gtk::make_managed<Gtk::HBox>();
-    makeButtons(window, hBox, std::forward<Args>(args)...);
-    vBox->pack_start(*hBox, Gtk::PACK_SHRINK, 10);
+    {
+        Gtk::HBox *hBox = Gtk::make_managed<Gtk::HBox>();
+        if (makeButtons(window, hBox, 0, std::forward<Args>(args)...) != 0)
+        {
+            vBox->pack_start(*hBox, Gtk::PACK_SHRINK, 10);
+        }
+        else
+        {
+            delete hBox;
+        }
+    }
 
     std::pair<int, int> pair;
     if (parent == nullptr)
