@@ -26,14 +26,15 @@ struct MenuItemClick
 {
     int id;
     MenuItem *item;
-    constexpr MenuItemClick(int i, MenuItem *m) noexcept : id(i), item(m)
+    void *ptr;
+    constexpr MenuItemClick(int i, MenuItem *m, void *p) noexcept : id(i), item(m), ptr(p)
     {
     }
     void operator()(bool);
     void operator()(MenuItem::NewMenu &&);
     void execute()
     {
-        std::visit(*this, item->onClick());
+        std::visit(*this, item->onClick(ptr));
     }
     void removeDialog();
 };

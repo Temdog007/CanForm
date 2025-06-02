@@ -190,7 +190,7 @@ void MenuHandler::checkIfElementWasRemoved(void *userData)
     }
 }
 
-void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &menuList, void *)
+void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &menuList, void *ptr)
 {
     MenuHandler *handler = new MenuHandler();
     handler->menuList = menuList;
@@ -289,7 +289,7 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
                     return stringToNewUTF8('#' + button.id);
                 },
                 handler->id, menu.title.c_str(), item->label.c_str(), rand());
-            auto &itemClick = handler->itemClicks.emplace_back(handler->id, item.get());
+            auto &itemClick = handler->itemClicks.emplace_back(handler->id, item.get(), ptr);
             emscripten_set_click_callback(buttonQuery, &itemClick, false, executeItem);
             free(buttonQuery);
         }

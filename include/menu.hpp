@@ -20,7 +20,7 @@ struct MenuItem
     {
     }
 
-    virtual Result onClick() = 0;
+    virtual Result onClick(void *) = 0;
 };
 
 using MenuItems = std::pmr::vector<std::unique_ptr<MenuItem>>;
@@ -65,7 +65,7 @@ struct MenuList
 
 template <typename F> class MenuItemLambda : public MenuItem
 {
-    static_assert(std::is_invocable_r<MenuItem::Result, F>::value);
+    static_assert(std::is_invocable_r<MenuItem::Result, F>::value || std::is_invocable<F, void *>::value);
 
   private:
     F func;
@@ -78,9 +78,16 @@ template <typename F> class MenuItemLambda : public MenuItem
     {
     }
 
-    virtual MenuItem::Result onClick() override
+    virtual MenuItem::Result onClick(void *parent) override
     {
-        return func();
+        if constexpr (std::is_invocable<F, void *>::value)
+        {
+            func(parent);
+        }
+        else
+        {
+            return func();
+        }
     }
 };
 

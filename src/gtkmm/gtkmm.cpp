@@ -290,7 +290,7 @@ struct MenuItemHandler
 
     void operator()()
     {
-        std::visit(*this, item.onClick());
+        std::visit(*this, item.onClick(ptr));
     }
 };
 

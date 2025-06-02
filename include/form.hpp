@@ -291,6 +291,10 @@ template <typename F> class FormExecuteLambda : public FormExecute
         {
             func(form);
         }
+        else if constexpr (std::is_invocable<F, Form &&>::value)
+        {
+            func(std::move(form));
+        }
         else
         {
             func();
