@@ -82,7 +82,7 @@ template <typename F> class MenuItemLambda : public MenuItem
     {
         if constexpr (std::is_invocable<F, void *>::value)
         {
-            func(parent);
+            return func(parent);
         }
         else
         {
