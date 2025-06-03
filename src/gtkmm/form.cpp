@@ -8,7 +8,6 @@ class FormVisitor
 {
   private:
     std::string_view name;
-    size_t columns;
 
     Gtk::Frame *makeFrame() const
     {
@@ -26,10 +25,6 @@ class FormVisitor
     }
 
   public:
-    constexpr FormVisitor(size_t c) noexcept : name(), columns(c)
-    {
-    }
-
     Gtk::Widget *operator()(bool &b)
     {
         Gtk::CheckButton *button = Gtk::make_managed<Gtk::CheckButton>(convert(name));
@@ -184,7 +179,7 @@ class FormVisitor
         return frame;
     }
 
-    Gtk::Widget *operator()(MultiForm &multi)
+    Gtk::Widget *operator()(VariantForm &variant)
     {
         auto frame = makeFrame();
         auto notebook = makeNotebook();
@@ -193,10 +188,11 @@ class FormVisitor
         frame->add(*scroll);
         size_t selected = 0;
         size_t current = 0;
-        for (auto &[n, form] : multi.tabs)
+        for (auto &[n, form] : variant.tabs)
         {
-            notebook->append_page(*operator()(form), convert(n));
-            if (multi.selected == n)
+            name = n;
+            notebook->append_page(*std::visit(*this, *form), convert(n));
+            if (variant.selected == n)
             {
                 selected = current;
             }
@@ -204,50 +200,68 @@ class FormVisitor
         }
         notebook->show_all_children();
         notebook->set_current_page(selected);
-        notebook->signal_switch_page().connect([notebook, &multi](Gtk::Widget *widget, guint) {
+        notebook->signal_switch_page().connect([notebook, &variant](Gtk::Widget *widget, guint) {
             if (notebook->is_visible())
             {
-                multi.selected = convert(notebook->get_tab_label_text(*widget));
+                variant.selected = convert(notebook->get_tab_label_text(*widget));
             }
         });
         return frame;
     }
 
-    Gtk::Widget *operator()(Form &form)
+    Gtk::Widget *operator()(StructForm &structForm)
     {
-        const int rows = std::max(static_cast<size_t>(1), form.datas.size() / columns);
-        Gtk::Table *table = Gtk::make_managed<Gtk::Table>(rows, columns);
+        Gtk::Expander *expander = nullptr;
+        if (!name.empty())
+        {
+            expander = Gtk::make_managed<Gtk::Expander>();
+            expander->set_label(convert(name));
+            expander->set_label_fill(true);
+            expander->set_resize_toplevel(true);
+            expander->set_expanded(true);
+        }
 
+        const int rows = std::max(static_cast<size_t>(1), structForm->size() / structForm.columns);
+        Gtk::Table *table = Gtk::make_managed<Gtk::Table>(rows, structForm.columns);
         size_t index = 0;
         const Gtk::AttachOptions options = Gtk::SHRINK;
-        for (auto &[n, data] : form.datas)
+        for (auto &[n, form] : *structForm)
         {
-            const int row = index / columns;
-            const int column = index % columns;
+            const int row = index / structForm.columns;
+            const int column = index % structForm.columns;
             name = n;
-            table->attach(*std::visit(*this, *data), column, column + 1, row, row + 1, options, options, 10, 10);
+            table->attach(*std::visit(*this, *form), column, column + 1, row, row + 1, options, options, 10, 10);
             ++index;
         }
-        return table;
-    }
 
-    Gtk::Widget *operator()(std::unique_ptr<Form> &form)
-    {
-        Gtk::Expander *expander = Gtk::make_managed<Gtk::Expander>();
-        expander->set_label(convert(name));
-        expander->set_label_fill(true);
-        expander->set_resize_toplevel(true);
-        expander->add(*operator()(*form));
+        if (expander == nullptr)
+        {
+            return table;
+        }
+        expander->add(*table);
         return expander;
     }
 };
 
-void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExecute> &formExecute, size_t columns,
-                          void *ptr)
+void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExecute> &formExecute, void *ptr)
 {
-    FormVisitor visitor(columns);
     createWindow(
-        convert(title), std::make_pair(nullptr, visitor(formExecute->form)), ptr, Gtk::Stock::OK,
+        convert(title), std::make_pair(nullptr, std::visit(FormVisitor(), *(formExecute->form))), ptr, Gtk::Stock::OK,
         [formExecute]() { formExecute->ok(); }, Gtk::Stock::CANCEL, [formExecute]() { formExecute->cancel(); });
+}
+
+StructForm::Map *StructForm::operator->() noexcept
+{
+    return &map;
+}
+
+const StructForm::Map *StructForm::operator->() const noexcept
+{
+    return &map;
+}
+
+StructForm StructForm::create(StructForm &&structForm) noexcept
+{
+    return std::move(structForm);
 }
 } // namespace CanForm

@@ -106,39 +106,95 @@ struct SortableItem
 
 using SortableList = std::pmr::vector<SortableItem>;
 
-struct FormData;
 struct Form;
 
-struct MultiForm
+struct StructForm
+{
+    using Map = std::pmr::map<String, Form>;
+    Map map;
+    size_t columns;
+
+    StructForm() : map(), columns(1)
+    {
+    }
+    StructForm(const StructForm &) = default;
+    StructForm(StructForm &&) noexcept = default;
+    template <typename... Args> StructForm(size_t c, Args &&...args) : map(std::forward<Args>(args)...), columns(c)
+    {
+    }
+
+    StructForm &operator=(const StructForm &) = default;
+    StructForm &operator=(StructForm &&) noexcept = default;
+
+    template <typename T> StructForm &operator=(const Map &t)
+    {
+        map = t;
+        return *this;
+    }
+    template <typename T> StructForm &operator=(Map &&t) noexcept
+    {
+        map = std::move(t);
+        return *this;
+    }
+
+    template <typename K> auto &operator[](const K &k)
+    {
+        return map[k];
+    }
+    template <typename K> auto &operator[](K &&k)
+    {
+        return map[std::move(k)];
+    }
+
+    Map &operator*() noexcept
+    {
+        return map;
+    }
+    const Map &operator*() const noexcept
+    {
+        return map;
+    }
+
+    Map *operator->() noexcept;
+    const Map *operator->() const noexcept;
+
+    static StructForm create(StructForm &&structForm) noexcept;
+    template <typename... Args> static StructForm create(StructForm &&, Args &&...args);
+    template <typename K, typename V, typename... Args>
+    static StructForm create(StructForm &&, K &&, V &&, Args &&...args);
+    template <typename... Args> static StructForm create(Args &&...args);
+};
+
+struct VariantForm
 {
     std::pmr::map<String, Form> tabs;
     String selected;
 };
 
-struct FormData
+struct Form
 {
     using Data = std::variant<bool, RangedValue, String, ComplexString, SortableList, StringSelection, StringMap,
-                              MultiForm, std::unique_ptr<Form>>;
+                              VariantForm, StructForm>;
     Data data;
 
-    FormData() : data(false)
+    Form() : data(false)
     {
     }
-    FormData(const FormData &) = delete;
-    FormData(FormData &&) noexcept = default;
-    template <typename... Args> FormData(Args &...args) : data(std::forward<Args>(args)...)
+    Form(const Form &) = default;
+    Form(Form &&) noexcept = default;
+    template <typename... Args> Form(std::in_place_t, Args &&...args) : data(std::forward<Args>(args)...)
     {
     }
 
-    FormData &operator=(const FormData &) = delete;
-    FormData &operator=(FormData &&) noexcept = default;
+    Form &operator=(const Form &) = default;
+    Form &operator=(Form &&) noexcept = default;
 
-    template <typename T> FormData &operator=(const T &t)
+    template <typename T> Form &operator=(const T &t)
     {
         data = t;
         return *this;
     }
-    template <typename T> FormData &operator=(T &&t) noexcept
+    template <typename T> Form &operator=(T &&t) noexcept
     {
         data = std::move(t);
         return *this;
@@ -160,87 +216,6 @@ struct FormData
     const Data *operator->() const noexcept
     {
         return &data;
-    }
-};
-
-struct Form
-{
-    using Datas = std::pmr::map<String, FormData>;
-    Datas datas;
-
-    Form() = default;
-    Form(const Form &) = delete;
-    Form(Form &&) noexcept = default;
-    template <typename... Args> Form(Args &...args) : datas(std::forward<Args>(args)...)
-    {
-    }
-
-    Form &operator=(const Form &) = delete;
-    Form &operator=(Form &&) noexcept = default;
-
-    FormData &operator[](const String &key)
-    {
-        return datas.operator[](key);
-    }
-    FormData &operator[](String &&key)
-    {
-        return datas.operator[](std::move(key));
-    }
-
-    Datas &operator*() noexcept
-    {
-        return datas;
-    }
-    const Datas &operator*() const noexcept
-    {
-        return datas;
-    }
-
-    Datas *operator->() noexcept
-    {
-        return &datas;
-    }
-    const Datas *operator->() const noexcept
-    {
-        return &datas;
-    }
-
-    static Form create(Form &form) noexcept
-    {
-        return std::move(form);
-    }
-
-    template <typename... Args> static Form create(Args &&...args)
-    {
-        Form form;
-        return create(form, std::forward<Args>(args)...);
-    }
-
-    template <typename K, typename V, typename... Args>
-    static Form create(Form &form, const K &key, const V &t, Args &&...args)
-    {
-        form[key] = t;
-        return create(form, std::forward<Args>(args)...);
-    }
-
-    template <typename K, typename V, typename... Args>
-    static Form create(Form &form, const K &key, V &&t, Args &&...args)
-    {
-        form[key] = std::move(t);
-        return create(form, std::forward<Args>(args)...);
-    }
-
-    template <typename K, typename V, typename... Args>
-    static Form create(Form &form, K &&key, const V &t, Args &&...args)
-    {
-        form[std::move(key)] = t;
-        return create(form, std::forward<Args>(args)...);
-    }
-
-    template <typename K, typename V, typename... Args> static Form create(Form &form, K &&key, V &&t, Args &&...args)
-    {
-        form[std::move(key)] = std::move(t);
-        return create(form, std::forward<Args>(args)...);
     }
 };
 
@@ -273,13 +248,13 @@ class FormExecute
         return form;
     }
 
-    static void execute(std::string_view, const std::shared_ptr<FormExecute> &, size_t columns, void *parent = nullptr);
+    static void execute(std::string_view, const std::shared_ptr<FormExecute> &, void *parent = nullptr);
 
     template <typename T, std::enable_if_t<std::is_base_of<FormExecute, T>::value, bool> = true>
-    static inline void execute(std::string_view title, T &&t, size_t columns, void *parent = nullptr)
+    static inline void execute(std::string_view title, T &&t, void *parent = nullptr)
     {
         std::shared_ptr<T> ptr = std::make_shared<T>(std::move(t));
-        execute(title, ptr, columns, parent);
+        execute(title, ptr, parent);
     }
 };
 
@@ -344,5 +319,18 @@ template <typename T> inline void randomString(T &s, size_t n)
 template <typename T> inline void randomString(T &string, size_t min, size_t max)
 {
     randomString(string, rand() % (max - min) + min);
+}
+
+template <typename K, typename V, typename... Args>
+inline StructForm StructForm::create(StructForm &&structForm, K &&key, V &&value, Args &&...args)
+{
+    structForm[std::move(key)] = std::move(value);
+    return create(std::move(structForm), std::forward<Args>(args)...);
+}
+
+template <typename... Args> inline StructForm StructForm::create(Args &&...args)
+{
+    StructForm structForm;
+    return create(std::move(structForm), std::forward<Args>(args)...);
 }
 } // namespace CanForm

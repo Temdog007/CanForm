@@ -15,7 +15,7 @@ class MainWindow : public Window
     void OnTool();
     void OnCreate();
 
-    Form createForm() const;
+    StructForm createForm() const;
 
     VBox box;
     FlowBox flowBox;
@@ -35,7 +35,7 @@ class MainWindow : public Window
         flowBox.add(*frame);
     }
 
-    template <typename T> void addToForm(Form &form, const SpinButton &button) const
+    template <typename T> void addToForm(StructForm &form, const SpinButton &button) const
     {
         for (size_t i = 0; i < button.get_value(); ++i)
         {
@@ -180,7 +180,7 @@ void MainWindow::OnTool()
         menu.title = "Tests";
         menu.add("Show Example Form", [this]() {
             auto formExecute = executeForm([this](const Form &form) { printForm(form, this); }, makeForm());
-            FormExecute::execute("Modal Form", std::move(formExecute), 2, this);
+            FormExecute::execute("Modal Form", std::move(formExecute), this);
             return false;
         });
         menu.add("Wait for 3 seconds", [this]() {
@@ -241,18 +241,20 @@ void MainWindow::OnTool()
 
 void MainWindow::OnCreate()
 {
-    auto formExecute = executeForm([this](const Form &form) { printForm(form, this); }, createForm());
-    FormExecute::execute("Modal Form", std::move(formExecute), columns.get_value(), this);
+    auto map = createForm();
+    map.columns = columns.get_value();
+    auto formExecute = executeForm([this](const Form &form) { printForm(form, this); }, std::in_place, std::move(map));
+    FormExecute::execute("Modal Form", std::move(formExecute), this);
 }
 
-Form MainWindow::createForm() const
+StructForm MainWindow::createForm() const
 {
-    Form form;
-    addToForm<bool>(form, bools);
-    addToForm<int64_t>(form, integers);
-    addToForm<double>(form, floats);
-    addToForm<String>(form, strings);
-    addToForm<StringSelection>(form, selections);
-    addToForm<StringMap>(form, flags);
-    return form;
+    StructForm structForm;
+    addToForm<bool>(structForm, bools);
+    addToForm<int64_t>(structForm, integers);
+    addToForm<double>(structForm, floats);
+    addToForm<String>(structForm, strings);
+    addToForm<StringSelection>(structForm, selections);
+    addToForm<StringMap>(structForm, flags);
+    return structForm;
 }

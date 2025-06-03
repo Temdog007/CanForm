@@ -27,13 +27,13 @@ template <typename T> constexpr RangedValue makeNumber(T t) noexcept
 
 Form makeForm(bool makeInner)
 {
-    Form form;
-    form["Boolean"] = rand() % 2 == 0;
-    form["Signed Integer"] = makeNumber(0);
-    form["Unsigned Integer"] = makeNumber(0u);
-    form["Float"] = makeNumber(0.f);
-    form["1-10"] = *Range<uint8_t>::create(5, 1, 10);
-    form["String"] = "Hello";
+    StructForm forms(3);
+    forms["Boolean"] = rand() % 2 == 0;
+    forms["Signed Integer"] = makeNumber(0);
+    forms["Unsigned Integer"] = makeNumber(0u);
+    forms["Float"] = makeNumber(0.f);
+    forms["1-10"] = *Range<uint8_t>::create(5, 1, 10);
+    forms["String"] = "Hello";
 
     constexpr std::array<std::string_view, 5> Classes = {"Mammal", "Bird", "Reptile", "Amphibian", "Fish"};
     StringSelection selection;
@@ -42,7 +42,7 @@ Form makeForm(bool makeInner)
     {
         selection.set.emplace(cls);
     }
-    form["Set of Strings"] = std::move(selection);
+    forms["Set of Strings"] = std::move(selection);
 
     constexpr std::array<std::string_view, 4> Actions = {"Climb", "Swim", "Fly", "Dig"};
     StringMap map;
@@ -50,9 +50,9 @@ Form makeForm(bool makeInner)
     {
         map.emplace(a, rand() % 2 == 0);
     }
-    form["Map of String to Boolean"] = std::move(map);
+    forms["Map of String to Boolean"] = std::move(map);
 
-    form["List of Strings"] = makeList({"First", "Second", "Third", "Fourth", "Fifth"});
+    forms["List of Strings"] = makeList({"First", "Second", "Third", "Fourth", "Fifth"});
 
     ComplexString c;
     c.string = "2 + 2";
@@ -65,29 +65,40 @@ Form makeForm(bool makeInner)
     u.emplace("−");
     u.emplace("√");
     c.map.emplace("Unary Operator", std::move(u));
-    form["Expression"] = std::move(c);
+    forms["Expression"] = std::move(c);
 
-    MultiForm multi;
+    VariantForm variant;
     StringSet set({"Red", "Green", "Blue"});
-    multi.tabs["1st Type"] =
-        Form::create("Age", makeNumber(static_cast<uint8_t>(42)), "Favorite Color", StringSelection(0, std::move(set)));
-    multi.tabs["2nd Type"] = Form::create("Active", true, "Weight", makeNumber(0.0), "Sports",
-                                          createStringMap("Basketball", "Football", "Golf", "Polo"));
-    multi.selected = "Extra1";
-    form["Variant"] = std::move(multi);
+    variant.tabs["1st Variant"] = StructForm::create("Age", makeNumber(static_cast<uint8_t>(42)), "Favorite Color",
+                                                     StringSelection(0, std::move(set)));
+    variant.tabs["2nd Variant"] = StructForm::create("Active", true, "Weight", makeNumber(0.0), "Sports",
+                                                     createStringMap("Basketball", "Football", "Golf", "Polo"));
+    variant.tabs["3rd Variant"] = true;
+    variant.selected = "1st Variant";
+    forms["Variant Form"] = std::move(variant);
+
     if (makeInner)
     {
-        form["Sub Form"] = std::make_unique<Form>(makeForm(false));
+        forms["Struct Form"] = makeForm(false);
     }
-    return form;
+    return Form(std::in_place, std::move(forms));
 }
 
 struct Printer
 {
     std::ostream &os;
+    size_t tabs;
 
-    constexpr Printer(std::ostream &os) noexcept : os(os)
+    constexpr Printer(std::ostream &os) noexcept : os(os), tabs(0)
     {
+    }
+
+    void addTabs()
+    {
+        for (size_t i = 0; i < tabs; ++i)
+        {
+            os << '\t';
+        }
     }
 
     std::ostream &operator()(const StringSelection &s)
@@ -95,7 +106,8 @@ struct Printer
         int i = 0;
         for (const auto &name : s.set)
         {
-            os << '\t' << name;
+            addTabs();
+            os << name << ' ';
             if (i == s.index)
             {
                 os << "✔";
@@ -115,6 +127,7 @@ struct Printer
     {
         for (const auto &[name, flag] : map)
         {
+            addTabs();
             os << name << ": " << flag << std::endl;
         }
         return os;
@@ -134,24 +147,38 @@ struct Printer
     {
         for (auto &item : list)
         {
+            addTabs();
             os << item.name << std::endl;
         }
         return os;
     }
 
-    std::ostream &operator()(const MultiForm &multi)
+    std::ostream &operator()(const VariantForm &variant)
     {
-        os << "Selected " << multi.selected << std::endl;
-        auto iter = multi.tabs.find(multi.selected);
-        if (iter != multi.tabs.end())
+        addTabs();
+        os << "Variant Selected " << variant.selected << std::endl;
+        auto iter = variant.tabs.find(variant.selected);
+        if (iter != variant.tabs.end())
         {
             const auto &form = iter->second;
-            for (const auto &[name, formData] : *form)
-            {
-                os << "\tEntry: " << name << std::endl;
-                std::visit(*this, *formData);
-                os << std::endl;
-            }
+            ++tabs;
+            std::visit(*this, *form);
+            --tabs;
+            os << std::endl;
+        }
+        return os;
+    }
+
+    std::ostream &operator()(const StructForm &structForm)
+    {
+        for (auto &[name, form] : *structForm)
+        {
+            addTabs();
+            os << name << std::endl;
+            ++tabs;
+            std::visit(*this, *form);
+            --tabs;
+            os << std::endl;
         }
         return os;
     }
@@ -164,23 +191,6 @@ struct Printer
     std::ostream &operator()(uint8_t t)
     {
         return operator()(static_cast<size_t>(t));
-    }
-
-    std::ostream &operator()(const std::unique_ptr<Form> &form)
-    {
-        os << "Sub Form" << std::endl;
-        return operator()(*form);
-    }
-
-    std::ostream &operator()(const Form &form)
-    {
-        for (const auto &[name, data] : *form)
-        {
-            os << name << " → ";
-            std::visit(*this, *data);
-            os << std::endl;
-        }
-        return os;
     }
 
     template <typename T> std::ostream &operator()(const Range<T> &r)
@@ -197,8 +207,7 @@ struct Printer
 void printForm(const Form &form, void *parent)
 {
     std::ostringstream os;
-    Printer printer(os);
-    printer(form);
+    std::visit(Printer(os), *form);
     auto s = os.str();
     showMessageBox(MessageBoxType::Information, "Form Data", s, parent);
 }
