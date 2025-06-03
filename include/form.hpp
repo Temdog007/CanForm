@@ -137,13 +137,19 @@ struct StructForm
         return *this;
     }
 
-    template <typename K> auto &operator[](const K &k)
+    Form &operator[](const String &k)
     {
         return map[k];
     }
-    template <typename K> auto &operator[](K &&k)
+    Form &operator[](String &&k)
     {
         return map[std::move(k)];
+    }
+
+    template <typename... Args> Form &operator[](Args &&...args)
+    {
+        String string(std::forward<Args>(args)...);
+        return operator[](std::move(string));
     }
 
     Map &operator*() noexcept
