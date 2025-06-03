@@ -250,18 +250,4 @@ void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExec
         [formExecute]() { formExecute->ok(); }, Gtk::Stock::CANCEL, [formExecute]() { formExecute->cancel(); });
 }
 
-StructForm::Map *StructForm::operator->() noexcept
-{
-    return &map;
-}
-
-const StructForm::Map *StructForm::operator->() const noexcept
-{
-    return &map;
-}
-
-StructForm StructForm::create(StructForm &&structForm) noexcept
-{
-    return std::move(structForm);
-}
 } // namespace CanForm

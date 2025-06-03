@@ -7,10 +7,9 @@ struct FormVisitor
 {
     std::shared_ptr<FormExecute> formExecute;
     std::string_view name;
-    size_t columns;
     int dialogId;
 
-    FormVisitor(const std::shared_ptr<FormExecute> &f, size_t c) : formExecute(f), name(), columns(c), dialogId(0)
+    FormVisitor(const std::shared_ptr<FormExecute> &f) : formExecute(f), name(), dialogId(0)
     {
     }
 
@@ -379,7 +378,7 @@ struct FormVisitor
         return id;
     }
 
-    int operator()(MultiForm &multi)
+    int operator()(VariantForm &variant)
     {
         const int id = makeDiv();
         EM_ASM(
@@ -403,7 +402,7 @@ struct FormVisitor
                     {
                         if (option.selected)
                         {
-                            Module.ccall('updateMultiForm', null, [ 'number', 'number' ],
+                            Module.ccall('updateVariantForm', null, [ 'number', 'number' ],
                                          [ addr, stringToNewUTF8(option.innerText) ]);
                             break;
                         }
@@ -413,11 +412,11 @@ struct FormVisitor
                 setTimeout(
                     function() { select.onchange(); }, 10);
             },
-            id, &multi);
-        for (auto &[n, form] : multi.tabs)
+            id, &variant);
+        for (auto &[n, form] : variant.tabs)
         {
             name = n;
-            const int inner = writeForm(form);
+            const int inner = std::visit(*this, *form);
             EM_ASM(
                 {
                     let id = $0;
@@ -439,7 +438,7 @@ struct FormVisitor
 
                     option.value = outer.id;
 
-                    let div2 = document.getElementById('form_' + inner);
+                    let div2 = document.getElementById('div_' + inner);
                     div2.remove();
                     outer.append(div2);
 
@@ -449,48 +448,15 @@ struct FormVisitor
                         outer.classList.add('active');
                     }
                 },
-                id, inner, n.c_str(), multi.selected == n);
+                id, inner, n.c_str(), variant.selected == n);
         }
         return id;
     }
 
-    int operator()(std::unique_ptr<Form> &form)
+    int operator()(StructForm &structForm)
     {
-        const int id = makeDiv();
-        const int formId = writeForm(*form);
-        EM_ASM(
-            {
-                let id = $0;
-                let formId = $1;
-
-                let div = document.getElementById("div_" + id.toString());
-                let form = document.getElementById("form_" + formId.toString());
-                form.classList.add("expandable");
-
-                for (let h2 of div.getElementsByClassName("variableName"))
-                {
-                    let button = document.createElement("button");
-                    button.innerText = h2.innerText;
-                    button.onclick = function()
-                    {
-                        h2.classList.toggle("active");
-                        form.classList.toggle("active");
-                    };
-                    button.classList.add("expander");
-                    div.insertBefore(button, h2);
-                    h2.remove();
-                    form.remove();
-                    div.append(form);
-                    return;
-                }
-                console.warn("Failed to find variable name");
-            },
-            id, formId);
-        return id;
-    }
-
-    int writeForm(Form &form)
-    {
+        const String origName(name);
+        const bool useExpander = !name.empty();
         const int id = rand();
         EM_ASM(
             {
@@ -512,11 +478,11 @@ struct FormVisitor
                 div.style.gridTemplateColumns = repeat(columns);
                 document.body.append(div);
             },
-            id, columns);
-        for (auto &[n, data] : form.datas)
+            id, structForm.columns);
+        for (auto &[n, form] : *structForm)
         {
             name = n;
-            const int i = std::visit(*this, *data);
+            const int i = std::visit(*this, *form);
             EM_ASM(
                 {
                     let parent = $0;
@@ -530,7 +496,38 @@ struct FormVisitor
                 },
                 id, i);
         }
-        return id;
+        if (!useExpander)
+        {
+            return id;
+        }
+        const int divId = rand();
+        EM_ASM(
+            {
+                let id = $0;
+                let divId = $1;
+
+                let form = document.getElementById("form_" + id.toString());
+                form.classList.add("expandable");
+
+                let button = document.createElement("button");
+                button.innerText = UTF8ToString($2);
+                button.onclick = function()
+                {
+                    button.classList.toggle("active");
+                    form.classList.toggle("active");
+                };
+                button.classList.add("expander");
+
+                let div = document.createElement("div");
+                div.id = "div_" + divId.toString();
+                form.parentNode.insertBefore(div, form);
+
+                div.append(button);
+                form.remove();
+                div.append(form);
+            },
+            id, divId, origName.c_str());
+        return divId;
     }
 
     void checkLater()
@@ -574,11 +571,10 @@ struct FormVisitor
     }
 };
 
-void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExecute> &formExecute, size_t columns,
-                          void *)
+void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExecute> &formExecute, void *)
 {
-    FormVisitor *visitor = new FormVisitor(formExecute, columns);
-    const int id = visitor->writeForm(formExecute->form);
+    FormVisitor *visitor = new FormVisitor(formExecute);
+    const int id = std::visit(*visitor, *(formExecute->form));
     EM_ASM(
         {
             let id = $0;
@@ -656,9 +652,9 @@ double updateRange(IRange &range, double d)
     return range.setFromDouble(d);
 }
 
-void updateMultiForm(MultiForm &multi, char *string)
+void updateVariantForm(VariantForm &variant, char *string)
 {
-    multi.selected.assign(string);
+    variant.selected.assign(string);
     free(string);
 }
 

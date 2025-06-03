@@ -333,4 +333,19 @@ template <typename... Args> inline StructForm StructForm::create(Args &&...args)
     StructForm structForm;
     return create(std::move(structForm), std::forward<Args>(args)...);
 }
+
+inline StructForm::Map *StructForm::operator->() noexcept
+{
+    return &map;
+}
+
+inline const StructForm::Map *StructForm::operator->() const noexcept
+{
+    return &map;
+}
+
+inline StructForm StructForm::create(StructForm &&structForm) noexcept
+{
+    return std::move(structForm);
+}
 } // namespace CanForm

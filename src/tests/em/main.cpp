@@ -86,7 +86,7 @@ bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
         menu.title = "Tests";
         menu.add("Show Example Form", []() {
             auto formExecute = executeForm([](const Form &form) { printForm(form); }, makeForm());
-            FormExecute::execute("Modal Form", std::move(formExecute), 3);
+            FormExecute::execute("Modal Form", std::move(formExecute));
             return false;
         });
         menu.add("Wait for 3 seconds", []() {
