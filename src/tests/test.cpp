@@ -25,7 +25,7 @@ template <typename T> constexpr RangedValue makeNumber(T t) noexcept
     return RangedValue(std::move(r));
 }
 
-Form makeForm()
+Form makeForm(bool makeInner)
 {
     Form form;
     form["Boolean"] = rand() % 2 == 0;
@@ -75,6 +75,10 @@ Form makeForm()
                                           createStringMap("Basketball", "Football", "Golf", "Polo"));
     multi.selected = "Extra1";
     form["Variant"] = std::move(multi);
+    if (makeInner)
+    {
+        form["Sub Form"] = std::make_unique<Form>(makeForm(false));
+    }
     return form;
 }
 
@@ -162,6 +166,23 @@ struct Printer
         return operator()(static_cast<size_t>(t));
     }
 
+    std::ostream &operator()(const std::unique_ptr<Form> &form)
+    {
+        os << "Sub Form" << std::endl;
+        return operator()(*form);
+    }
+
+    std::ostream &operator()(const Form &form)
+    {
+        for (const auto &[name, data] : *form)
+        {
+            os << name << " → ";
+            std::visit(*this, *data);
+            os << std::endl;
+        }
+        return os;
+    }
+
     template <typename T> std::ostream &operator()(const Range<T> &r)
     {
         return operator()(*r);
@@ -176,12 +197,8 @@ struct Printer
 void printForm(const Form &form, void *parent)
 {
     std::ostringstream os;
-    for (const auto &[name, data] : *form)
-    {
-        os << name << " → ";
-        std::visit(Printer(os), *data);
-        os << std::endl;
-    }
+    Printer printer(os);
+    printer(form);
     auto s = os.str();
     showMessageBox(MessageBoxType::Information, "Form Data", s, parent);
 }

@@ -230,6 +230,16 @@ class FormVisitor
         }
         return table;
     }
+
+    Gtk::Widget *operator()(std::unique_ptr<Form> &form)
+    {
+        Gtk::Expander *expander = Gtk::make_managed<Gtk::Expander>();
+        expander->set_label(convert(name));
+        expander->set_label_fill(true);
+        expander->set_resize_toplevel(true);
+        expander->add(*operator()(*form));
+        return expander;
+    }
 };
 
 void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExecute> &formExecute, size_t columns,

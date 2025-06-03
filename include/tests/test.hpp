@@ -4,7 +4,7 @@
 
 namespace CanForm
 {
-extern Form makeForm();
+extern Form makeForm(bool makeInner = true);
 extern void printForm(const Form &, void *parent = nullptr);
 
 template <typename T> T random() noexcept
