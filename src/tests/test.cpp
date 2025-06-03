@@ -28,6 +28,7 @@ template <typename T> constexpr RangedValue makeNumber(T t) noexcept
 Form makeForm(bool makeInner)
 {
     StructForm forms(3);
+    forms["Nothing"] = std::monostate{};
     forms["Boolean"] = rand() % 2 == 0;
     forms["Signed Integer"] = makeNumber(0);
     forms["Unsigned Integer"] = makeNumber(0u);
@@ -99,6 +100,11 @@ struct Printer
         {
             os << '\t';
         }
+    }
+
+    std::ostream &operator()(std::monostate)
+    {
+        return os;
     }
 
     std::ostream &operator()(const StringSelection &s)

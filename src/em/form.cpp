@@ -35,6 +35,11 @@ struct FormVisitor
         return id;
     }
 
+    int operator()(std::monostate &)
+    {
+        return makeDiv();
+    }
+
     int operator()(bool &b)
     {
         const int id = makeDiv();

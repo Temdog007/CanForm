@@ -25,6 +25,10 @@ class FormVisitor
     }
 
   public:
+    Gtk::Widget *operator()(std::monostate &)
+    {
+        return makeFrame();
+    }
     Gtk::Widget *operator()(bool &b)
     {
         Gtk::CheckButton *button = Gtk::make_managed<Gtk::CheckButton>(convert(name));
