@@ -264,6 +264,12 @@ class FormExecute
     }
 
     static void execute(std::string_view, const std::shared_ptr<FormExecute> &, size_t columns, void *parent = nullptr);
+
+    template <typename T, std::enable_if_t<std::is_base_of<FormExecute, T>::value, bool> = true>
+    static inline void execute(std::string_view title, T &&t, size_t columns, void *parent = nullptr)
+    {
+        return execute(title, std::make_shared<T>(std::move(t)), columns, parent);
+    }
 };
 
 template <typename F> class FormExecuteLambda : public FormExecute

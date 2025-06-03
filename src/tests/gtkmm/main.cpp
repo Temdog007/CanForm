@@ -136,11 +136,6 @@ MainWindow::MainWindow() : button("Create"), item("☰") /*U+2630*/, blockWindow
     show_all_children();
 }
 
-template <typename T> std::shared_ptr<T> make_shared(T &&t)
-{
-    return std::make_shared<T>(std::move(t));
-}
-
 void MainWindow::OnTool()
 {
     MenuList menuList;
@@ -185,7 +180,7 @@ void MainWindow::OnTool()
         menu.title = "Tests";
         menu.add("Show Example Form", [this]() {
             auto formExecute = executeForm([this](const Form &form) { printForm(form, this); }, makeForm());
-            FormExecute::execute("Modal Form", make_shared(std::move(formExecute)), 2, this);
+            FormExecute::execute("Modal Form", std::move(formExecute), 2, this);
             return false;
         });
         menu.add("Wait for 3 seconds", [this]() {
@@ -247,7 +242,7 @@ void MainWindow::OnTool()
 void MainWindow::OnCreate()
 {
     auto formExecute = executeForm([this](const Form &form) { printForm(form, this); }, createForm());
-    FormExecute::execute("Modal Form", make_shared(std::move(formExecute)), columns.get_value(), this);
+    FormExecute::execute("Modal Form", std::move(formExecute), columns.get_value(), this);
 }
 
 Form MainWindow::createForm() const

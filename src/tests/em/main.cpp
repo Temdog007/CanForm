@@ -24,11 +24,6 @@ int main()
     return 0;
 }
 
-template <typename T> std::shared_ptr<T> make_shared(T &&t)
-{
-    return std::make_shared<T>(std::move(t));
-}
-
 class Handler : public FileDialog::Handler
 {
   private:
@@ -90,8 +85,8 @@ bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
         auto &menu = menuList.menus.emplace_back();
         menu.title = "Tests";
         menu.add("Show Example Form", []() {
-            auto formExecute = make_shared(executeForm([](const Form &form) { printForm(form); }, makeForm()));
-            FormExecute::execute("Modal Form", formExecute, 3);
+            auto formExecute = executeForm([](const Form &form) { printForm(form); }, makeForm());
+            FormExecute::execute("Modal Form", std::move(formExecute), 3);
             return false;
         });
         menu.add("Wait for 3 seconds", []() {
