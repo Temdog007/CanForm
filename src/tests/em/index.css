@@ -112,3 +112,34 @@ body {
 ul.directory .active {
 	background-color: blue;
 }
+
+.expander {
+	cursor: pointer;
+	width: 100%;
+	border: none;
+	outline: none;
+	text-align: left;
+	background-color: #eee;
+	color: #444;
+}
+
+.expander:after {
+	content: '➕';
+}
+
+.expander.active:after {
+	content: '➖';
+}
+
+.expander:hover {
+	background-color: #ccc;
+}
+
+.expandable {
+	display: none !important;
+	overflow: hidden;
+}
+
+.expandable.active {
+	display: grid !important;
+}

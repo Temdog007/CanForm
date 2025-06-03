@@ -29,6 +29,7 @@ struct FormVisitor
 
                 let h2 = document.createElement("h2");
                 h2.innerText = UTF8ToString($1, $2);
+                h2.classList.add("variableName");
                 div.append(h2);
             },
             id, name.data(), name.size());
@@ -450,6 +451,41 @@ struct FormVisitor
                 },
                 id, inner, n.c_str(), multi.selected == n);
         }
+        return id;
+    }
+
+    int operator()(std::unique_ptr<Form> &form)
+    {
+        const int id = makeDiv();
+        const int formId = writeForm(*form);
+        EM_ASM(
+            {
+                let id = $0;
+                let formId = $1;
+
+                let div = document.getElementById("div_" + id.toString());
+                let form = document.getElementById("form_" + formId.toString());
+                form.classList.add("expandable");
+
+                for (let h2 of div.getElementsByClassName("variableName"))
+                {
+                    let button = document.createElement("button");
+                    button.innerText = h2.innerText;
+                    button.onclick = function()
+                    {
+                        h2.classList.toggle("active");
+                        form.classList.toggle("active");
+                    };
+                    button.classList.add("expander");
+                    div.insertBefore(button, h2);
+                    h2.remove();
+                    form.remove();
+                    div.append(form);
+                    return;
+                }
+                console.warn("Failed to find variable name");
+            },
+            id, formId);
         return id;
     }
 
