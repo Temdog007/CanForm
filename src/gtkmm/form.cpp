@@ -188,7 +188,7 @@ class FormVisitor
         frame->add(*scroll);
         size_t selected = 0;
         size_t current = 0;
-        for (auto &[n, form] : variant.tabs)
+        for (auto &[n, form] : variant.map)
         {
             name = n;
             notebook->append_page(*std::visit(*this, *form), convert(n));

@@ -413,7 +413,7 @@ struct FormVisitor
                     function() { select.onchange(); }, 10);
             },
             id, &variant);
-        for (auto &[n, form] : variant.tabs)
+        for (auto &[n, form] : variant.map)
         {
             name = n;
             const int inner = std::visit(*this, *form);

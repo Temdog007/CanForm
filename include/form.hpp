@@ -173,8 +173,36 @@ struct StructForm
 
 struct VariantForm
 {
-    std::pmr::map<String, Form> tabs;
+    using Map = std::pmr::map<String, Form>;
+    Map map;
     String selected;
+
+    Form &operator[](const String &k)
+    {
+        return map[k];
+    }
+    Form &operator[](String &&k)
+    {
+        return map[std::move(k)];
+    }
+
+    template <typename... Args> Form &operator[](Args &&...args)
+    {
+        String string(std::forward<Args>(args)...);
+        return operator[](std::move(string));
+    }
+
+    Map &operator*() noexcept
+    {
+        return map;
+    }
+    const Map &operator*() const noexcept
+    {
+        return map;
+    }
+
+    Map *operator->() noexcept;
+    const Map *operator->() const noexcept;
 };
 
 struct Form
@@ -340,6 +368,11 @@ template <typename... Args> inline StructForm StructForm::create(Args &&...args)
     return create(std::move(structForm), std::forward<Args>(args)...);
 }
 
+inline StructForm StructForm::create(StructForm &&structForm) noexcept
+{
+    return std::move(structForm);
+}
+
 inline StructForm::Map *StructForm::operator->() noexcept
 {
     return &map;
@@ -350,8 +383,14 @@ inline const StructForm::Map *StructForm::operator->() const noexcept
     return &map;
 }
 
-inline StructForm StructForm::create(StructForm &&structForm) noexcept
+inline VariantForm::Map *VariantForm::operator->() noexcept
 {
-    return std::move(structForm);
+    return &map;
 }
+
+inline const VariantForm::Map *VariantForm::operator->() const noexcept
+{
+    return &map;
+}
+
 } // namespace CanForm

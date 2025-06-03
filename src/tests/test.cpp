@@ -69,11 +69,11 @@ Form makeForm(bool makeInner)
 
     VariantForm variant;
     StringSet set({"Red", "Green", "Blue"});
-    variant.tabs["1st Variant"] = StructForm::create("Age", makeNumber(static_cast<uint8_t>(42)), "Favorite Color",
-                                                     StringSelection(0, std::move(set)));
-    variant.tabs["2nd Variant"] = StructForm::create("Active", true, "Weight", makeNumber(0.0), "Sports",
-                                                     createStringMap("Basketball", "Football", "Golf", "Polo"));
-    variant.tabs["3rd Variant"] = true;
+    variant.map["1st Variant"] = StructForm::create("Age", makeNumber(static_cast<uint8_t>(42)), "Favorite Color",
+                                                    StringSelection(0, std::move(set)));
+    variant.map["2nd Variant"] = StructForm::create("Active", true, "Weight", makeNumber(0.0), "Sports",
+                                                    createStringMap("Basketball", "Football", "Golf", "Polo"));
+    variant.map["3rd Variant"] = true;
     variant.selected = "1st Variant";
     forms["Variant Form"] = std::move(variant);
 
@@ -157,8 +157,8 @@ struct Printer
     {
         addTabs();
         os << "Variant Selected " << variant.selected << std::endl;
-        auto iter = variant.tabs.find(variant.selected);
-        if (iter != variant.tabs.end())
+        auto iter = variant.map.find(variant.selected);
+        if (iter != variant.map.end())
         {
             const auto &form = iter->second;
             ++tabs;
