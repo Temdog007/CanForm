@@ -72,7 +72,6 @@ static inline Gtk::Window *createWindow(Gtk::WindowType type, const Glib::ustrin
     {
         Gtk::ScrolledWindow *scroll = makeScroll(window);
         scroll->add(*contents.second);
-        sizeScrolledWindow(*scroll);
         vBox->pack_start(*scroll, contents.first == nullptr ? Gtk::PACK_EXPAND_WIDGET : Gtk::PACK_EXPAND_PADDING, 10);
     }
     else
@@ -101,11 +100,6 @@ static inline Gtk::Window *createWindow(Gtk::WindowType type, const Glib::ustrin
         window->set_transient_for(*parent);
         window->set_position(Gtk::WIN_POS_CENTER_ON_PARENT);
     }
-    Glib::signal_idle().connect([window]() {
-        auto [width, height] = getContentSize(*window);
-        window->resize(width, height);
-        return false;
-    });
 
     window->show_all_children();
     window->show();
