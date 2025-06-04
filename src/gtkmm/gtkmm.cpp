@@ -70,6 +70,10 @@ std::pair<int, int> getMonitorSize(Gtk::Window &window)
     auto w = screen->get_active_window();
     if (!w)
     {
+        w = screen->get_root_window();
+    }
+    if (!w)
+    {
         return getWindowSize(window);
     }
     int i = screen->get_monitor_at_window(w);
@@ -107,8 +111,8 @@ Gtk::ScrolledWindow *makeScroll(Gtk::Window *window)
     else
     {
         auto [w, h] = getMonitorSize(*window);
-        scroll->set_max_content_width(w * 5 / 6);
-        scroll->set_max_content_height(h * 5 / 6);
+        scroll->set_max_content_width(w * 3 / 4);
+        scroll->set_max_content_height(h * 3 / 4);
     }
     scroll->set_propagate_natural_width(true);
     scroll->set_propagate_natural_height(true);
@@ -125,8 +129,19 @@ std::pair<int, int> getContentSize(Gtk::Widget &widget)
     return std::make_pair(a.get_width(), a.get_height());
 }
 
+size_t getChildrenCount(Gtk::Container &container)
+{
+    size_t count = 0;
+    container.foreach ([&count](Gtk::Widget &) { ++count; });
+    return count;
+}
+
 void sizeScrolledWindow(Gtk::ScrolledWindow &scroll)
 {
+    if (getChildrenCount(scroll) == 0)
+    {
+        return;
+    }
     auto [width, height] = getContentSize(scroll);
     width = std::clamp(width, 320, scroll.property_max_content_width().get_value());
     height = std::clamp(height, 240, scroll.property_max_content_height().get_value());
