@@ -106,6 +106,14 @@ static inline Gtk::Window *createWindow(Gtk::WindowType type, const Glib::ustrin
     }
     window->set_default_size(1, 1);
 
+    window->set_opacity(0.0);
+    Glib::signal_timeout().connect(
+        [window]() {
+            const double o = std::min(1.0, window->get_opacity() + 0.2);
+            window->set_opacity(o);
+            return o < 1.0;
+        },
+        100);
     window->show_all_children();
     window->show();
     return window;
