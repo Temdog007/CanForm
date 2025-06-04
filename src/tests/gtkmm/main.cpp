@@ -223,7 +223,7 @@ void MainWindow::OnTool()
             return false;
         });
         menu.add("Question", [this]() {
-            askQuestion("Question", "Yes or No?", std::make_shared<SimpleResponse>(this), this);
+            askQuestion("Question", "Yes or No?", SimpleResponse(this), this);
             return false;
         });
         menu.add("Blocking", [this]() {
@@ -236,7 +236,7 @@ void MainWindow::OnTool()
         });
     }
 
-    MenuList::show("Main Menu", std::make_shared<MenuList>(std::move(menuList)), this);
+    MenuList::show("Main Menu", std::move(menuList), this);
 }
 
 void MainWindow::OnCreate()

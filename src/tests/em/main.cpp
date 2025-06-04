@@ -129,11 +129,11 @@ bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
             return false;
         });
         menu.add("Question", []() {
-            askQuestion("Question", "Yes or No?", std::make_shared<SimpleResponse>());
+            askQuestion("Question", "Yes or No?", SimpleResponse());
             return false;
         });
     }
 
-    MenuList::show("Main Menu", std::make_shared<MenuList>(std::move(menuList)));
+    MenuList::show("Main Menu", std::move(menuList));
     return true;
 }

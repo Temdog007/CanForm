@@ -61,6 +61,12 @@ struct MenuList
     }
 
     static void show(std::string_view, const std::shared_ptr<MenuList> &, void *parent = nullptr);
+
+    template <typename T, std::enable_if_t<std::is_base_of<MenuList, T>::value, bool> = true>
+    static inline void show(std::string_view title, T &&t, void *parent = nullptr)
+    {
+        show(title, std::make_shared<T>(std::move(t)), parent);
+    }
 };
 
 template <typename F> class MenuItemLambda : public MenuItem
