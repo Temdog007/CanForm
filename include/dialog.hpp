@@ -52,6 +52,13 @@ template <typename F> static inline QuestionResponseLambda<F> respondToQuestion(
 extern void askQuestion(std::string_view title, std::string_view question, const std::shared_ptr<QuestionResponse> &,
                         void *parent = nullptr);
 
+template <typename R, std::enable_if_t<std::is_base_of<QuestionResponse, R>::value, bool> = true>
+static inline void askQuestion(std::string_view title, std::string_view question, R &&r, void *parent = nullptr)
+{
+    auto ptr = std::make_shared<R>(std::move(r));
+    askQuestion(title, question, ptr, parent);
+}
+
 struct FileDialog
 {
     std::string_view title;
