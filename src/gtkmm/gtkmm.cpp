@@ -137,8 +137,10 @@ Gtk::ScrolledWindow *makeScroll(Gtk::Window *window)
         {
             return false;
         }
-        scroll->set_min_content_width(std::min(width, scroll->property_max_content_width().get_value()));
-        scroll->set_min_content_height(std::min(height, scroll->property_max_content_height().get_value()));
+        width = std::min(width, scroll->property_max_content_width().get_value());
+        height = std::min(height, scroll->property_max_content_height().get_value());
+        scroll->set_min_content_width(width);
+        scroll->set_min_content_height(height);
         Gtk::Window *window = getWindow(scroll);
         if (window)
         {
