@@ -115,25 +115,10 @@ Gtk::ScrolledWindow *makeScroll(Gtk::Window *window)
     return scroll;
 }
 
-std::pair<int, int> getContentSize(Gtk::Container &container)
+std::pair<int, int> getContentSize(Gtk::Widget &widget)
 {
-    std::pair<int, int> pair(4000, 4000);
-    container.foreach ([&pair](Gtk::Widget &widget) {
-        Gtk::Requisition minimum;
-        Gtk::Requisition natural;
-        widget.get_preferred_size(minimum, natural);
-        pair.first = std::min({pair.first, minimum.width, natural.width});
-        pair.second = std::min({pair.second, minimum.height, natural.height});
-    });
-    if (pair.first < 1)
-    {
-        pair.first = -1;
-    }
-    if (pair.second < 1)
-    {
-        pair.second = -1;
-    }
-    return pair;
+    auto a = widget.get_allocation();
+    return std::make_pair(a.get_width(), a.get_height());
 }
 
 void sizeScrolledWindow(Gtk::ScrolledWindow &scroll)
@@ -152,17 +137,6 @@ Gtk::Notebook *makeNotebook()
     notebook->set_show_tabs(true);
     notebook->set_show_border(true);
     return notebook;
-}
-
-std::pair<int, int> getSize(Gtk::Container &container)
-{
-    std::pair<int, int> pair(0, 0);
-    for (Gtk::Widget *child : container.get_children())
-    {
-        pair.first += child->get_allocated_width();
-        pair.second += child->get_allocated_height();
-    }
-    return pair;
 }
 
 void showMessageBox(MessageBoxType type, std::string_view title, std::string_view message, void *ptr)

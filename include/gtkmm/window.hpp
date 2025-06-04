@@ -21,7 +21,6 @@ constexpr const char *getIconName(MessageBoxType type) noexcept
 
 extern Gtk::ScrolledWindow *makeScroll(Gtk::Window *w = nullptr);
 extern Gtk::Notebook *makeNotebook();
-extern std::pair<int, int> getSize(Gtk::Container &);
 extern std::pair<int, int> getMonitorSize(Gtk::Window &);
 extern std::pair<int, int> getWindowSize(Gtk::Window &);
 
@@ -46,7 +45,7 @@ static inline size_t makeButtons(Gtk::Window *window, Gtk::HBox *box, size_t cou
 }
 
 extern void sizeScrolledWindow(Gtk::ScrolledWindow &);
-extern std::pair<int, int> getContentSize(Gtk::Container &);
+extern std::pair<int, int> getContentSize(Gtk::Widget &);
 
 template <typename... Args>
 static inline Gtk::Window *createWindow(Gtk::WindowType type, const Glib::ustring &title,
@@ -102,8 +101,11 @@ static inline Gtk::Window *createWindow(Gtk::WindowType type, const Glib::ustrin
         window->set_transient_for(*parent);
         window->set_position(Gtk::WIN_POS_CENTER_ON_PARENT);
     }
-    auto [width, height] = getContentSize(*window);
-    window->set_default_size(width, height);
+    Glib::signal_idle().connect([window]() {
+        auto [width, height] = getContentSize(*window);
+        window->resize(width, height);
+        return false;
+    });
 
     window->show_all_children();
     window->show();
