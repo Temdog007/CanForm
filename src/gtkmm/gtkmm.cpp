@@ -78,100 +78,71 @@ std::pair<int, int> getMonitorSize(Gtk::Window &window)
     return std::make_pair(r.get_width(), r.get_height());
 }
 
-Gtk::ScrolledWindow *makeScroll(Gtk::Window *window)
+constexpr bool nearby(int a, int b) noexcept
 {
-    Gtk::ScrolledWindow *scroll = Gtk::make_managed<Gtk::ScrolledWindow>();
-    const auto setFromMonitor = [scroll, window]() {
-        if (window == nullptr)
-        {
-            scroll->set_min_content_width(320);
-            scroll->set_min_content_height(240);
-            scroll->set_max_content_width(640);
-            scroll->set_max_content_height(480);
-        }
-        else
-        {
-            auto [w, h] = getMonitorSize(*window);
-            scroll->set_min_content_width(std::max(w / 2, 320));
-            scroll->set_min_content_height(std::max(h / 2, 240));
-            scroll->set_max_content_width(w * 5 / 6);
-            scroll->set_max_content_height(h * 5 / 6);
-        }
-    };
-    if (window == nullptr)
+    return std::abs(a - b) < 10;
+}
+
+constexpr int lerp(int from, int to) noexcept
+{
+    int dist = (to - from) / 2;
+    if (nearby(dist, 0))
     {
-        setFromMonitor();
+        return to;
     }
     else
     {
-        auto [w, h] = getWindowSize(*window);
-        if (w < 320 || h < 240)
-        {
-            setFromMonitor();
-        }
-        else
-        {
-            scroll->set_min_content_width(w / 2);
-            scroll->set_min_content_height(h / 2);
-            scroll->set_max_content_width(w * 5 / 6);
-            scroll->set_max_content_height(h * 5 / 6);
-        }
+        return from + dist;
+    }
+}
+
+Gtk::ScrolledWindow *makeScroll(Gtk::Window *window)
+{
+    Gtk::ScrolledWindow *scroll = Gtk::make_managed<Gtk::ScrolledWindow>();
+    if (window == nullptr)
+    {
+        scroll->set_max_content_width(640);
+        scroll->set_max_content_height(480);
+    }
+    else
+    {
+        auto [w, h] = getMonitorSize(*window);
+        scroll->set_max_content_width(w * 5 / 6);
+        scroll->set_max_content_height(h * 5 / 6);
     }
     scroll->set_propagate_natural_width(true);
     scroll->set_propagate_natural_height(true);
-    Glib::signal_idle().connect([scroll]() {
-        if (!scroll->is_visible())
-        {
-            return false;
-        }
-        int width = 4000;
-        int height = 4000;
-        scroll->foreach ([&width, &height](Gtk::Widget &widget) {
-            Gtk::Requisition minimum;
-            Gtk::Requisition natural;
-            widget.get_preferred_size(minimum, natural);
-            width = std::min({width, minimum.width, natural.width});
-            height = std::min({height, minimum.height, natural.height});
-        });
-        if (width < 1 || height < 1)
-        {
-            return false;
-        }
-        width = std::min(width, scroll->property_max_content_width().get_value());
-        height = std::min(height, scroll->property_max_content_height().get_value());
-        scroll->set_min_content_width(width);
-        scroll->set_min_content_height(height);
-        Gtk::Window *window = getWindow(scroll);
-        if (window)
-        {
-            auto [w, h] = getMonitorSize(*window);
-            width = std::min(w * 5 / 6, width) + 100;
-            height = std::min(h * 5 / 6, height) + 100;
-
-            scroll->set_max_content_width(std::min(w, width * 2));
-            scroll->set_max_content_height(std::min(h, height * 2));
-
-            window->resize(width, height);
-            auto parent = window->get_transient_for();
-            if (parent)
-            {
-                int x, y, w, h;
-                parent->get_position(x, y);
-                parent->get_size(w, h);
-
-                width = std::min(width, w);
-                height = std::min(height, h);
-                window->move(x + (w - width) / 2, y + (h - height) / 2);
-            }
-        }
-        else
-        {
-            scroll->set_max_content_width(-1);
-            scroll->set_max_content_height(-1);
-        }
-        return false;
-    });
     return scroll;
+}
+
+std::pair<int, int> getContentSize(Gtk::Container &container)
+{
+    std::pair<int, int> pair(4000, 4000);
+    container.foreach ([&pair](Gtk::Widget &widget) {
+        Gtk::Requisition minimum;
+        Gtk::Requisition natural;
+        widget.get_preferred_size(minimum, natural);
+        pair.first = std::min({pair.first, minimum.width, natural.width});
+        pair.second = std::min({pair.second, minimum.height, natural.height});
+    });
+    if (pair.first < 1)
+    {
+        pair.first = -1;
+    }
+    if (pair.second < 1)
+    {
+        pair.second = -1;
+    }
+    return pair;
+}
+
+void sizeScrolledWindow(Gtk::ScrolledWindow &scroll)
+{
+    auto [width, height] = getContentSize(scroll);
+    width = std::min(width, scroll.property_max_content_width().get_value());
+    height = std::min(height, scroll.property_max_content_height().get_value());
+    scroll.set_min_content_width(width);
+    scroll.set_min_content_height(height);
 }
 
 Gtk::Notebook *makeNotebook()

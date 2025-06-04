@@ -45,6 +45,9 @@ static inline size_t makeButtons(Gtk::Window *window, Gtk::HBox *box, size_t cou
     return makeButtons(window, box, count + 1, std::forward<Args>(args)...);
 }
 
+extern void sizeScrolledWindow(Gtk::ScrolledWindow &);
+extern std::pair<int, int> getContentSize(Gtk::Container &);
+
 template <typename... Args>
 static inline Gtk::Window *createWindow(Gtk::WindowType type, const Glib::ustring &title,
                                         std::pair<Gtk::Widget *, Gtk::Widget *> contents, void *ptr, Args &&...args)
@@ -70,6 +73,7 @@ static inline Gtk::Window *createWindow(Gtk::WindowType type, const Glib::ustrin
     {
         Gtk::ScrolledWindow *scroll = makeScroll(window);
         scroll->add(*contents.second);
+        sizeScrolledWindow(*scroll);
         vBox->pack_start(*scroll, contents.first == nullptr ? Gtk::PACK_EXPAND_WIDGET : Gtk::PACK_EXPAND_PADDING, 10);
     }
     else
@@ -93,27 +97,14 @@ static inline Gtk::Window *createWindow(Gtk::WindowType type, const Glib::ustrin
         }
     }
 
-    std::pair<int, int> pair;
-    if (parent == nullptr)
-    {
-        pair = getSize(*vBox);
-    }
-    else
+    if (parent != nullptr)
     {
         window->set_transient_for(*parent);
         window->set_position(Gtk::WIN_POS_CENTER_ON_PARENT);
-        pair = getWindowSize(*parent);
     }
-    window->set_default_size(1, 1);
+    auto [width, height] = getContentSize(*window);
+    window->set_default_size(width, height);
 
-    window->set_opacity(0.0);
-    Glib::signal_timeout().connect(
-        [window]() {
-            const double o = std::min(1.0, window->get_opacity() + 0.2);
-            window->set_opacity(o);
-            return o < 1.0;
-        },
-        100);
     window->show_all_children();
     window->show();
     return window;
