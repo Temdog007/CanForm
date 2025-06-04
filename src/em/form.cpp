@@ -469,7 +469,7 @@ struct FormVisitor
                 let columns = $1;
 
                 let div = document.createElement("div");
-                div.id = 'form_' + id.toString();
+                div.id = 'div_' + id.toString();
                 div.style.display = 'grid';
                 function repeat(c)
                 {
@@ -493,7 +493,7 @@ struct FormVisitor
                     let parent = $0;
                     let child = $1;
 
-                    let div = document.getElementById('form_' + parent);
+                    let div = document.getElementById('div_' + parent);
                     let div2 = document.getElementById('div_' + child);
 
                     div2.remove();
@@ -511,7 +511,7 @@ struct FormVisitor
                 let id = $0;
                 let divId = $1;
 
-                let form = document.getElementById("form_" + id.toString());
+                let form = document.getElementById("div_" + id.toString());
                 form.classList.add("expandable");
 
                 let button = document.createElement("button");
@@ -599,7 +599,7 @@ void FormExecute::execute(std::string_view title, const std::shared_ptr<FormExec
             div.style.maxHeight = '75vh';
             dialog.append(div);
 
-            let content = document.getElementById("form_" + id.toString());
+            let content = document.getElementById("div_" + id.toString());
             content.remove();
             div.append(content);
 
