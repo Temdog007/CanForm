@@ -57,7 +57,7 @@ class FormVisitor
         buffer->set_text(convert(s));
         buffer->signal_changed().connect([&s, buffer]() { s = convert(buffer->get_text()); });
 
-        box->pack_start(*entry, Gtk::PACK_EXPAND_PADDING, 10);
+        box->pack_start(*entry, Gtk::PACK_EXPAND_WIDGET, 10);
 
         addSyncFile(*box, buffer);
 
