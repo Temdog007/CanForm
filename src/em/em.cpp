@@ -49,11 +49,15 @@ void MenuItemClick::removeDialog()
     removeElement(buffer);
 }
 
-void MenuItemClick::operator()(bool b)
+void MenuItemClick::operator()(MenuState state)
 {
-    if (b)
+    switch (state)
     {
+    case MenuState::Close:
         removeDialog();
+        break;
+    default:
+        break;
     }
 }
 

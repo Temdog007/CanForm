@@ -59,7 +59,7 @@ bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
             dialog.startDirectory = s;
             dialog.multiple = true;
             dialog.show(handler);
-            return true;
+            return MenuState::Close;
         });
         menu.add("Open Directory", [handler]() {
             FileDialog dialog;
@@ -69,7 +69,7 @@ bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
             dialog.multiple = true;
             dialog.directories = true;
             dialog.show(handler);
-            return true;
+            return MenuState::Close;
         });
         menu.add("Save File", [handler]() {
             FileDialog dialog;
@@ -78,7 +78,7 @@ bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
             dialog.startDirectory = s;
             dialog.saving = true;
             dialog.show(handler);
-            return true;
+            return MenuState::Close;
         });
     }
     {
@@ -87,17 +87,17 @@ bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
         menu.add("Show Example Form", []() {
             auto formExecute = executeForm([](const Form &form) { printForm(form); }, makeForm());
             FormExecute::execute("Modal Form", std::move(formExecute));
-            return false;
+            return MenuState::KeepOpen;
         });
         menu.add("Wait for 3 seconds", []() {
             showPopupUntil("Waiting...", std::chrono::seconds(3), 500);
-            return false;
+            return MenuState::KeepOpen;
         });
         menu.add("Replace Menu", []() {
             MenuList menuList;
             auto &menu = menuList.menus.emplace_back();
             menu.title = "Secondary Menu";
-            menu.add("Close", []() { return true; });
+            menu.add("Close", []() { return MenuState::Close; });
             return makeNewMenu("New Menu", std::move(menuList));
         });
         menu.add("Long Menu", []() {
@@ -108,7 +108,7 @@ bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
             {
                 char buffer[1024];
                 std::snprintf(buffer, sizeof(buffer), "#%zu", i + 1);
-                menu.add(buffer, []() { return true; });
+                menu.add(buffer, []() { return MenuState::Close; });
             }
             return makeNewMenu("Long Menu", std::move(menuList));
         });
@@ -118,19 +118,19 @@ bool OnMenuButton(int, const EmscriptenMouseEvent *, void *)
         menu.title = "Modals";
         menu.add("Information", []() {
             showMessageBox(MessageBoxType::Information, "Information Message", "This is information");
-            return false;
+            return MenuState::KeepOpen;
         });
         menu.add("Warning", []() {
             showMessageBox(MessageBoxType::Warning, "Warning Message", "This is a warning");
-            return false;
+            return MenuState::KeepOpen;
         });
         menu.add("Error", []() {
             showMessageBox(MessageBoxType::Error, "Error Message", "This is an error");
-            return false;
+            return MenuState::KeepOpen;
         });
         menu.add("Question", []() {
             askQuestion("Question", "Yes or No?", SimpleResponse());
-            return false;
+            return MenuState::KeepOpen;
         });
     }
 

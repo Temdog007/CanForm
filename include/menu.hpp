@@ -50,6 +50,11 @@ struct Menu
     }
 
     template <typename F> void add(String &&, F &&);
+    template <typename S, typename F, std::enable_if_t<std::is_convertible_v<S, String>, bool> = true>
+    void add(const S &s, F &&f)
+    {
+        return add(String(s), std::move(f));
+    }
 };
 
 using Menus = std::pmr::vector<Menu>;

@@ -30,7 +30,7 @@ struct MenuItemClick
     constexpr MenuItemClick(int i, MenuItem *m, void *p) noexcept : id(i), item(m), ptr(p)
     {
     }
-    void operator()(bool);
+    void operator()(MenuState);
     void operator()(MenuItem::NewMenu &&);
     void execute()
     {
