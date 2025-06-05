@@ -149,7 +149,7 @@ void MainWindow::OnTool()
             dialog.startDirectory = s;
             dialog.multiple = true;
             dialog.show(Handler::create(this), this);
-            return true;
+            return MenuState::Close;
         });
         menu.add("Open Directory", [this]() {
             FileDialog dialog;
@@ -159,7 +159,7 @@ void MainWindow::OnTool()
             dialog.multiple = true;
             dialog.directories = true;
             dialog.show(Handler::create(this), this);
-            return true;
+            return MenuState::Close;
         });
         menu.add("Save File", [this]() {
             FileDialog dialog;
@@ -168,11 +168,11 @@ void MainWindow::OnTool()
             dialog.startDirectory = s;
             dialog.saving = true;
             dialog.show(Handler::create(this), this);
-            return true;
+            return MenuState::Close;
         });
         menu.add("Exit", [this]() {
             hide();
-            return true;
+            return MenuState::Close;
         });
     }
     {
@@ -181,17 +181,17 @@ void MainWindow::OnTool()
         menu.add("Show Example Form", [this]() {
             auto formExecute = executeForm([this](const Form &form) { printForm(form, this); }, makeForm());
             FormExecute::execute("Modal Form", std::move(formExecute), this);
-            return false;
+            return MenuState::KeepOpen;
         });
         menu.add("Wait for 3 seconds", [this]() {
             showPopupUntil("Waiting...", std::chrono::seconds(3), 500, this);
-            return false;
+            return MenuState::KeepOpen;
         });
         menu.add("Replace Menu", [this]() {
             MenuList menuList;
             auto &menu = menuList.menus.emplace_back();
             menu.title = "Secondary Menu";
-            menu.add("Close", []() { return true; });
+            menu.add("Close", []() { return MenuState::Close; });
             return makeNewMenu("New Menu", std::move(menuList));
         });
         menu.add("Long Menu", [this]() {
@@ -202,7 +202,7 @@ void MainWindow::OnTool()
             {
                 char buffer[1024];
                 std::snprintf(buffer, sizeof(buffer), "#%zu", i + 1);
-                menu.add(buffer, []() { return true; });
+                menu.add(buffer, []() { return MenuState::Close; });
             }
             return makeNewMenu("Long Menu", std::move(menuList));
         });
@@ -212,19 +212,19 @@ void MainWindow::OnTool()
         menu.title = "Modals";
         menu.add("Information", [this]() {
             showMessageBox(MessageBoxType::Information, "Error", "This is information", this);
-            return false;
+            return MenuState::KeepOpen;
         });
         menu.add("Warning", [this]() {
             showMessageBox(MessageBoxType::Warning, "Warning", "This is a warning", this);
-            return false;
+            return MenuState::KeepOpen;
         });
         menu.add("Error", [this]() {
             showMessageBox(MessageBoxType::Error, "Error", "This is an error", this);
-            return false;
+            return MenuState::KeepOpen;
         });
         menu.add("Question", [this]() {
             askQuestion("Question", "Yes or No?", SimpleResponse(this), this);
-            return false;
+            return MenuState::KeepOpen;
         });
         menu.add("Blocking", [this]() {
             puts("Blocking");
@@ -232,7 +232,7 @@ void MainWindow::OnTool()
                                          this, [this]() { blockWindow->hide(); });
             Main::run(*blockWindow);
             puts("Done Blocking");
-            return false;
+            return MenuState::KeepOpen;
         });
     }
 

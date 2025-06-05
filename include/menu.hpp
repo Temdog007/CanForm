@@ -10,10 +10,16 @@ namespace CanForm
 struct MenuList;
 using MenuListPtr = std::shared_ptr<MenuList>;
 
+enum class MenuState
+{
+    Close,
+    KeepOpen
+};
+
 struct MenuItem
 {
     using NewMenu = std::pair<String, MenuListPtr>;
-    using Result = std::variant<bool, NewMenu>;
+    using Result = std::variant<MenuState, NewMenu>;
 
     String label;
     virtual ~MenuItem()

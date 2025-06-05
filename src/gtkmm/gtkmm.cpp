@@ -254,11 +254,15 @@ struct MenuItemHandler
         delete w;
     }
 
-    void operator()(bool b)
+    void operator()(MenuState state)
     {
-        if (b)
+        switch (state)
         {
+        case MenuState::Close:
             closeWindow();
+            break;
+        default:
+            break;
         }
     }
 
