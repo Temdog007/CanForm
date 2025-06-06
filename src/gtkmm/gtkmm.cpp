@@ -117,10 +117,10 @@ Gtk::ScrolledWindow *makeScroll(Gtk::Window *window)
     scroll->set_border_width(10);
     scroll->set_propagate_natural_width(true);
     scroll->set_propagate_natural_height(true);
-    Glib::signal_idle().connect([scroll]() {
-        sizeScrolledWindow(*scroll);
-        return false;
-    });
+    // Glib::signal_idle().connect([scroll]() {
+    //     sizeScrolledWindow(*scroll);
+    //     return false;
+    // });
     return scroll;
 }
 
@@ -137,24 +137,30 @@ size_t getChildrenCount(Gtk::Container &container)
     return count;
 }
 
-void sizeScrolledWindow(Gtk::ScrolledWindow &scroll)
-{
-    if (getChildrenCount(scroll) == 0)
-    {
-        return;
-    }
-    auto [width, height] = getContentSize(scroll);
-    width = std::clamp(width, 320, scroll.property_max_content_width().get_value());
-    height = std::clamp(height, 240, scroll.property_max_content_height().get_value());
-    if (width != -1 && height != -1)
-    {
-        const int size = static_cast<int>(scroll.get_border_width());
-        width += size;
-        height += size;
-    }
-    scroll.set_min_content_width(width);
-    scroll.set_min_content_height(height);
-}
+// void sizeScrolledWindow(Gtk::ScrolledWindow &scroll)
+// {
+//     if (getChildrenCount(scroll) == 0)
+//     {
+//         return;
+//     }
+
+//     auto [width, height] = getContentSize(scroll);
+//     if (width != -1 && height != -1)
+//     {
+//         // Scrolled window should already be at an acceptable size
+//         return;
+//     }
+
+//     width = std::clamp(width, 320, scroll.property_max_content_width().get_value());
+//     height = std::clamp(height, 240, scroll.property_max_content_height().get_value());
+
+//     const int size = static_cast<int>(scroll.get_border_width());
+//     width += size;
+//     height += size;
+
+//     scroll.set_min_content_width(width);
+//     scroll.set_min_content_height(height);
+// }
 
 Gtk::Notebook *makeNotebook()
 {
