@@ -146,9 +146,14 @@ void sizeScrolledWindow(Gtk::ScrolledWindow &scroll)
     auto [width, height] = getContentSize(scroll);
     width = std::clamp(width, 320, scroll.property_max_content_width().get_value());
     height = std::clamp(height, 240, scroll.property_max_content_height().get_value());
-    const int size = static_cast<int>(scroll.get_border_width());
-    scroll.set_min_content_width(width + size);
-    scroll.set_min_content_height(height + size);
+    if (width != -1 && height != -1)
+    {
+        const int size = static_cast<int>(scroll.get_border_width());
+        width += size;
+        height += size;
+    }
+    scroll.set_min_content_width(width);
+    scroll.set_min_content_height(height);
 }
 
 Gtk::Notebook *makeNotebook()
