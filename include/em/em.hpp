@@ -81,4 +81,8 @@ extern "C"
     void EMSCRIPTEN_KEEPALIVE updateVariantForm(CanForm::VariantForm &, char *);
     bool EMSCRIPTEN_KEEPALIVE updateHandler(CanForm::FileDialog::Handler &, char *);
     void EMSCRIPTEN_KEEPALIVE cancelHandler(CanForm::FileDialog::Handler &);
+
+    void EMSCRIPTEN_KEEPALIVE addToStringSet(CanForm::StringSet &, char *);
+    void EMSCRIPTEN_KEEPALIVE removeFromStringSet(CanForm::StringSet &, char *);
+    void EMSCRIPTEN_KEEPALIVE updateStringSetDiv(CanForm::StringSet &, int);
 }

@@ -338,6 +338,36 @@ struct FormVisitor
         return id;
     }
 
+    int operator()(StringSet &set)
+    {
+        const int id = makeDiv();
+        EM_ASM(
+            {
+                let id = $0;
+                let addr = $1;
+
+                let div = document.getElementById('div_' + id.toString());
+                let content = document.createElement("div");
+                content.id = 'content_' + id.toString();
+                content.style.display = 'grid';
+                content.style.gridTemplateColumns = 'auto 1fr';
+                div.append(content);
+
+                let button = document.createElement("button");
+                button.innerText = 'Add';
+                button.onclick = function()
+                {
+                    Module.ccall('addToStringSet', null, [ 'number', 'number' ], [ addr, 0 ]);
+                    Module.ccall('updateStringSetDiv', null, [ 'number', 'number' ], [ addr, id ]);
+                };
+                div.append(button);
+            },
+            id, &set);
+
+        updateStringSetDiv(set, id);
+        return id;
+    }
+
     int operator()(StringSelection &selection)
     {
         const int id = makeDiv();
@@ -673,4 +703,82 @@ bool updateHandler(FileDialog::Handler &handler, char *string)
 void cancelHandler(FileDialog::Handler &handler)
 {
     handler.canceled();
+}
+
+void addToStringSet(StringSet &set, char *string)
+{
+    if (string == nullptr)
+    {
+        set.emplace("");
+    }
+    else
+    {
+        set.emplace(string);
+        free(string);
+    }
+}
+
+void removeFromStringSet(StringSet &set, char *string)
+{
+    set.erase(string);
+    free(string);
+}
+
+void updateStringSetDiv(StringSet &set, int id)
+{
+    EM_ASM(
+        {
+            let id = $0;
+            let div = document.getElementById('content_' + id.toString());
+            div.innerHTML = "";
+        },
+        id);
+    for (auto &s : set)
+    {
+        EM_ASM(
+            {
+                let id = $0;
+                let string = UTF8ToString($1);
+                let addr = $2;
+
+                let div = document.getElementById('content_' + id.toString());
+
+                let button = document.createElement("button");
+                button.innerText = '✖';
+                div.append(button);
+
+                let input = document.createElement("input");
+                input.value = string;
+                input.onchange = function()
+                {
+                    Module.ccall('removeFromStringSet', null, [ 'number', 'number' ],
+                                 [ addr, stringToNewUTF8(string) ]);
+                    Module.ccall('addToStringSet', null, [ 'number', 'number' ],
+                                 [ addr, stringToNewUTF8(input.value) ]);
+                    string = input.value;
+                };
+                input.onkeypress = function()
+                {
+                    this.onchange();
+                };
+                input.onpaste = function()
+                {
+                    this.onchange();
+                };
+                input.oninput = function()
+                {
+                    this.onchange();
+                };
+                div.append(input);
+
+                button.onclick = function()
+                {
+                    Module.ccall('removeFromStringSet', null, [ 'number', 'number' ],
+                                 [ addr, stringToNewUTF8(input.value) ]);
+                    button.remove();
+                    input.remove();
+                };
+            },
+            id, s.c_str(), &set);
+    }
 }
