@@ -55,6 +55,11 @@ Form makeForm(bool makeInner)
 
     forms["List of Strings"] = makeList({"First", "Second", "Third", "Fourth", "Fifth"});
 
+    {
+        StringSet set({"A", "B", "C"});
+        forms["Editable Set"] = std::move(set);
+    }
+
     ComplexString c;
     c.string = "2 + 2";
     StringSet u;
@@ -120,6 +125,16 @@ struct Printer
             }
             os << std::endl;
             ++i;
+        }
+        return os;
+    }
+
+    std::ostream &operator()(const StringSet &set)
+    {
+        for (const auto &name : set)
+        {
+            addTabs();
+            os << name << std::endl;
         }
         return os;
     }

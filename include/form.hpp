@@ -207,8 +207,8 @@ struct VariantForm
 
 struct Form
 {
-    using Data = std::variant<std::monostate, bool, RangedValue, String, ComplexString, SortableList, StringSelection,
-                              StringMap, VariantForm, StructForm>;
+    using Data = std::variant<std::monostate, bool, RangedValue, String, ComplexString, SortableList, StringSet,
+                              StringSelection, StringMap, VariantForm, StructForm>;
     Data data;
 
     Form() : data(false)

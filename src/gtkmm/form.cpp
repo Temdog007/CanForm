@@ -1,4 +1,5 @@
 #include <gtkmm/dragList.hpp>
+#include <gtkmm/editableSet.hpp>
 #include <gtkmm/gtkmm.hpp>
 #include <gtkmm/window.hpp>
 
@@ -148,6 +149,28 @@ class FormVisitor
             list[index].data = userData;
         });
         return dragList;
+    }
+
+    Gtk::Widget *operator()(StringSet &set)
+    {
+        auto frame = makeFrame();
+
+        auto editableSet = Gtk::make_managed<EditableSet>();
+        for (auto &text : set)
+        {
+            editableSet->add(convert(text));
+        }
+
+        editableSet->signal_added().connect([&set](const Glib::ustring &s) { set.emplace(convert(s)); });
+        editableSet->signal_removed().connect([&set](const Glib::ustring &s) {
+            std::string string(s);
+            set.erase(String(string));
+        });
+        editableSet->signal_cleared().connect([&set]() { set.clear(); });
+
+        frame->add(*editableSet);
+
+        return frame;
     }
 
     Gtk::Widget *operator()(StringSelection &selection)

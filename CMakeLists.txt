@@ -60,6 +60,7 @@ else()
 	add_library(canform_gtkmm ${CANFORM_TYPE}
 		src/gtkmm/gtkmm.cpp
 		src/gtkmm/form.cpp
+		src/gtkmm/editableSet.cpp
 		src/gtkmm/dragList.cpp
 		src/gtkmm/tempFile.cpp)
 
