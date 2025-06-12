@@ -207,6 +207,7 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
 
             let h1 = document.createElement("h1");
             h1.innerText = UTF8ToString($1, $2);
+            h1.style.textAlign = 'center';
             dialog.append(h1);
 
             let searchDiv = document.createElement('div');
@@ -215,7 +216,7 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
 
             let label = document.createElement('label');
             label.innerText = '🔍';
-            label.style.display = '0vh 1vw';
+            label.style.margin = '0vh 1vw';
             searchDiv.append(label);
 
             let search = document.createElement('input');
@@ -242,19 +243,6 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
                 this.onchange();
             };
             searchDiv.append(search);
-
-            dialog.onkeypress = function(e)
-            {
-                if (e.shiftKey && e.key == 'F')
-                {
-                    searchDiv.classList.toggle('searching');
-                    if (searchDiv.classList.contains('searching'))
-                    {
-                        search.focus();
-                    }
-                    e.preventDefault();
-                }
-            };
 
             let button = document.createElement("button");
             button.innerText = '✖';
