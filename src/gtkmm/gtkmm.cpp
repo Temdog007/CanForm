@@ -264,10 +264,21 @@ struct MenuItemHandler
 
 void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &menuList, void *ptr)
 {
+    Gtk::VBox *vbox = Gtk::make_managed<Gtk::VBox>();
+
+    Gtk::SearchBar *bar = Gtk::make_managed<Gtk::SearchBar>();
+    vbox->pack_start(*bar, Gtk::PACK_SHRINK);
+
+    Gtk::SearchEntry *entry = Gtk::make_managed<Gtk::SearchEntry>();
+    bar->connect_entry(*entry);
+    bar->add(*entry);
+
     Gtk::Notebook *notebook = makeNotebook();
+    vbox->pack_start(*notebook, Gtk::PACK_EXPAND_WIDGET);
     for (auto &menu : menuList->menus)
     {
         auto scroll = makeScroll((Gtk::Window *)ptr);
+
         Gtk::ButtonBox *box = Gtk::make_managed<Gtk::ButtonBox>(Gtk::Orientation::ORIENTATION_VERTICAL);
         box->set_layout(Gtk::ButtonBoxStyle::BUTTONBOX_CENTER);
         box->set_spacing(10);
@@ -281,7 +292,45 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
         notebook->append_page(*scroll, convert(menu.title));
     }
 
-    createWindow(convert(title), std::make_pair(nullptr, notebook), ptr);
+    Gtk::Window *window = createWindow(convert(title), std::make_pair(nullptr, vbox), ptr);
+    window->add_events(Gdk::KEY_PRESS_MASK);
+    window->signal_key_press_event().connect([bar](GdkEventKey *event) {
+        if ((event->state & GDK_CONTROL_MASK) != 0 && event->keyval == GDK_KEY_f)
+        {
+            bar->set_search_mode(!bar->get_search_mode());
+            return true;
+        }
+        return false;
+    });
+
+    auto buffer = entry->get_buffer();
+    entry->signal_search_changed().connect([buffer, notebook]() {
+        const Glib::ustring text = buffer->get_text();
+        for (int i = 0; i < notebook->get_n_pages(); ++i)
+        {
+            auto page = dynamic_cast<Gtk::ScrolledWindow *>(notebook->get_nth_page(i));
+            if (page == nullptr)
+            {
+                break;
+            }
+            auto viewport = dynamic_cast<Gtk::Viewport *>(page->get_child());
+            if (viewport == nullptr)
+            {
+                break;
+            }
+            auto child = dynamic_cast<Gtk::ButtonBox *>(viewport->get_child());
+            if (child == nullptr)
+            {
+                break;
+            }
+            child->foreach ([&text](Gtk::Widget &widget) {
+                Gtk::Button &button = dynamic_cast<Gtk::Button &>(widget);
+                const Glib::ustring label = button.get_label();
+                const std::string::size_type pos = label.find(text);
+                button.set_visible(text.empty() || pos != std::string::npos);
+            });
+        }
+    });
 }
 
 void FileDialog::show(const std::shared_ptr<FileDialog::Handler> &handler, void *ptr) const
