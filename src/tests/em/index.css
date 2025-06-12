@@ -143,3 +143,12 @@ ul.directory .active {
 .expandable.active {
 	display: grid !important;
 }
+
+.search.searching {
+	display: block;
+}
+
+.search {
+	display:none;
+	margin: 1vh 1vw;
+}

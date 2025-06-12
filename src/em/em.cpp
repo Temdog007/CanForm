@@ -209,6 +209,53 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
             h1.innerText = UTF8ToString($1, $2);
             dialog.append(h1);
 
+            let searchDiv = document.createElement('div');
+            searchDiv.classList.add('search');
+            dialog.append(searchDiv);
+
+            let label = document.createElement('label');
+            label.innerText = '🔍';
+            label.style.display = '0vh 1vw';
+            searchDiv.append(label);
+
+            let search = document.createElement('input');
+            search.placeholder = 'Search...';
+            search.type = 'text';
+            search.onchange = function()
+            {
+                for (let button of dialog.getElementsByClassName('menuButton'))
+                {
+                    button.style.display =
+                        (search.value.length == 0 || button.innerText.includes(search.value)) ? 'initial' : 'none';
+                }
+            };
+            search.onkeypress = function()
+            {
+                this.onchange();
+            };
+            search.onpaste = function()
+            {
+                this.onchange();
+            };
+            search.oninput = function()
+            {
+                this.onchange();
+            };
+            searchDiv.append(search);
+
+            dialog.onkeypress = function(e)
+            {
+                if (e.shiftKey && e.key == 'F')
+                {
+                    searchDiv.classList.toggle('searching');
+                    if (searchDiv.classList.contains('searching'))
+                    {
+                        search.focus();
+                    }
+                    e.preventDefault();
+                }
+            };
+
             let button = document.createElement("button");
             button.innerText = '✖';
             button.id = "closeButton";
@@ -285,6 +332,7 @@ void MenuList::show(std::string_view title, const std::shared_ptr<MenuList> &men
 
                     let button = document.createElement("button");
                     button.id = 'button_' + id2.toString();
+                    button.classList.add('menuButton');
                     button.innerText = buttonid;
                     div.append(button);
 
