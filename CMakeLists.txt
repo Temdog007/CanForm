@@ -61,7 +61,6 @@ else()
 		src/gtkmm/gtkmm.cpp
 		src/gtkmm/form.cpp
 		src/gtkmm/editableSet.cpp
-		src/gtkmm/dragList.cpp
 		src/gtkmm/tempFile.cpp)
 
 	target_include_directories(canform_gtkmm PRIVATE

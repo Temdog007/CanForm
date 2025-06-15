@@ -1,4 +1,3 @@
-#include <gtkmm/dragList.hpp>
 #include <gtkmm/editableSet.hpp>
 #include <gtkmm/form_visitor.hpp>
 
@@ -97,20 +96,6 @@ Gtk::Widget *FormVisitor::operator()(ComplexString &s)
 Gtk::Widget *FormVisitor::operator()(RangedValue &n)
 {
     return std::visit(*this, n);
-}
-
-Gtk::Widget *FormVisitor::operator()(SortableList &list)
-{
-    DragList *dragList = Gtk::make_managed<DragList>(convert(name));
-    for (auto &item : list)
-    {
-        dragList->add(convert(item.name), item.data);
-    }
-    dragList->signal_row_reorder().connect([&list](const Glib::ustring &string, size_t index, void *userData) {
-        list[index].name = convert(string);
-        list[index].data = userData;
-    });
-    return dragList;
 }
 
 Gtk::Widget *FormVisitor::operator()(StringSet &set)

@@ -7,18 +7,6 @@
 
 namespace CanForm
 {
-SortableList makeList(std::initializer_list<std::string_view> list)
-{
-    SortableList s;
-    for (auto name : list)
-    {
-        auto &item = s.emplace_back();
-        item.name = name;
-        item.data = reinterpret_cast<void *>(static_cast<size_t>(rand()));
-    }
-    return s;
-}
-
 template <typename T> constexpr RangedValue makeNumber(T t) noexcept
 {
     Range<T> r(t);
@@ -52,8 +40,6 @@ Form makeForm(bool makeInner)
         map.emplace(a, rand() % 2 == 0);
     }
     forms["Map of String to Boolean"] = std::move(map);
-
-    forms["List of Strings"] = makeList({"First", "Second", "Third", "Fourth", "Fifth"});
 
     {
         StringSet set({"A", "B", "C"});
@@ -162,16 +148,6 @@ struct Printer
     std::ostream &operator()(const RangedValue &n)
     {
         return std::visit(*this, n);
-    }
-
-    std::ostream &operator()(const SortableList &list)
-    {
-        for (auto &item : list)
-        {
-            addTabs();
-            os << item.name << std::endl;
-        }
-        return os;
     }
 
     std::ostream &operator()(const VariantForm &variant)

@@ -24,7 +24,6 @@ class FormVisitor
     template <typename T> Gtk::Widget *operator()(Range<T> &);
     Gtk::Widget *operator()(RangedValue &);
 
-    Gtk::Widget *operator()(SortableList &);
     Gtk::Widget *operator()(StringSet &);
     Gtk::Widget *operator()(StringSelection &);
     Gtk::Widget *operator()(StringMap &);
