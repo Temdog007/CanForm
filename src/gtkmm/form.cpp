@@ -164,7 +164,7 @@ Gtk::Widget *FormVisitor::operator()(VariantForm &variant)
     size_t current = 0;
     for (auto &[n, form] : variant.map)
     {
-        name = n;
+        name = std::string_view();
         notebook->append_page(*std::visit(*this, *form), convert(n));
         if (variant.selected == n)
         {
@@ -195,24 +195,24 @@ Gtk::Widget *FormVisitor::operator()(StructForm &structForm)
         expander->set_expanded(true);
     }
 
-    const int rows = std::max(static_cast<size_t>(1), structForm->size() / structForm.columns);
-    Gtk::Table *table = Gtk::make_managed<Gtk::Table>(rows, structForm.columns);
+    Gtk::Grid *grid = Gtk::make_managed<Gtk::Grid>();
+    grid->set_row_spacing(10);
+    grid->set_column_spacing(10);
     size_t index = 0;
-    const Gtk::AttachOptions options = Gtk::SHRINK;
     for (auto &[n, form] : *structForm)
     {
         const int row = index / structForm.columns;
         const int column = index % structForm.columns;
         name = n;
-        table->attach(*std::visit(*this, *form), column, column + 1, row, row + 1, options, options, 10, 10);
+        grid->attach(*std::visit(*this, *form), column, row);
         ++index;
     }
 
     if (expander == nullptr)
     {
-        return table;
+        return grid;
     }
-    expander->add(*table);
+    expander->add(*grid);
     return expander;
 }
 
