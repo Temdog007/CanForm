@@ -76,7 +76,6 @@ extern "C"
 {
     void EMSCRIPTEN_KEEPALIVE updateBoolean(bool &, bool);
     void EMSCRIPTEN_KEEPALIVE updateString(CanForm::String &, char *);
-    void EMSCRIPTEN_KEEPALIVE updateSortableList(CanForm::SortableList &, char *, int, void *);
     double EMSCRIPTEN_KEEPALIVE updateRange(CanForm::IRange &, double);
     void EMSCRIPTEN_KEEPALIVE updateVariantForm(CanForm::VariantForm &, char *);
     bool EMSCRIPTEN_KEEPALIVE updateHandler(CanForm::FileDialog::Handler &, char *);
