@@ -136,6 +136,7 @@ size_t getChildrenCount(Gtk::Container &container)
 Gtk::Notebook *makeNotebook()
 {
     Gtk::Notebook *notebook = Gtk::make_managed<Gtk::Notebook>();
+    notebook->popup_enable();
     notebook->set_scrollable(true);
     notebook->set_show_tabs(true);
     notebook->set_show_border(true);

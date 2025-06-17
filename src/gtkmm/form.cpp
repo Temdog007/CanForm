@@ -157,9 +157,7 @@ Gtk::Widget *FormVisitor::operator()(VariantForm &variant)
 {
     auto frame = makeFrame();
     auto notebook = makeNotebook();
-    auto scroll = makeScroll();
-    scroll->add(*notebook);
-    frame->add(*scroll);
+    frame->add(*notebook);
     size_t selected = 0;
     size_t current = 0;
     for (auto &[n, form] : variant.map)
