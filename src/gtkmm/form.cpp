@@ -169,6 +169,13 @@ Gtk::Widget *FormVisitor::operator()(VariantForm &variant)
                 if (notebook->is_visible())
                 {
                     variant.selected = convert(notebook->get_tab_label_text(*widget));
+                    auto scroll = get<Gtk::ScrolledWindow>(widget);
+                    if (scroll != nullptr)
+                    {
+                        const auto allocation = widget->get_allocation();
+                        scroll->set_min_content_width(allocation.get_width());
+                        scroll->set_min_content_height(allocation.get_height());
+                    }
                 }
             });
             return false;

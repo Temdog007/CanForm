@@ -74,4 +74,22 @@ struct SyncButton : public Gtk::Button
     }
 };
 
+template <typename T, std::enable_if_t<std::is_base_of<Gtk::Widget, T>::value, bool> = true>
+static inline T *get(Gtk::Widget *widget) noexcept
+{
+    if (widget == nullptr)
+    {
+        return nullptr;
+    }
+    auto result = dynamic_cast<T *>(widget);
+    if (result == nullptr)
+    {
+        return get<T>(widget->get_parent());
+    }
+    else
+    {
+        return result;
+    }
+}
+
 } // namespace CanForm
