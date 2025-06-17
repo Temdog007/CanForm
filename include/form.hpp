@@ -159,6 +159,63 @@ struct StructForm
     template <typename... Args> static StructForm create(Args &&...args);
 };
 
+struct EnableForm
+{
+    using Value = std::pair<bool, Form>;
+    using Map = std::pmr::map<String, Value>;
+    Map map;
+
+    EnableForm() : map()
+    {
+    }
+    EnableForm(const EnableForm &) = default;
+    EnableForm(EnableForm &&) noexcept = default;
+    template <typename... Args> EnableForm(std::in_place_t, Args &&...args) : map(std::forward<Args>(args)...)
+    {
+    }
+
+    EnableForm &operator=(const EnableForm &) = default;
+    EnableForm &operator=(EnableForm &&) noexcept = default;
+
+    template <typename T> EnableForm &operator=(const Map &t)
+    {
+        map = t;
+        return *this;
+    }
+    template <typename T> EnableForm &operator=(Map &&t) noexcept
+    {
+        map = std::move(t);
+        return *this;
+    }
+
+    Value &operator[](const String &k)
+    {
+        return map[k];
+    }
+    Value &operator[](String &&k)
+    {
+        return map[std::move(k)];
+    }
+
+    template <typename... Args> Value &operator[](Args &&...args)
+    {
+        String string(std::forward<Args>(args)...);
+        return operator[](std::move(string));
+    }
+
+    Map &operator*() noexcept
+    {
+        return map;
+    }
+    const Map &operator*() const noexcept
+    {
+        return map;
+    }
+
+    Map *operator->() noexcept;
+    const Map *operator->() const noexcept;
+};
+
 struct VariantForm
 {
     using Map = std::pmr::map<String, Form>;
@@ -196,7 +253,7 @@ struct VariantForm
 struct Form
 {
     using Data = std::variant<std::monostate, bool, RangedValue, String, ComplexString, StringSet, StringSelection,
-                              StringMap, VariantForm, StructForm>;
+                              StringMap, VariantForm, StructForm, EnableForm>;
     Data data;
 
     Form() : data(false)
@@ -367,6 +424,16 @@ inline StructForm::Map *StructForm::operator->() noexcept
 }
 
 inline const StructForm::Map *StructForm::operator->() const noexcept
+{
+    return &map;
+}
+
+inline EnableForm::Map *EnableForm::operator->() noexcept
+{
+    return &map;
+}
+
+inline const EnableForm::Map *EnableForm::operator->() const noexcept
 {
     return &map;
 }

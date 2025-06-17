@@ -5,6 +5,8 @@
 #include <sstream>
 #include <tests/test.hpp>
 
+using namespace std::string_view_literals;
+
 namespace CanForm
 {
 template <typename T> constexpr RangedValue makeNumber(T t) noexcept
@@ -68,6 +70,17 @@ Form makeForm(bool makeInner)
     variant.map["3rd Variant"] = true;
     variant.selected = "1st Variant";
     forms["Variant Form"] = std::move(variant);
+
+    EnableForm enableForm;
+    auto list = {"Bob"sv, "Alice"sv, "Greg"sv};
+    for (auto item : list)
+    {
+        Form form;
+        auto &s = form->emplace<String>();
+        randomString(s, 5, 10);
+        enableForm[item] = std::make_pair(rand() % 2 == 0, std::move(form));
+    }
+    forms["Enable Form"] = std::move(enableForm);
 
     if (makeInner)
     {
@@ -176,6 +189,23 @@ struct Printer
             std::visit(*this, *form);
             --tabs;
             os << std::endl;
+        }
+        return os;
+    }
+
+    std::ostream &operator()(const EnableForm &enableForm)
+    {
+        for (auto &[name, pair] : *enableForm)
+        {
+            addTabs();
+            if (pair.first)
+            {
+                os << name << std::endl;
+                ++tabs;
+                std::visit(*this, *pair.second);
+                --tabs;
+                os << std::endl;
+            }
         }
         return os;
     }

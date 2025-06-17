@@ -30,6 +30,7 @@ class FormVisitor
 
     Gtk::Widget *operator()(VariantForm &);
     Gtk::Widget *operator()(StructForm &);
+    Gtk::Widget *operator()(EnableForm &);
 
     Gtk::TextView *makeTextView();
 };

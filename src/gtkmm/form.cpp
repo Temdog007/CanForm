@@ -16,7 +16,7 @@ Gtk::Widget *FormVisitor::operator()(bool &b)
 {
     Gtk::CheckButton *button = Gtk::make_managed<Gtk::CheckButton>(convert(name));
     button->set_active(b);
-    button->signal_clicked().connect([&b, button]() { b = button->get_active(); });
+    button->signal_toggled().connect([&b, button]() { b = button->get_active(); });
     return button;
 }
 
@@ -203,6 +203,52 @@ Gtk::Widget *FormVisitor::operator()(StructForm &structForm)
         const int column = index % structForm.columns;
         name = n;
         grid->attach(*std::visit(*this, *form), column, row);
+        ++index;
+    }
+
+    if (expander == nullptr)
+    {
+        return grid;
+    }
+    expander->add(*grid);
+    return expander;
+}
+
+Gtk::Widget *FormVisitor::operator()(EnableForm &enableForm)
+{
+    Gtk::Expander *expander = nullptr;
+    if (!name.empty())
+    {
+        expander = Gtk::make_managed<Gtk::Expander>();
+        expander->set_label(convert(name));
+        expander->set_label_fill(true);
+        expander->set_resize_toplevel(true);
+        expander->set_expanded(true);
+    }
+    name = std::string_view();
+
+    Gtk::Grid *grid = Gtk::make_managed<Gtk::Grid>();
+    grid->set_row_spacing(10);
+    grid->set_column_spacing(10);
+    grid->set_column_homogeneous(true);
+    size_t index = 0;
+    for (auto &[n, pair] : *enableForm)
+    {
+        bool &enabled = pair.first;
+        Form &inner = pair.second;
+
+        Gtk::Widget *widget = std::visit(*this, *inner);
+        widget->signal_show().connect([widget, &enabled]() { widget->set_visible(enabled); });
+
+        Gtk::CheckButton *button = Gtk::make_managed<Gtk::CheckButton>(convert(n));
+        button->set_active(enabled);
+        button->signal_toggled().connect([&enabled, widget, button]() {
+            enabled = button->get_active();
+            widget->set_visible(enabled);
+        });
+
+        grid->attach(*button, 0, index);
+        grid->attach(*widget, 1, index);
         ++index;
     }
 
