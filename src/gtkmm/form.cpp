@@ -158,25 +158,32 @@ Gtk::Widget *FormVisitor::operator()(VariantForm &variant)
     auto frame = makeFrame();
     auto notebook = makeNotebook();
     frame->add(*notebook);
-    size_t selected = 0;
-    size_t current = 0;
-    for (auto &[n, form] : variant.map)
-    {
-        name = std::string_view();
-        notebook->append_page(*std::visit(*this, *form), convert(n));
+
+    auto iter = variant.map.begin();
+    auto selected = std::make_shared<int>(0);
+    Glib::signal_idle().connect([iter, notebook, selected, &variant]() mutable {
+        if (!notebook->is_visible() || iter == variant.map.end())
+        {
+            notebook->set_current_page(*selected);
+            notebook->signal_switch_page().connect([notebook, &variant](Gtk::Widget *widget, guint) {
+                if (notebook->is_visible())
+                {
+                    variant.selected = convert(notebook->get_tab_label_text(*widget));
+                }
+            });
+            return false;
+        }
+        auto &n = iter->first;
+        auto &form = iter->second;
+        FormVisitor visitor;
+        notebook->append_page(*std::visit(visitor, *form), convert(n));
+        notebook->show_all_children();
         if (variant.selected == n)
         {
-            selected = current;
+            *selected = std::distance(variant.map.begin(), iter);
         }
-        ++current;
-    }
-    notebook->show_all_children();
-    notebook->set_current_page(selected);
-    notebook->signal_switch_page().connect([notebook, &variant](Gtk::Widget *widget, guint) {
-        if (notebook->is_visible())
-        {
-            variant.selected = convert(notebook->get_tab_label_text(*widget));
-        }
+        ++iter;
+        return true;
     });
     return frame;
 }
