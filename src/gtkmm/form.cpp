@@ -230,7 +230,6 @@ Gtk::Widget *FormVisitor::operator()(EnableForm &enableForm)
     Gtk::Grid *grid = Gtk::make_managed<Gtk::Grid>();
     grid->set_row_spacing(10);
     grid->set_column_spacing(10);
-    grid->set_column_homogeneous(true);
     size_t index = 0;
     for (auto &[n, pair] : *enableForm)
     {
@@ -247,8 +246,8 @@ Gtk::Widget *FormVisitor::operator()(EnableForm &enableForm)
             widget->set_visible(enabled);
         });
 
-        grid->attach(*button, 0, index);
-        grid->attach(*widget, 1, index);
+        grid->attach(*button, 0, index, 1, 1);
+        grid->attach(*widget, 1, index, 3, 1);
         ++index;
     }
 

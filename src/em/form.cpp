@@ -418,7 +418,7 @@ int FormVisitor::operator()(EnableForm &enableForm)
             let div = document.createElement("div");
             div.id = 'div_' + id.toString();
             div.style.display = 'grid';
-            div.style.gridTemplateColumns = 'auto auto';
+            div.style.gridTemplateColumns = '1fr 3fr';
             document.body.append(div);
         },
         id);
