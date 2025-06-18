@@ -158,26 +158,24 @@ Gtk::Widget *FormVisitor::operator()(VariantForm &variant)
     auto frame = makeFrame();
     auto notebook = makeNotebook();
     frame->add(*notebook);
+    notebook->signal_switch_page().connect([notebook, &variant](Gtk::Widget *widget, guint) {
+        if (notebook->is_visible())
+        {
+            variant.selected = convert(notebook->get_tab_label_text(*widget));
+            auto scroll = get<Gtk::ScrolledWindow>(widget);
+            if (scroll != nullptr)
+            {
+                const auto allocation = widget->get_allocation();
+                scroll->set_min_content_width(allocation.get_width());
+                scroll->set_min_content_height(allocation.get_height());
+            }
+        }
+    });
 
     auto iter = variant.map.begin();
-    auto selected = std::make_shared<int>(0);
-    Glib::signal_idle().connect([iter, notebook, selected, &variant]() mutable {
+    Glib::signal_idle().connect([iter, notebook, &variant]() mutable {
         if (!notebook->is_visible() || iter == variant.map.end())
         {
-            notebook->set_current_page(*selected);
-            notebook->signal_switch_page().connect([notebook, &variant](Gtk::Widget *widget, guint) {
-                if (notebook->is_visible())
-                {
-                    variant.selected = convert(notebook->get_tab_label_text(*widget));
-                    auto scroll = get<Gtk::ScrolledWindow>(widget);
-                    if (scroll != nullptr)
-                    {
-                        const auto allocation = widget->get_allocation();
-                        scroll->set_min_content_width(allocation.get_width());
-                        scroll->set_min_content_height(allocation.get_height());
-                    }
-                }
-            });
             return false;
         }
         auto &n = iter->first;
@@ -187,7 +185,7 @@ Gtk::Widget *FormVisitor::operator()(VariantForm &variant)
         notebook->show_all_children();
         if (variant.selected == n)
         {
-            *selected = std::distance(variant.map.begin(), iter);
+            notebook->set_current_page(notebook->get_n_pages() - 1);
         }
         ++iter;
         return true;
