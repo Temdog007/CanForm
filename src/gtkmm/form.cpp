@@ -168,14 +168,16 @@ Gtk::Widget *FormVisitor::operator()(VariantForm &variant)
     auto box = Gtk::make_managed<Gtk::HBox>();
     box->set_spacing(10);
 
+    auto right = Gtk::make_managed<Gtk::VBox>();
+
     using Vector = std::pmr::vector<Gtk::Widget *>;
     auto v = std::make_shared<Vector>();
     v->resize(variant.map.size(), nullptr);
 
     auto list = Gtk::make_managed<Gtk::ListBox>();
     list->set_activate_on_single_click(true);
-    list->set_selection_mode(Gtk::SELECTION_SINGLE);
-    const auto activate = [v, box, &variant](Gtk::ListBoxRow *row) {
+    list->set_selection_mode(Gtk::SELECTION_BROWSE);
+    const auto activate = [v, right, &variant](Gtk::ListBoxRow *row) {
         const size_t index = row->get_index();
         if (index >= v->size())
         {
@@ -187,8 +189,8 @@ Gtk::Widget *FormVisitor::operator()(VariantForm &variant)
         if (widget == nullptr)
         {
             widget = std::visit(FormVisitor(), *iter->second);
-            box->pack_start(*widget, Gtk::PACK_SHRINK);
-            box->show_all_children();
+            right->pack_start(*widget, Gtk::PACK_SHRINK);
+            right->show_all_children();
         }
         variant.selected = iter->first;
         for (auto &item : *v)
@@ -202,6 +204,8 @@ Gtk::Widget *FormVisitor::operator()(VariantForm &variant)
     };
     list->signal_row_activated().connect(activate);
     box->pack_start(*list, Gtk::PACK_SHRINK);
+
+    box->pack_start(*right, Gtk::PACK_EXPAND_WIDGET);
 
     for (auto &[name, _] : variant.map)
     {
@@ -217,8 +221,115 @@ Gtk::Widget *FormVisitor::operator()(VariantForm &variant)
         activate(row);
     }
 
+    if (expander == nullptr)
+    {
+        return box;
+    }
+    expander->add(*box);
+    return expander;
+}
+
+Gtk::Widget *FormVisitor::operator()(EnableForm &enableForm)
+{
+    Gtk::Expander *expander = nullptr;
+    if (!name.empty())
+    {
+        expander = Gtk::make_managed<Gtk::Expander>();
+        expander->set_label(convert(name));
+        expander->set_label_fill(true);
+        expander->set_resize_toplevel(true);
+        expander->set_expanded(true);
+    }
+
+    auto box = Gtk::make_managed<Gtk::HBox>();
+    box->set_spacing(10);
+
+    auto left = Gtk::make_managed<Gtk::VBox>();
+    box->pack_start(*left, Gtk::PACK_SHRINK);
+
     auto right = Gtk::make_managed<Gtk::VBox>();
     box->pack_start(*right, Gtk::PACK_EXPAND_WIDGET);
+
+    using Vector = std::pmr::vector<Gtk::Widget *>;
+    auto v = std::make_shared<Vector>();
+    v->resize(enableForm->size(), nullptr);
+
+    auto list = Gtk::make_managed<Gtk::ListBox>();
+    list->set_activate_on_single_click(true);
+    list->set_selection_mode(Gtk::SELECTION_MULTIPLE);
+    const auto activate = [v, right, &enableForm](Gtk::ListBoxRow *row) {
+        const size_t index = row->get_index();
+        if (index >= v->size())
+        {
+            return;
+        }
+        auto iter = enableForm->begin();
+        std::advance(iter, index);
+        Gtk::Widget *&widget = v->operator[](index);
+        if (widget == nullptr)
+        {
+            auto frame = Gtk::make_managed<Gtk::Frame>(convert(iter->first));
+            frame->add(*std::visit(FormVisitor(), *iter->second.second));
+            widget = frame;
+            right->pack_start(*widget, Gtk::PACK_SHRINK);
+            right->show_all_children();
+        }
+        iter->second.first = true;
+    };
+    list->signal_row_activated().connect(activate);
+    list->signal_selected_rows_changed().connect([list, &enableForm, v]() {
+        for (auto &[_, pair] : *enableForm)
+        {
+            pair.first = false;
+        }
+        for (auto &item : *v)
+        {
+            if (item != nullptr)
+            {
+                item->set_visible(false);
+            }
+        }
+        list->selected_foreach([v, &enableForm](Gtk::ListBoxRow *row) {
+            const size_t index = row->get_index();
+            if (index >= v->size())
+            {
+                return;
+            }
+            auto iter = enableForm->begin();
+            std::advance(iter, index);
+            iter->second.first = true;
+            Gtk::Widget *&widget = v->operator[](index);
+            if (widget == nullptr)
+            {
+                return;
+            }
+            widget->set_visible(true);
+        });
+    });
+    left->pack_start(*list, Gtk::PACK_EXPAND_WIDGET);
+
+    Gtk::Button *button = Gtk::make_managed<Gtk::Button>("Un-Select All");
+    button->signal_clicked().connect([list]() { list->unselect_all(); });
+    left->pack_start(*button, Gtk::PACK_SHRINK);
+
+    for (auto &[name, _] : enableForm.map)
+    {
+        auto label = Gtk::make_managed<Gtk::Label>(convert(name));
+        list->append(*label);
+    }
+    for (auto iter = enableForm->begin(); iter != enableForm->end(); ++iter)
+    {
+        const size_t index = std::distance(enableForm->begin(), iter);
+        auto row = list->get_row_at_index(index);
+        row->set_selectable(true);
+        row->set_activatable(true);
+        if (!iter->second.first)
+        {
+            continue;
+        }
+        list->select_row(*row);
+        activate(row);
+    }
 
     if (expander == nullptr)
     {
@@ -250,51 +361,6 @@ Gtk::Widget *FormVisitor::operator()(StructForm &structForm)
         const int column = index % structForm.columns;
         name = n;
         grid->attach(*std::visit(*this, *form), column, row);
-        ++index;
-    }
-
-    if (expander == nullptr)
-    {
-        return grid;
-    }
-    expander->add(*grid);
-    return expander;
-}
-
-Gtk::Widget *FormVisitor::operator()(EnableForm &enableForm)
-{
-    Gtk::Expander *expander = nullptr;
-    if (!name.empty())
-    {
-        expander = Gtk::make_managed<Gtk::Expander>();
-        expander->set_label(convert(name));
-        expander->set_label_fill(true);
-        expander->set_resize_toplevel(true);
-        expander->set_expanded(true);
-    }
-    name = std::string_view();
-
-    Gtk::Grid *grid = Gtk::make_managed<Gtk::Grid>();
-    grid->set_row_spacing(10);
-    grid->set_column_spacing(10);
-    size_t index = 0;
-    for (auto &[n, pair] : *enableForm)
-    {
-        bool &enabled = pair.first;
-        Form &inner = pair.second;
-
-        Gtk::Widget *widget = std::visit(*this, *inner);
-        widget->signal_show().connect([widget, &enabled]() { widget->set_visible(enabled); });
-
-        Gtk::CheckButton *button = Gtk::make_managed<Gtk::CheckButton>(convert(n));
-        button->set_active(enabled);
-        button->signal_toggled().connect([&enabled, widget, button]() {
-            enabled = button->get_active();
-            widget->set_visible(enabled);
-        });
-
-        grid->attach(*button, 0, index, 1, 1);
-        grid->attach(*widget, 1, index, 3, 1);
         ++index;
     }
 
