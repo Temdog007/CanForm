@@ -153,63 +153,31 @@ Gtk::Widget *FormVisitor::operator()(StringMap &map)
     return frame;
 }
 
-struct DelayedNotebook
-{
-    Gtk::Bin *bin;
-    Gtk::Notebook *notebook;
-    VariantForm &variant;
-    VariantForm::Map::iterator iter;
-
-    DelayedNotebook(Gtk::Bin *b, VariantForm &v)
-        : bin(b), notebook(makeNotebook()), variant(v), iter(variant.map.begin())
-    {
-        notebook->signal_switch_page().connect([notebook = notebook, &v](Gtk::Widget *widget, guint) {
-            if (notebook->is_visible())
-            {
-                v.selected = convert(notebook->get_tab_label_text(*widget));
-            }
-        });
-    }
-
-    DelayedNotebook(const DelayedNotebook &) = default;
-
-    bool operator()()
-    {
-        if (!bin->is_visible())
-        {
-            return false;
-        }
-        if (iter == variant.map.end())
-        {
-            bin->remove();
-            bin->add(*notebook);
-            bin->show_all_children();
-            return false;
-        }
-
-        FormVisitor visitor;
-        int number = notebook->append_page(*std::visit(visitor, *iter->second), convert(iter->first));
-        if (variant.selected == iter->first)
-        {
-            notebook->set_current_page(number);
-        }
-        ++iter;
-        return true;
-    }
-};
-
 Gtk::Widget *FormVisitor::operator()(VariantForm &variant)
 {
     auto frame = makeFrame();
     auto notebook = makeNotebook();
-    for (auto [n, _] : variant.map)
-    {
-        notebook->append_page(*Gtk::make_managed<Gtk::VBox>(), convert(n));
-    }
     frame->add(*notebook);
-
-    DelayedNotebook delayed(frame, variant);
-    Glib::signal_idle().connect(delayed);
+    size_t selected = 0;
+    size_t current = 0;
+    for (auto &[n, form] : variant.map)
+    {
+        name = std::string_view();
+        notebook->append_page(*std::visit(*this, *form), convert(n));
+        if (variant.selected == n)
+        {
+            selected = current;
+        }
+        ++current;
+    }
+    notebook->show_all_children();
+    notebook->set_current_page(selected);
+    notebook->signal_switch_page().connect([notebook, &variant](Gtk::Widget *widget, guint) {
+        if (notebook->is_visible())
+        {
+            variant.selected = convert(notebook->get_tab_label_text(*widget));
+        }
+    });
     return frame;
 }
 
