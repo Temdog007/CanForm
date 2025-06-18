@@ -179,9 +179,10 @@ Gtk::Widget *FormVisitor::operator()(VariantForm &variant)
         const auto text = over->get_active_text();
         variant.selected = convert(text);
         auto iter = map->find(text);
-        if (iter == map->end())
+        auto iter2 = variant.map.find(variant.selected);
+        if (iter == map->end() && iter2 != variant.map.end())
         {
-            Gtk::Widget *widget = std::visit(FormVisitor(), *variant.map.find(variant.selected)->second);
+            Gtk::Widget *widget = std::visit(FormVisitor(), *iter2->second);
             under->pack_start(*widget, Gtk::PACK_SHRINK);
             under->show_all_children();
             map->emplace(text, widget);
@@ -219,85 +220,44 @@ Gtk::Widget *FormVisitor::operator()(EnableForm &enableForm)
     auto right = Gtk::make_managed<Gtk::VBox>();
     box->pack_start(*right, Gtk::PACK_EXPAND_WIDGET);
 
-    using Vector = std::pmr::vector<Gtk::Widget *>;
-    auto v = std::make_shared<Vector>();
-    v->resize(enableForm->size(), nullptr);
+    using Map = std::pmr::map<String, Gtk::Widget *>;
+    auto map = std::make_shared<Map>();
 
-    auto list = Gtk::make_managed<Gtk::ListBox>();
-    list->set_activate_on_single_click(true);
-    list->set_selection_mode(Gtk::SELECTION_MULTIPLE);
-    const auto activate = [v, right, &enableForm](Gtk::ListBoxRow *row) {
-        const size_t index = row->get_index();
-        if (index >= v->size())
+    const auto activate = [map, right, &enableForm](const String &key, bool visible) {
+        auto iter = enableForm->find(key);
+        if (iter == enableForm->end())
         {
             return;
         }
-        auto iter = enableForm->begin();
-        std::advance(iter, index);
-        Gtk::Widget *&widget = v->operator[](index);
-        if (widget == nullptr)
+        iter->second.first = visible;
+        auto iter2 = map->find(key);
+        if (iter2 == map->end())
         {
-            auto frame = Gtk::make_managed<Gtk::Frame>(convert(iter->first));
-            frame->add(*std::visit(FormVisitor(), *iter->second.second));
-            widget = frame;
+            FormVisitor visitor;
+            visitor.name = key;
+            auto widget = std::visit(visitor, *iter->second.second);
+            widget->set_visible(visible);
             right->pack_start(*widget, Gtk::PACK_SHRINK);
             right->show_all_children();
+            map->emplace(key, widget);
         }
-        iter->second.first = true;
+        else
+        {
+            iter2->second->set_visible(visible);
+        }
     };
-    list->signal_row_activated().connect(activate);
-    list->signal_selected_rows_changed().connect([list, &enableForm, v]() {
-        for (auto &[_, pair] : *enableForm)
-        {
-            pair.first = false;
-        }
-        for (auto &item : *v)
-        {
-            if (item != nullptr)
-            {
-                item->set_visible(false);
-            }
-        }
-        list->selected_foreach([v, &enableForm](Gtk::ListBoxRow *row) {
-            const size_t index = row->get_index();
-            if (index >= v->size())
-            {
-                return;
-            }
-            auto iter = enableForm->begin();
-            std::advance(iter, index);
-            iter->second.first = true;
-            Gtk::Widget *&widget = v->operator[](index);
-            if (widget == nullptr)
-            {
-                return;
-            }
-            widget->set_visible(true);
-        });
-    });
-    left->pack_start(*list, Gtk::PACK_EXPAND_WIDGET);
 
-    Gtk::Button *button = Gtk::make_managed<Gtk::Button>("Un-Select All");
-    button->signal_clicked().connect([list]() { list->unselect_all(); });
-    left->pack_start(*button, Gtk::PACK_SHRINK);
-
-    for (auto &[name, _] : enableForm.map)
+    for (auto &pair : enableForm.map)
     {
-        auto label = Gtk::make_managed<Gtk::Label>(convert(name));
-        list->append(*label);
-    }
-    for (auto iter = enableForm->begin(); iter != enableForm->end(); ++iter)
-    {
-        const size_t index = std::distance(enableForm->begin(), iter);
-        auto row = list->get_row_at_index(index);
-        row->set_selectable(true);
-        row->set_activatable(true);
-        if (!iter->second.first)
+        auto button = Gtk::make_managed<Gtk::CheckButton>(convert(pair.first));
+        button->set_active(pair.second.first);
+        if (pair.second.first)
         {
-            continue;
+            activate(pair.first, true);
         }
-        list->select_row(*row);
-        activate(row);
+        button->signal_toggled().connect(
+            [button, key = pair.first, activate]() { activate(key, button->get_active()); });
+        left->pack_start(*button, Gtk::PACK_SHRINK);
     }
 
     if (expander == nullptr)
