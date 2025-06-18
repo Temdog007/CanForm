@@ -173,7 +173,7 @@ Gtk::Widget *FormVisitor::operator()(VariantForm &variant)
     });
 
     auto iter = variant.map.begin();
-    Glib::signal_idle().connect([iter, notebook, &variant]() mutable {
+    auto func = [iter, notebook, &variant]() mutable {
         if (!notebook->is_visible() || iter == variant.map.end())
         {
             return false;
@@ -189,7 +189,9 @@ Gtk::Widget *FormVisitor::operator()(VariantForm &variant)
         }
         ++iter;
         return true;
-    });
+    };
+    func();
+    Glib::signal_idle().connect(func);
     return frame;
 }
 
